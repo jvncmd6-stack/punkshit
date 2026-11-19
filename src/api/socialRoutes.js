@@ -25,6 +25,10 @@ db.exec(`
   )
 `);
 
+// Pengaman migrasi kolom jika tabel radio_queue versi lama sudah ada di SQLite
+try { db.exec("ALTER TABLE radio_queue ADD COLUMN source_type TEXT DEFAULT 'spotify'"); } catch (e) {}
+try { db.exec("ALTER TABLE radio_queue ADD COLUMN file_id TEXT DEFAULT ''"); } catch (e) {}
+
 // POST /api/social/greet -> Sapa warga lain di Grup
 socialRouter.post('/social/greet', requireUser, async (req, res) => {
   const targetId = String(req.body?.targetUserId || '');
