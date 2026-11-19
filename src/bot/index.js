@@ -5,7 +5,7 @@ import { escHtml } from '../services/syncEngine.js';
 
 let botInstance = null;
 
-// Pastikan tabel pengaturan bot & antrean radio tersedia di SQLite
+// Tabel pengaturan bot & antrean radio di SQLite
 db.exec(`
   CREATE TABLE IF NOT EXISTS bot_settings (
     key TEXT PRIMARY KEY,
@@ -25,7 +25,6 @@ db.exec(`
   );
 `);
 
-// Migrasi kolom aman jika tabel radio_queue versi lama sudah terlanjur dibuat
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN source_type TEXT DEFAULT 'spotify'"); } catch (e) {}
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN file_id TEXT DEFAULT ''"); } catch (e) {}
 
@@ -45,13 +44,14 @@ function setSetting(key, value) {
   `).run(key, String(value));
 }
 
+// Default Greet & Bye gaya Mas Raka (santai, tengil, minim emoji)
 const DEFAULT_GREET =
-  'Selamat datang di markas, {mention}.\n\n' +
-  'Silakan cetak kartu identitas PunkID, cek aturan tongkrongan di Pasal & Help, dan pantau info terbaru lewat tombol di bawah.';
+  'Wih, ada nyawa baru nyasar ke markas. Selamat datang, {mention}.\n\n' +
+  'Cetak PunkID lo dulu biar sah jadi warga, terus baca Pasal & Help biar kaga salah tingkah di tongkrongan. Warga ke-{count} resmi tercatat.';
 
 const DEFAULT_BYE =
-  '{name} ({username}) telah meninggalkan markas.\n\n' +
-  'Akses PunkID dan aktivitas tongkrongan resmi ditutup.';
+  'Yah, {name} ({username}) cabut dari markas.\n\n' +
+  'Yaudah deh, akses PunkID resmi ditutup. Sisa warga di tongkrongan sekarang {count} orang.';
 
 function isBotAdmin(userId) {
   const uid = String(userId);
@@ -79,7 +79,7 @@ function buildByeKeyboard() {
   const kb = new InlineKeyboard();
   const appLink = ENV.MINIAPP_LINK || '';
   if (appLink) {
-    kb.url('Lihat Daftar Warga', `${appLink}?startapp=warga`);
+    kb.url('Cek Daftar Warga', `${appLink}?startapp=warga`);
   }
   return kb;
 }
@@ -95,6 +95,15 @@ function formatTemplate(tpl, member, totalCount) {
     .replace(/\{mention\}/gi, mention)
     .replace(/\{username\}/gi, username)
     .replace(/\{count\}/gi, String(totalCount || '-'));
+}
+
+function renderPrivateHomeText() {
+  return (
+    '🪪 <b>PUNKSHIT.OS — MARKAS ONLINE</b>\n' +
+    'Wih, nongol juga. Markas masih berdiri kok, belum dialihfungsikan jadi minimarket.\n\n' +
+    '• <b>Nitip Lagu OS:</b> Kirim file musik (MP3/M4A) langsung ke chat ini biar gua lempar ke Gudang, atau kirim link Spotify lewat Mini App.\n' +
+    '• <b>Tap tombol di bawah buat buka Mini App atau cek antrean:</b>'
+  );
 }
 
 function buildPrivateMenuKeyboard(isAdmin) {
@@ -127,49 +136,49 @@ function renderRadioQueueText() {
   if (!list.length) {
     return (
       '<b>ANTREAN RADIO GANG (OS)</b>\n\n' +
-      'Belum ada request lagu yang mengantre.\n\n' +
-      '<b>Cara Warga Request Lagu:</b>\n' +
-      '• <b>Link Spotify:</b> Kirim lewat menu <i>Radio Gang</i> di WebApp atau ketik <code>/req Judul - Artis | https://open.spotify.com/...</code>\n' +
-      '• <b>File Musik (MP3/M4A):</b> Kirim langsung file audionya ke chat pribadi bot ini dengan caption judul lagu.'
+      'Masih sepi nih, belum ada yang nitip lagu buat OS.\n\n' +
+      '<b>Cara Nitip Lagu ke Raka:</b>\n' +
+      '• <b>Link Spotify:</b> Kirim lewat menu <i>Radio Gang</i> di Mini App atau ketik <code>/req Judul - Artis | https://open.spotify.com/...</code>\n' +
+      '• <b>File Musik (MP3/M4A):</b> Kirim langsung file audionya ke PC gua pake caption judul lagu.'
     );
   }
 
   const lines = list.map((item, idx) => {
     const badge = item.source_type === 'audio' ? '[FILE GUDANG]' : '[SPOTIFY]';
     const linkPart = item.link ? `\n   Link: ${escHtml(item.link)}` : '';
-    const msgPart = item.message ? `\n   Pesan: <i>"${escHtml(item.message)}"</i>` : '';
-    return `<b>${idx + 1}. #${item.id} ${badge} ${escHtml(item.song)}</b>\n   Requester: ${escHtml(item.user_name)}${linkPart}${msgPart}`;
+    const msgPart = item.message ? `\n   Titip salam: <i>"${escHtml(item.message)}"</i>` : '';
+    return `<b>${idx + 1}. #${item.id} ${badge} ${escHtml(item.song)}</b>\n   Dari: ${escHtml(item.user_name)}${linkPart}${msgPart}`;
   });
 
   return (
     `<b>ANTREAN RADIO GANG (${list.length} Lagu)</b>\n\n` +
     lines.join('\n\n') +
-    '\n\n<i>Admin: ketik /done <ID> setelah lagu diputar di OS, atau /clearradio untuk mengosongkan antrean.</i>'
+    '\n\n<i>Admin: ketik /done <ID> kalau lagunya udah kelar diputer di OS, atau pencet Kosongkan Semua.</i>'
   );
 }
 
 function renderKamusText() {
   const wh = getWarehouseId();
   return (
-    '<b>KAMUS COMMAND BOT MAS RAKA (PC)</b>\n\n' +
-    `Status Channel Gudang: <b>${wh ? 'Terhubung' : 'Belum Diatur (Isi WAREHOUSE_CHANNEL_ID)'}</b>\n\n` +
-    '<b>1. Sistem Request Radio & Gudang Musik:</b>\n' +
-    '• <code>/antrean</code> — Lihat semua list request (Link Spotify & File Gudang)\n' +
-    '• <code>/req Judul | Link Spotify</code> — Request lagu via command\n' +
-    '• <i>Kirim File Audio (MP3/M4A) ke PC bot</i> — Otomatis masuk Channel Gudang & antrean\n' +
-    '• <code>/done 12</code> — Hapus request ID #12 setelah diputar di OS\n' +
-    '• <code>/clearradio</code> — Kosongkan seluruh antrean lagu\n\n' +
-    '<b>2. Pengaturan Greet (Member Masuk Grup):</b>\n' +
-    '• <code>/setgreet teks baru</code> — Ubah teks sambutan\n' +
-    '• <code>/setgreetmedia</code> — Reply GIF/Stiker di PC ini untuk pelengkap sambutan\n' +
-    '• <code>/delgreetmedia</code> — Hapus GIF/Stiker sambutan\n\n' +
-    '<b>3. Pengaturan Bye (Member Keluar Grup):</b>\n' +
-    '• <code>/setbye teks baru</code> — Ubah teks perpisahan\n' +
-    '• <code>/setbyemedia</code> — Reply GIF/Stiker di PC ini untuk pelengkap pesan keluar\n' +
-    '• <code>/delbyemedia</code> — Hapus GIF/Stiker pesan keluar\n' +
-    '• <code>/greetinfo</code> — Cek teks & status media Greet/Bye saat ini\n\n' +
+    '<b>KAMUS COMMAND MAS RAKA (PC ADMIN)</b>\n\n' +
+    `Status Channel Gudang: <b>${wh ? 'Nyambung' : 'Belum Diset (Isi WAREHOUSE_CHANNEL_ID)'}</b>\n\n` +
+    '<b>1. Urusan Request Radio & Gudang Musik:</b>\n' +
+    '• <code>/antrean</code> — Liat semua daftar titipan lagu (Spotify & File Gudang)\n' +
+    '• <code>/req Judul | Link Spotify</code> — Titip lagu via chat\n' +
+    '• <i>Kirim File Audio (MP3/M4A) ke PC bot</i> — Otomatis masuk Gudang & antrean\n' +
+    '• <code>/done 12</code> — Coret request ID #12 setelah diputer di OS\n' +
+    '• <code>/clearradio</code> — Bersihin semua antrean lagu\n\n' +
+    '<b>2. Setting Greet (Warga Baru Masuk):</b>\n' +
+    '• <code>/setgreet teks baru</code> — Ganti kata-kata sambutan\n' +
+    '• <code>/setgreetmedia</code> — Reply GIF/Stiker di PC ini buat pelengkap greet\n' +
+    '• <code>/delgreetmedia</code> — Copot GIF/Stiker greet\n\n' +
+    '<b>3. Setting Bye (Warga Cabut):</b>\n' +
+    '• <code>/setbye teks baru</code> — Ganti kata-kata perpisahan\n' +
+    '• <code>/setbyemedia</code> — Reply GIF/Stiker di PC ini buat pelengkap bye\n' +
+    '• <code>/delbyemedia</code> — Copot GIF/Stiker bye\n' +
+    '• <code>/greetinfo</code> — Intip teks & media Greet/Bye yang lagi kepasang\n\n' +
     '<b>Variabel Otomatis Greet & Bye:</b>\n' +
-    '<code>{name}</code> (Nama), <code>{mention}</code> (Tag), <code>{username}</code> (@user), <code>{count}</code> (Jumlah Member)'
+    '<code>{name}</code> (Nama), <code>{mention}</code> (Tag), <code>{username}</code> (@user), <code>{count}</code> (Total Warga)'
   );
 }
 
@@ -180,11 +189,11 @@ function renderGreetInfoText() {
   const byeMedia = getSetting('bye_media', '');
 
   return (
-    '<b>STATUS PENGATURAN GREET & BYE</b>\n\n' +
-    `• Media Greet: <b>${greetMedia ? greetMedia.split(':')[0].toUpperCase() + ' Terpasang' : 'Kosong'}</b>\n` +
-    `• Media Bye: <b>${byeMedia ? byeMedia.split(':')[0].toUpperCase() + ' Terpasang' : 'Kosong'}</b>\n\n` +
-    `<b>Teks Greet Saat Ini:</b>\n<i>${escHtml(greetText)}</i>\n\n` +
-    `<b>Teks Bye Saat Ini:</b>\n<i>${escHtml(byeText)}</i>`
+    '<b>STATUS GREET & BYE MARKAS</b>\n\n' +
+    `• Media Greet: <b>${greetMedia ? greetMedia.split(':')[0].toUpperCase() + ' Kepasang' : 'Kosong'}</b>\n` +
+    `• Media Bye: <b>${byeMedia ? byeMedia.split(':')[0].toUpperCase() + ' Kepasang' : 'Kosong'}</b>\n\n` +
+    `<b>Teks Greet Sekarang:</b>\n<i>${escHtml(greetText)}</i>\n\n` +
+    `<b>Teks Bye Sekarang:</b>\n<i>${escHtml(byeText)}</i>`
   );
 }
 
@@ -203,20 +212,17 @@ export function startBot() {
     const admin = isBotAdmin(ctx.from.id);
 
     if (isPrivate) {
-      await ctx.reply(
-        '<b>PUNKSHIT.OS — Pusat Kendali Bot</b>\n\n' +
-        '• Warga: Kirim file musik (MP3/M4A) langsung ke chat ini untuk dimasukkan ke <b>Channel Gudang</b>, atau kirim link Spotify lewat tombol WebApp.\n' +
-        '• Admin: Buka <b>Kamus Command Admin</b> di bawah untuk panduan lengkap.',
-        {
-          parse_mode: 'HTML',
-          reply_markup: buildPrivateMenuKeyboard(admin)
-        }
-      );
+      await ctx.reply(renderPrivateHomeText(), {
+        parse_mode: 'HTML',
+        reply_markup: buildPrivateMenuKeyboard(admin)
+      });
     } else {
       const kb = new InlineKeyboard();
       if (ENV.MINIAPP_LINK) kb.url('Buka PUNKSHIT.OS', ENV.MINIAPP_LINK);
       await ctx.reply(
-        '<b>PUNKSHIT.OS aktif di markas.</b> Gunakan tombol di bawah untuk membuka aplikasi.',
+        '🪪 <b>PUNKSHIT.OS — MARKAS ONLINE</b>\n' +
+        'Wih, nongol juga. Markas masih berdiri kok, belum dialihfungsikan jadi minimarket.\n\n' +
+        'Tap tombol di bawah buat buka Mini App:',
         { parse_mode: 'HTML', reply_markup: kb }
       );
     }
@@ -225,11 +231,13 @@ export function startBot() {
   // /kamus -> Buka Kamus Command lengkap di PC
   bot.command('kamus', async (ctx) => {
     if (ctx.chat.type !== 'private') return;
-    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Akses ditolak. Khusus Owner & Admin.');
+    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Khusus Owner & Admin doang cuy.');
 
     const kb = new InlineKeyboard()
       .text('Status Greet & Bye', 'pc_greet_info')
-      .text('Antrean Radio', 'pc_radio_queue');
+      .text('Antrean Radio', 'pc_radio_queue')
+      .row()
+      .text('« Kembali', 'pc_home');
 
     await ctx.reply(renderKamusText(), { parse_mode: 'HTML', reply_markup: kb });
   });
@@ -243,7 +251,7 @@ export function startBot() {
 
     if (song.length < 3 || !/^https:\/\/open\.spotify\.com\//.test(link)) {
       return ctx.reply(
-        'Format wajib menyertakan judul dan link Spotify:\n' +
+        'Sertakan judul sama link Spotify-nya sekalian cuy:\n' +
         '<code>/req Judul Lagu - Artis | https://open.spotify.com/track/...</code>',
         { parse_mode: 'HTML' }
       );
@@ -265,7 +273,7 @@ export function startBot() {
           warehouseId,
           `<b>REQUEST SPOTIFY #${reqId}</b>\n` +
           `Judul: <b>${escHtml(song)}</b>\n` +
-          `Requester: <b>${escHtml(senderName)}</b>\n` +
+          `Dari: <b>${escHtml(senderName)}</b>\n` +
           `Link: ${escHtml(link)}`,
           { parse_mode: 'HTML', reply_markup: kb }
         );
@@ -274,7 +282,7 @@ export function startBot() {
       }
     }
 
-    await ctx.reply(`Request #${reqId} (<b>${escHtml(song)}</b>) berhasil masuk ke antrean & Channel Gudang.`, { parse_mode: 'HTML' });
+    await ctx.reply(`Sip, request #${reqId} (<b>${escHtml(song)}</b>) udah masuk antrean & Gudang.`, { parse_mode: 'HTML' });
   });
 
   // Warga kirim file audio/musik ke PC Bot -> Otomatis kirim ke Channel Gudang & masuk antrean
@@ -289,7 +297,7 @@ export function startBot() {
 
     const warehouseId = getWarehouseId();
     if (!warehouseId) {
-      return ctx.reply('Channel Gudang belum dikonfigurasi oleh admin (WAREHOUSE_CHANNEL_ID kosong).');
+      return ctx.reply('Channel Gudang belum diset sama admin (WAREHOUSE_CHANNEL_ID masih kosong).');
     }
 
     const fileId = audio ? audio.file_id : doc.file_id;
@@ -313,7 +321,7 @@ export function startBot() {
         caption:
           `<b>GUDANG MUSIK — REQUEST #${reqId}</b>\n` +
           `Judul: <b>${escHtml(song)}</b>\n` +
-          `Requester: <b>${escHtml(senderName)}</b>`,
+          `Dari: <b>${escHtml(senderName)}</b>`,
         parse_mode: 'HTML'
       });
 
@@ -321,17 +329,17 @@ export function startBot() {
         await bot.api.sendMessage(
           ENV.GROUP_ID,
           `<b>RADIO GANG — FILE MUSIK #${reqId}</b>\n` +
-          `Requester: <b>${escHtml(senderName)}</b>\n` +
+          `Dari: <b>${escHtml(senderName)}</b>\n` +
           `Track: <b>${escHtml(song)}</b>\n` +
-          `File sudah tersimpan di <b>Channel Gudang</b> untuk diputar di OS.`,
+          `File udah gua lempar ke <b>Gudang Musik</b> buat diputer pas OS.`,
           { parse_mode: 'HTML' }
         ).catch(() => {});
       }
 
-      await ctx.reply(`File musik <b>${escHtml(song)}</b> berhasil dikirim ke Channel Gudang dengan nomor antrean <b>#${reqId}</b>.`, { parse_mode: 'HTML' });
+      await ctx.reply(`Mantap, file <b>${escHtml(song)}</b> udah masuk Gudang Musik di antrean <b>#${reqId}</b>.`, { parse_mode: 'HTML' });
     } catch (err) {
       console.error('[Warehouse Audio Error]:', err.message);
-      await ctx.reply(`Gagal mengirim file ke Channel Gudang: ${err.message}`);
+      await ctx.reply(`Gagal kirim file ke Gudang: ${err.message}`);
     }
   });
 
@@ -339,10 +347,13 @@ export function startBot() {
   bot.command('antrean', async (ctx) => {
     const kb = new InlineKeyboard();
     if (ENV.MINIAPP_LINK) {
-      kb.url('Request di WebApp', `${ENV.MINIAPP_LINK}?startapp=radio`);
+      kb.url('Nitip Lagu di Mini App', `${ENV.MINIAPP_LINK}?startapp=radio`);
     }
     if (isBotAdmin(ctx.from.id)) {
       kb.row().text('Refresh Antrean', 'pc_radio_queue').text('Kosongkan Semua', 'pc_radio_clear');
+    }
+    if (ctx.chat.type === 'private') {
+      kb.row().text('« Kembali', 'pc_home');
     }
     await ctx.reply(renderRadioQueueText(), {
       parse_mode: 'HTML',
@@ -359,24 +370,27 @@ export function startBot() {
 
     const info = db.prepare("UPDATE radio_queue SET status = 'played' WHERE id = ? AND status = 'waiting'").run(id);
     if (!info.changes) {
-      return ctx.reply(`Request ID #${id} tidak ditemukan atau sudah selesai.`);
+      return ctx.reply(`Request ID #${id} kaga ketemu atau emang udah kelar.`);
     }
-    await ctx.reply(`Request ID #${id} ditandai selesai diputar dan dihapus dari antrean.`);
+    await ctx.reply(`Sip, request ID #${id} udah dicoret dari antrean.`);
   });
 
   // /clearradio -> Kosongkan seluruh antrean
   bot.command('clearradio', async (ctx) => {
     if (!isBotAdmin(ctx.from.id)) return;
     db.prepare("UPDATE radio_queue SET status = 'played' WHERE status = 'waiting'").run();
-    await ctx.reply('Semua antrean request Radio Gang berhasil dikosongkan.');
+    await ctx.reply('Beres, semua antrean Radio Gang udah dikosongin.');
   });
 
   // /greetinfo -> Cek status Greet & Bye di PC
   bot.command('greetinfo', async (ctx) => {
     if (ctx.chat.type !== 'private') return;
-    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Akses ditolak. Khusus Owner & Admin.');
+    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Khusus Owner & Admin doang cuy.');
 
-    const kb = new InlineKeyboard().text('Buka Kamus Command', 'pc_kamus');
+    const kb = new InlineKeyboard()
+      .text('Kamus Command', 'pc_kamus')
+      .row()
+      .text('« Kembali', 'pc_home');
     await ctx.reply(renderGreetInfoText(), { parse_mode: 'HTML', reply_markup: kb });
   });
 
@@ -385,10 +399,10 @@ export function startBot() {
     if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
     const text = String(ctx.match || '').trim();
     if (text.length < 3) {
-      return ctx.reply('Format: /setgreet Selamat datang {mention} di markas.');
+      return ctx.reply('Format: /setgreet Wih ada warga baru, selamat datang {mention} di markas.');
     }
     setSetting('greet_text', text);
-    await ctx.reply('Teks Greet (sambutan member masuk) berhasil disimpan.');
+    await ctx.reply('Sip, teks Greet buat warga masuk udah diganti.');
   });
 
   // /setbye <teks>
@@ -396,10 +410,10 @@ export function startBot() {
     if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
     const text = String(ctx.match || '').trim();
     if (text.length < 3) {
-      return ctx.reply('Format: /setbye {name} telah keluar dari markas.');
+      return ctx.reply('Format: /setbye Yah {name} cabut dari markas.');
     }
     setSetting('bye_text', text);
-    await ctx.reply('Teks Bye (member keluar) berhasil disimpan.');
+    await ctx.reply('Sip, teks Bye buat warga keluar udah diganti.');
   });
 
   // /setgreetmedia (Reply GIF/Stiker di PC)
@@ -407,17 +421,17 @@ export function startBot() {
     if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
     const reply = ctx.message?.reply_to_message;
     if (!reply) {
-      return ctx.reply('Reply (balas) GIF atau Stiker di chat ini dengan perintah /setgreetmedia');
+      return ctx.reply('Reply GIF atau Stiker di chat ini pake perintah /setgreetmedia cuy.');
     }
     if (reply.animation) {
       setSetting('greet_media', `animation:${reply.animation.file_id}`);
-      return ctx.reply('GIF berhasil dipasang untuk sambutan Greet grup.');
+      return ctx.reply('Mantap, GIF udah dipasang buat greet warga masuk.');
     }
     if (reply.sticker) {
       setSetting('greet_media', `sticker:${reply.sticker.file_id}`);
-      return ctx.reply('Stiker berhasil dipasang untuk sambutan Greet grup.');
+      return ctx.reply('Mantap, Stiker udah dipasang buat greet warga masuk.');
     }
-    await ctx.reply('Hanya mendukung reply berupa GIF atau Stiker.');
+    await ctx.reply('Cuma bisa reply GIF atau Stiker doang cuy.');
   });
 
   // /setbyemedia (Reply GIF/Stiker di PC)
@@ -425,29 +439,29 @@ export function startBot() {
     if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
     const reply = ctx.message?.reply_to_message;
     if (!reply) {
-      return ctx.reply('Reply (balas) GIF atau Stiker di chat ini dengan perintah /setbyemedia');
+      return ctx.reply('Reply GIF atau Stiker di chat ini pake perintah /setbyemedia cuy.');
     }
     if (reply.animation) {
       setSetting('bye_media', `animation:${reply.animation.file_id}`);
-      return ctx.reply('GIF berhasil dipasang untuk pesan Bye grup.');
+      return ctx.reply('Mantap, GIF udah dipasang buat pesan warga keluar.');
     }
     if (reply.sticker) {
       setSetting('bye_media', `sticker:${reply.sticker.file_id}`);
-      return ctx.reply('Stiker berhasil dipasang untuk pesan Bye grup.');
+      return ctx.reply('Mantap, Stiker udah dipasang buat pesan warga keluar.');
     }
-    await ctx.reply('Hanya mendukung reply berupa GIF atau Stiker.');
+    await ctx.reply('Cuma bisa reply GIF atau Stiker doang cuy.');
   });
 
   bot.command('delgreetmedia', async (ctx) => {
     if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
     setSetting('greet_media', '');
-    await ctx.reply('Media GIF/Stiker Greet telah dihapus.');
+    await ctx.reply('GIF/Stiker Greet udah dicopot.');
   });
 
   bot.command('delbyemedia', async (ctx) => {
     if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
     setSetting('bye_media', '');
-    await ctx.reply('Media GIF/Stiker Bye telah dihapus.');
+    await ctx.reply('GIF/Stiker Bye udah dicopot.');
   });
 
   // Handler Tombol Inline di PC Bot
@@ -455,20 +469,32 @@ export function startBot() {
     const data = ctx.callbackQuery.data;
     const admin = isBotAdmin(ctx.from.id);
 
+    if (data === 'pc_home') {
+      await ctx.editMessageText(renderPrivateHomeText(), {
+        parse_mode: 'HTML',
+        reply_markup: buildPrivateMenuKeyboard(admin)
+      }).catch(() => {});
+      return ctx.answerCallbackQuery();
+    }
+
     if (data === 'pc_kamus') {
-      if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin.', show_alert: true });
+      if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin doang cuy.', show_alert: true });
       const kb = new InlineKeyboard()
         .text('Status Greet & Bye', 'pc_greet_info')
-        .text('Antrean Radio', 'pc_radio_queue');
+        .text('Antrean Radio', 'pc_radio_queue')
+        .row()
+        .text('« Kembali', 'pc_home');
       await ctx.editMessageText(renderKamusText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
 
     if (data === 'pc_greet_info') {
-      if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin.', show_alert: true });
+      if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin doang cuy.', show_alert: true });
       const kb = new InlineKeyboard()
         .text('Kamus Command', 'pc_kamus')
-        .text('Antrean Radio', 'pc_radio_queue');
+        .text('Antrean Radio', 'pc_radio_queue')
+        .row()
+        .text('« Kembali', 'pc_home');
       await ctx.editMessageText(renderGreetInfoText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
@@ -479,23 +505,28 @@ export function startBot() {
         kb.text('Kosongkan Semua', 'pc_radio_clear');
         kb.row().text('Kamus Command', 'pc_kamus');
       }
+      kb.row().text('« Kembali', 'pc_home');
       await ctx.editMessageText(renderRadioQueueText(), {
         parse_mode: 'HTML',
         disable_web_page_preview: true,
         reply_markup: kb
       }).catch(() => {});
-      return ctx.answerCallbackQuery({ text: 'Antrean diperbarui.' });
+      return ctx.answerCallbackQuery({ text: 'Antrean di-refresh.' });
     }
 
     if (data === 'pc_radio_clear') {
-      if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin.', show_alert: true });
+      if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin doang cuy.', show_alert: true });
       db.prepare("UPDATE radio_queue SET status = 'played' WHERE status = 'waiting'").run();
-      const kb = new InlineKeyboard().text('Refresh Antrean', 'pc_radio_queue').text('Kamus Command', 'pc_kamus');
+      const kb = new InlineKeyboard()
+        .text('Refresh Antrean', 'pc_radio_queue')
+        .text('Kamus Command', 'pc_kamus')
+        .row()
+        .text('« Kembali', 'pc_home');
       await ctx.editMessageText(renderRadioQueueText(), {
         parse_mode: 'HTML',
         reply_markup: kb
       }).catch(() => {});
-      return ctx.answerCallbackQuery({ text: 'Antrean dikosongkan.' });
+      return ctx.answerCallbackQuery({ text: 'Antrean dikosongin.' });
     }
 
     await ctx.answerCallbackQuery();
