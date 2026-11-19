@@ -4,17 +4,17 @@ window.PunkCore = (function () {
   var tg = window.Telegram && window.Telegram.WebApp;
   var $ = function (id) { return document.getElementById(id); };
 
-  // State Global Tersinkronisasi dengan Railway
   var S = {
-    user: null,          // Data user + auto-sync Telegram (name, username, photoUrl, bannerUrl, role, psc, streak, best, cred, presence)
-    inv: [],             // Inventory item milik user
-    catalog: [],         // Katalog dinamis Lapak Rongsok (Gift, Border, Skin, Badge) dari server
-    onlineUsers: [],     // Daftar warga "Siapa yang Masih Hidup?"
-    feed: [],            // Live feed aktivitas grup & Mas Raka
-    missions: [],        // Misi harian & mingguan
-    events: [],          // Kalender Kekacauan
-    wanted: [],          // Wanted Board
-    polls: [],           // Sidang Warga
+    user: null,
+    inv: [],
+    catalog: [],
+    onlineUsers: [],
+    feed: [],
+    missions: [],
+    events: [],
+    wanted: [],
+    polls: [],
+    market: [],
     curApp: '',
     curTab: {}
   };
@@ -38,22 +38,22 @@ window.PunkCore = (function () {
     return { title: '🌱 Mayat Baru', bonus: 2 };
   }
 
-  // Render Ikon Aplikasi
   function ico(id) {
-    var i = CFG.ICONS[id] || CFG.ICONS.markas;
-    return '<div class="ic" style="--a:' + i[1] + ';--b:' + i[2] + '"><svg viewBox="0 0 24 24"><path d="' + i[3] + '"/></svg></div>';
+    var i = (CFG.ICONS && CFG.ICONS[id]) || ['#8FC7FF', '#176BFF', 'M12 2L2 7l10 5 10-5-10-5z'];
+    if (Array.isArray(i) && i.length >= 4) {
+      return '<div class="ic" style="--a:' + i[1] + ';--b:' + i[2] + '"><svg viewBox="0 0 24 24"><path d="' + i[3] + '"/></svg></div>';
+    }
+    return '<div class="ic" style="--a:#8FC7FF;--b:#176BFF"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></div>';
   }
 
-  // Cari Item dari Katalog Server atau Default
   function findItem(id) {
-    var all = (S.catalog && S.catalog.length) ? S.catalog : CFG.DEFAULT_ITEMS;
+    var all = (S.catalog && S.catalog.length) ? S.catalog : (CFG.DEFAULT_ITEMS || []);
     for (var i = 0; i < all.length; i++) {
       if (all[i].id === id) return all[i];
     }
-    return CFG.DEFAULT_ITEMS[0];
+    return (CFG.DEFAULT_ITEMS && CFG.DEFAULT_ITEMS[0]) || null;
   }
 
-  // Render Visual Item (Mendukung Gambar/GIF Upload dari Admin MAUPUN 3D SVG Layer)
   function renderItemVisual(item, size, draggable) {
     if (!item) return '';
     var dragAttr = draggable ? ' data-d' : '';
@@ -62,7 +62,7 @@ window.PunkCore = (function () {
       return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:#8FC7FF66"><div class="rot"><img src="' + src + '" alt="' + esc(item.name) + '"></div></div>';
     }
     var cols = item.colors || ['#cfeaff', '#176BFF'];
-    var d = item.svgPath || CFG.DEFAULT_ITEMS[0].svgPath;
+    var d = item.svgPath || (CFG.DEFAULT_ITEMS && CFG.DEFAULT_ITEMS[0] && CFG.DEFAULT_ITEMS[0].svgPath) || '';
     var layers = '';
     for (var i = 0; i < 10; i++) {
       var t = Math.round((i / 9) * 100);
@@ -73,27 +73,41 @@ window.PunkCore = (function () {
     return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:' + cols[1] + '99"><div class="rot">' + layers + '</div></div>';
   }
 
-  // Render Avatar Telegram Otomatis + Lapisan Discord-Style Border
+  // Render Avatar + Border Discord-Style + Gift Terpasang di Sekitar Profil
   function renderAvatar(u, mode) {
     if (!u) return '';
     var initial = esc((u.name || '?')[0].toUpperCase());
-    var photo = u.photoUrl ? '<img class="pfp" src="' + esc(API.assetUrl(u.photoUrl)) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">' : '';
+    var photo = u.photoUrl
+      ? '<img class="pfp" src="' + esc(API.assetUrl(u.photoUrl)) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'
+      : '';
     var fallback = '<span style="' + (u.photoUrl ? 'display:none' : '') + '">' + initial + '</span>';
 
-    // Cek apakah user memakai Discord-style Avatar Border dari Lapak
     var borderHtml = '';
     if (u.equippedBorderUrl) {
       borderHtml = '<img class="dc-border" src="' + esc(API.assetUrl(u.equippedBorderUrl)) + '" alt="">';
+    }
+
+    var pinHtml = '';
+    if (u.pinnedGiftId && mode !== 'mini') {
+      var giftItem = findItem(u.pinnedGiftId);
+      if (giftItem) {
+        pinHtml = '<div class="av-gift-pin" title="' + esc(giftItem.name) + '" style="position:absolute;right:-6px;bottom:-6px;z-index:5;background:rgba(15,23,42,.92);border:1.5px solid rgba(255,255,255,.22);border-radius:50%;padding:3px;box-shadow:0 4px 12px rgba(0,0,0,.5)">' +
+          renderItemVisual(giftItem, 26, false) +
+        '</div>';
+      }
     }
 
     if (mode === 'mini') {
       return '<div class="mini-av">' + photo + fallback + borderHtml + '</div>';
     }
     var ringCls = 'r' + (Number(u.ringStyle) || 0);
-    return '<div class="av-wrap"><div class="ring ' + ringCls + '">' + photo + fallback + '</div>' + borderHtml + '</div>';
+    return '<div class="av-wrap" style="position:relative">' +
+      '<div class="ring ' + ringCls + '">' + photo + fallback + '</div>' +
+      borderHtml +
+      pinHtml +
+    '</div>';
   }
 
-  // Drag-to-Spin 3D Controller
   function bindDrag(root) {
     if (!root) return;
     root.querySelectorAll('.g3[data-d]').forEach(function (g) {
@@ -117,9 +131,9 @@ window.PunkCore = (function () {
     });
   }
 
-  // Banner Notifikasi Mas Raka
   function notify(who, tag, txt) {
     var b = $('ban');
+    if (!b) return;
     b.innerHTML =
       '<div class="ic" style="--a:#FFD633;--b:#c28a00" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v3M5 9h14v9a2 2 0 01-2 2H7a2 2 0 01-2-2zM9 13h.01M15 13h.01M9 16.5h6"/></svg></div>' +
       '<div><b>' + esc(who) + '<em>' + esc(tag) + '</em></b><span>' + esc(txt) + '</span></div>';
@@ -128,7 +142,6 @@ window.PunkCore = (function () {
     banTimer = setTimeout(function () { b.classList.remove('on'); }, 4200);
   }
 
-  // Bottom Sheet Modal
   function sheet(html) {
     $('sh').innerHTML = '<div class="grab"></div>' + html;
     $('sh').classList.add('open');
@@ -141,20 +154,41 @@ window.PunkCore = (function () {
     $('scr').classList.remove('open');
   }
 
-  // Render Home Screen (Otomatis munculkan Ruang Dalang jika Owner/Admin/Moderator)
+  function openExternalLink(url, label) {
+    if (!url) {
+      return notify('Mas Raka', 'Belum Diatur', 'Link ' + label + ' belum diisi di Railway Variables.');
+    }
+    if (tg && tg.openTelegramLink && url.indexOf('t.me/') !== -1) {
+      tg.openTelegramLink(url);
+    } else if (tg && tg.openLink) {
+      tg.openLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  }
+
   function renderHome() {
-    var gridList = CFG.BASE_GRID.slice();
+    var gridList = (CFG.BASE_GRID || []).slice();
+    // Pastikan ikon modul baru ikut tampil jika belum ada di BASE_GRID
+    ['absen', 'capsule', 'lapakwarga', 'pasal'].forEach(function (extraId) {
+      if (CFG.ICONS && CFG.ICONS[extraId] && gridList.indexOf(extraId) === -1) {
+        gridList.push(extraId);
+      }
+    });
+
     var role = S.user && S.user.role;
     if (role === 'owner' || role === 'admin' || role === 'moderator') {
-      gridList.push('dalang');
+      if (gridList.indexOf('dalang') === -1) gridList.push('dalang');
     }
 
     $('grid').innerHTML = gridList.map(function (id) {
-      return '<button class="app" data-act="app" data-id="' + id + '">' + ico(id) + '<span>' + CFG.ICONS[id][0] + '</span></button>';
+      var label = (CFG.ICONS && CFG.ICONS[id] && CFG.ICONS[id][0]) || id;
+      return '<button class="app" data-act="app" data-id="' + id + '">' + ico(id) + '<span>' + esc(label) + '</span></button>';
     }).join('');
 
-    $('dock').innerHTML = CFG.DOCK.map(function (id) {
-      return '<button class="app" data-act="app" data-id="' + id + '" aria-label="' + CFG.ICONS[id][0] + '">' + ico(id) + '</button>';
+    $('dock').innerHTML = (CFG.DOCK || []).map(function (id) {
+      var label = (CFG.ICONS && CFG.ICONS[id] && CFG.ICONS[id][0]) || id;
+      return '<button class="app" data-act="app" data-id="' + id + '" aria-label="' + esc(label) + '">' + ico(id) + '</button>';
     }).join('');
 
     if (S.user) {
@@ -173,24 +207,99 @@ window.PunkCore = (function () {
     }).join('') || '<i style="background:#FFD633">P</i>';
   }
 
-  // Buka Modul Aplikasi
+  // Fallback Views untuk modul yang belum terdaftar di file terpisah
+  function getFallbackView(id) {
+    if (id === 'absen') {
+      var u = S.user || {};
+      var rk = rankInfo(u.streak);
+      return '<div class="card">' +
+        '<h3>🔥 Absen Nyawa Harian</h3>' +
+        '<p class="sub">Streak saat ini: <b>' + (u.streak || 0) + ' hari</b> (' + rk.title + ')</p>' +
+        '<p class="sub">Bonus hari ini: <b>+' + rk.bonus + ' PSC</b> & +2 Street Cred.</p>' +
+        '<button class="btn" data-act="core-absen">ABSEN NYAWA SEKARANG</button>' +
+      '</div>';
+    }
+    if (id === 'capsule') {
+      return '<div class="card">' +
+        '<h3>⏳ Time Capsule</h3>' +
+        '<p class="sub">Tulis pesan rahasia buat diri lu sendiri di masa depan.</p>' +
+        '<label>TANGGAL BUKA KAPSUL</label>' +
+        '<input id="cap-date" type="date">' +
+        '<label>ISI PESAN KAPSUL</label>' +
+        '<textarea id="cap-msg" rows="3" maxlength="300" placeholder="Pesan buat gue di masa depan..."></textarea>' +
+        '<button class="btn" data-act="core-capsule">SEGEL TIME CAPSULE</button>' +
+      '</div>';
+    }
+    if (id === 'lapakwarga') {
+      var itemsHtml = (S.market || []).map(function (m) {
+        return '<div class="card" style="margin-top:10px">' +
+          '<b>[' + esc(m.category) + '] ' + esc(m.title) + '</b>' +
+          '<p class="sub" style="margin:4px 0">' + esc(m.description) + '</p>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">' +
+            '<span style="color:#FFD633;font-weight:700">' + esc(m.price) + '</span>' +
+            '<small>Oleh: ' + esc(m.sellerUsername ? '@' + m.sellerUsername : m.sellerName) + '</small>' +
+          '</div>' +
+        '</div>';
+      }).join('') || '<p class="sub">Belum ada lapak warga yang buka.</p>';
+
+      return '<div class="card">' +
+        '<h3>🏪 Buka Lapak Barang / Jasa</h3>' +
+        '<label>KATEGORI</label>' +
+        '<select id="lp-cat"><option value="Barang">Barang</option><option value="Jasa">Jasa</option></select>' +
+        '<label>NAMA BARANG / JASA</label>' +
+        '<input id="lp-title" maxlength="50" placeholder="Contoh: Joki Rank / Akun / Desain">' +
+        '<label>HARGA / MAHAR</label>' +
+        '<input id="lp-price" maxlength="25" placeholder="Contoh: 50 PSC atau Rp 25.000">' +
+        '<label>DESKRIPSI SINGKAT</label>' +
+        '<textarea id="lp-desc" rows="2" maxlength="160" placeholder="Detail barang/jasa & cara kontak..."></textarea>' +
+        '<button class="btn" data-act="core-market-create">BUKA LAPAK SEKARANG</button>' +
+      '</div>' + itemsHtml;
+    }
+    if (id === 'pasal' || id === 'help') {
+      return '<div class="card">' +
+        '<h3>📜 Pasal & Panduan Markas</h3>' +
+        '<p class="sub"><b>Pasal 1:</b> Dilarang spam link phising, SARA, atau drama merusak tongkrongan.</p>' +
+        '<p class="sub"><b>Pasal 2:</b> Transaksi di Lapak Warga wajib jujur; segala bentuk penipuan berujung ban permanen.</p>' +
+        '<p class="sub"><b>Pasal 3:</b> Kumpulkan PSC lewat Absen Nyawa, Arena Game, dan bagi rezeki lewat Saweran.</p>' +
+      '</div>';
+    }
+    return '<div class="emp">' + ico(id) + 'Modul dalam pengembangan.</div>';
+  }
+
   function openApp(id, el) {
+    // Handle link eksternal Grup & Channel di Dock
+    if (id === 'grup' || id === 'group') {
+      return openExternalLink(CFG.GROUP_URL, 'Grup Markas');
+    }
+    if (id === 'channel' || id === 'ch') {
+      return openExternalLink(CFG.CHANNEL_URL, 'Channel Markas');
+    }
+
     if (!S.user) {
       $('home').classList.remove('shake');
       void $('home').offsetWidth;
       $('home').classList.add('shake');
       return openWelcomeSheet();
     }
+
     S.curApp = id;
     var av = $('av');
     if (el) {
       var a = el.getBoundingClientRect(), p = $('ph').getBoundingClientRect();
       av.style.transformOrigin = (a.left + a.width / 2 - p.left) + 'px ' + (a.top + a.height / 2 - p.top) + 'px';
     }
-    var meta = CFG.ICONS[id] || [id];
+    var meta = (CFG.ICONS && CFG.ICONS[id]) || [id];
     $('lt').textContent = $('nt').textContent = meta[0];
     $('nav-extra').innerHTML = '';
-    $('bd').innerHTML = Views[id] ? Views[id]() : '<div class="emp">' + ico(id) + 'Modul dalam pengembangan.</div>';
+
+    if (id === 'lapakwarga') {
+      API.get('/api/market').then(function (r) {
+        S.market = r.list || [];
+        if (S.curApp === 'lapakwarga') refresh();
+      }).catch(function () {});
+    }
+
+    $('bd').innerHTML = Views[id] ? Views[id]() : getFallbackView(id);
     bindDrag($('bd'));
     $('sc').scrollTop = 0;
     $('nav').classList.remove('s');
@@ -199,14 +308,13 @@ window.PunkCore = (function () {
   }
 
   function refresh() {
-    if (S.curApp && Views[S.curApp]) {
-      $('bd').innerHTML = Views[S.curApp]();
+    if (S.curApp) {
+      $('bd').innerHTML = Views[S.curApp] ? Views[S.curApp]() : getFallbackView(S.curApp);
       bindDrag($('bd'));
     }
     renderHome();
   }
 
-  // Sheet Registrasi Otomatis Terhubung Akun Telegram
   function openWelcomeSheet() {
     var tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
     var defName = ((tgUser.first_name || '') + ' ' + (tgUser.last_name || '')).trim() || 'Warga Baru';
@@ -219,14 +327,21 @@ window.PunkCore = (function () {
     );
   }
 
-  // Sinkronisasi Awal dari Railway Server
   async function syncFromServer(silent) {
+    var dot = $('sync-dot');
     try {
       var data = await API.get('/api/me');
+      if (dot) dot.style.background = '#34C759';
+
+      if (data.config) {
+        CFG.GROUP_URL = data.config.groupUrl || CFG.GROUP_URL || '';
+        CFG.CHANNEL_URL = data.config.channelUrl || CFG.CHANNEL_URL || '';
+      }
+
       if (data.user) {
         S.user = data.user;
         S.inv = data.inv || [];
-        S.catalog = data.catalog || CFG.DEFAULT_ITEMS;
+        S.catalog = data.catalog || CFG.DEFAULT_ITEMS || [];
         S.onlineUsers = data.onlineUsers || [];
         S.feed = data.feed || [];
         S.missions = data.missions || [];
@@ -234,24 +349,20 @@ window.PunkCore = (function () {
         S.wanted = data.wanted || [];
         S.polls = data.polls || [];
         refresh();
+
         if (!silent) {
-          // Cek parameter deep link ?startapp=...
-          var data = await API.get('/api/me');
-      if (data.config) {
-        CFG.GROUP_URL = data.config.groupUrl || '';
-        CFG.CHANNEL_URL = data.config.channelUrl || '';
-      }
           var startParam = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
-          if (startParam && CFG.ICONS[startParam]) {
+          if (startParam && (Views[startParam] || (CFG.ICONS && CFG.ICONS[startParam]))) {
             openApp(startParam);
           }
         }
       } else {
-        S.catalog = data.catalog || CFG.DEFAULT_ITEMS;
+        S.catalog = data.catalog || CFG.DEFAULT_ITEMS || [];
         renderHome();
         openWelcomeSheet();
       }
     } catch (err) {
+      if (dot) dot.style.background = '#FF453A';
       renderHome();
       if (!silent) {
         notify('Mas Raka', 'Offline Mode', 'Gagal terhubung ke Railway. Pastikan API_URL sudah benar.');
@@ -259,7 +370,6 @@ window.PunkCore = (function () {
     }
   }
 
-  // Global Event Listeners
   document.addEventListener('click', async function (e) {
     var t = e.target.closest('[data-act]');
     if (!t) return;
@@ -289,6 +399,50 @@ window.PunkCore = (function () {
         t.disabled = false;
         notify('Mas Raka', 'Error', err.message);
       }
+    } else if (act === 'core-absen') {
+      t.disabled = true;
+      try {
+        var resAbs = await API.post('/api/absen', {});
+        S.user = resAbs.user;
+        if (resAbs.feed) S.feed = resAbs.feed;
+        refresh();
+        notify('Mas Raka', 'Absen Nyawa', resAbs.message || ('+' + resAbs.earned + ' PSC masuk!'));
+      } catch (err) {
+        t.disabled = false;
+        notify('Mas Raka', 'Gagal Absen', err.message);
+      }
+    } else if (act === 'core-capsule') {
+      var unlockDate = ($('cap-date').value || '').trim();
+      var message = ($('cap-msg').value || '').trim();
+      if (!unlockDate || message.length < 5) {
+        return notify('Mas Raka', 'Lengkapi Data', 'Tanggal dan pesan minimal 5 karakter.');
+      }
+      t.disabled = true;
+      try {
+        await API.post('/api/capsule', { unlockDate: unlockDate, message: message });
+        $('cap-msg').value = '';
+        notify('Mas Raka', 'Time Capsule', 'Pesan berhasil disegel sampai ' + unlockDate + '!');
+      } catch (err) {
+        notify('Mas Raka', 'Error', err.message);
+      } finally {
+        t.disabled = false;
+      }
+    } else if (act === 'core-market-create') {
+      var category = $('lp-cat').value;
+      var title = ($('lp-title').value || '').trim();
+      var price = ($('lp-price').value || '').trim();
+      var description = ($('lp-desc').value || '').trim();
+      t.disabled = true;
+      try {
+        await API.post('/api/market/create', { category: category, title: title, price: price, description: description });
+        var listRes = await API.get('/api/market');
+        S.market = listRes.list || [];
+        refresh();
+        notify('Mas Raka', 'Lapak Warga', 'Lapak "' + title + '" berhasil dibuka!');
+      } catch (err) {
+        t.disabled = false;
+        notify('Mas Raka', 'Gagal Buka Lapak', err.message);
+      }
     } else if (act === 'search') {
       openApp('warga');
     }
@@ -305,7 +459,6 @@ window.PunkCore = (function () {
   tickClock();
   setInterval(tickClock, 20000);
 
-  // Inisialisasi Telegram WebApp
   try {
     if (tg) {
       tg.ready();
