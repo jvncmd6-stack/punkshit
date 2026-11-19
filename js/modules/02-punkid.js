@@ -45,23 +45,33 @@
     );
   }
 
+  // Kelompokkan item inventori berdasarkan itemId agar tidak numpuk jika punya lebih dari 1
+  function groupInventoryByType(type) {
+    var map = {};
+    var list = [];
+    (S.inv || []).forEach(function (x) {
+      var it = C.findItem(x.itemId);
+      if (!it || it.type !== type) return;
+      if (!map[it.id]) {
+        map[it.id] = { item: it, count: 1 };
+        list.push(map[it.id]);
+      } else {
+        map[it.id].count += 1;
+      }
+    });
+    return list;
+  }
+
   function renderGue() {
     var u = S.user;
     var rk = C.rankInfo(u.streak);
-    var pinnedItem = u.pinnedGiftId ? C.findItem(u.pinnedGiftId) : null;
 
     var bannerStyle = u.bannerUrl
       ? 'background-image:url(\'' + C.esc(API.assetUrl(u.bannerUrl)) + '\');background-size:cover;background-position:center'
       : 'background:radial-gradient(circle at 25% 20%,#8FC7FF,transparent 55%),linear-gradient(135deg,#176BFF,#0b2a6e)';
 
-    var gifts = (S.inv || []).filter(function (x) {
-      var it = C.findItem(x.itemId);
-      return it && it.type === 'gift';
-    });
-    var borders = (S.inv || []).filter(function (x) {
-      var it = C.findItem(x.itemId);
-      return it && it.type === 'border';
-    });
+    var gifts = groupInventoryByType('gift');
+    var borders = groupInventoryByType('border');
 
     var roleBadge = (u.role && u.role !== 'member')
       ? '<span class="role-tag">' + C.esc(u.role) + '</span>'
@@ -69,10 +79,10 @@
 
     return (
       '<div class="pc" style="margin-bottom:18px">' +
-        '<div class="cv" style="' + bannerStyle + '">' +
-          (pinnedItem ? C.renderItemVisual(pinnedItem, 92, true) : '') +
-        '</div>' +
+        // Banner bersih tanpa gift raksasa menumpuk di tengah
+        '<div class="cv" style="' + bannerStyle + '"></div>' +
         '<div class="pb">' +
+          // Avatar + Border + 1 Gift Pin rapi di pojok foto profil
           C.renderAvatar(u, 'full') +
           '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
           '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + rk.title + '</div>' +
@@ -96,25 +106,34 @@
       '<h3 class="gh">KARTU PUNKID (TAP UNTUK PUTAR)</h3>' +
       renderPunkCard(u) +
 
-      '<h3 class="gh">AVATAR BORDER (DISCORD STYLE) · TAP PASANG</h3>' +
+      '<h3 class="gh">AVATAR BORDER · TAP PASANG / COPOT</h3>' +
       (borders.length
         ? '<div class="hs" style="margin-bottom:14px">' +
             '<button data-act="pid-equip-border" data-id="" class="' + (!u.equippedBorderId ? 'on' : '') + '"><div style="height:56px;display:grid;place-items:center;font-size:20px">🚫</div>Lepas</button>' +
-            borders.map(function (x) {
-              var it = C.findItem(x.itemId);
+            borders.map(function (entry) {
+              var it = entry.item;
               var active = u.equippedBorderId === it.id;
-              return '<button data-act="pid-equip-border" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 56, false) + C.esc(it.name) + '</button>';
+              var qtyTag = entry.count > 1 ? ' (x' + entry.count + ')' : '';
+              return '<button data-act="pid-equip-border" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' +
+                C.renderItemVisual(it, 56, false) +
+                C.esc(it.name + qtyTag) +
+              '</button>';
             }).join('') +
           '</div>'
         : '<div class="grp" style="margin-bottom:14px"><div class="rw"><small>Belum punya Avatar Border. Beli di Lapak Rongsok!</small></div></div>') +
 
-      '<h3 class="gh">KOLEKSI GIFT · TAP PASANG DI PROFIL & BANNER</h3>' +
+      '<h3 class="gh">KOLEKSI GIFT PROFIL · TAP PASANG / COPOT</h3>' +
       (gifts.length
         ? '<div class="hs">' +
-            gifts.map(function (x) {
-              var it = C.findItem(x.itemId);
+            '<button data-act="pid-pin-gift" data-id="" class="' + (!u.pinnedGiftId ? 'on' : '') + '"><div style="height:58px;display:grid;place-items:center;font-size:20px">🚫</div>Lepas</button>' +
+            gifts.map(function (entry) {
+              var it = entry.item;
               var active = u.pinnedGiftId === it.id;
-              return '<button data-act="pid-pin-gift" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 58, false) + C.esc(it.name) + '</button>';
+              var qtyTag = entry.count > 1 ? ' (x' + entry.count + ')' : '';
+              return '<button data-act="pid-pin-gift" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' +
+                C.renderItemVisual(it, 58, false) +
+                C.esc(it.name + qtyTag) +
+              '</button>';
             }).join('') +
           '</div>'
         : '<div class="grp"><div class="rw"><small>Gudang gift kosong. Beli di Lapak Rongsok atau dapet dari warga lain.</small></div></div>')
@@ -288,13 +307,13 @@
         C.notify('Mas Raka', 'Error', err.message);
       }
     } else if (act === 'pid-pin-gift') {
-      var giftId = t.getAttribute('data-id');
-      var nextPin = (S.user.pinnedGiftId === giftId) ? null : giftId;
+      var rawGiftId = t.getAttribute('data-id') || '';
+      var nextPin = (!rawGiftId || S.user.pinnedGiftId === rawGiftId) ? null : rawGiftId;
       try {
         var res = await API.post('/api/profile/equip', { type: 'pin', itemId: nextPin });
         if (res.user) S.user = res.user;
         C.refresh();
-        C.notify('Mas Raka', 'Gift Profil', nextPin ? 'Gift dipasang di profil & banner!' : 'Gift dilepas.');
+        C.notify('Mas Raka', 'Gift Profil', nextPin ? 'Gift terpasang di foto profil!' : 'Gift dilepas dari profil.');
       } catch (err) {
         C.notify('Mas Raka', 'Error', err.message);
       }
