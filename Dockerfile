@@ -1,6 +1,5 @@
 FROM node:20-slim
 
-# Instal build tools untuk better-sqlite3 dan sharp
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
