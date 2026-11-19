@@ -14,7 +14,6 @@ import {
 
 export const userRouter = Router();
 
-// GET /api/me -> Sinkronisasi seluruh state awal + konfigurasi publik dari Railway Variables
 userRouter.get('/me', async (req, res) => {
   const uid = String(req.tgUser.id);
   let user = req.dbUser;
@@ -83,7 +82,6 @@ userRouter.get('/me', async (req, res) => {
   });
 });
 
-// POST /api/register -> Aktivasi PunkID pertama kali
 userRouter.post('/register', async (req, res) => {
   if (req.dbUser) {
     return res.json({ user: formatUser(req.dbUser), inv: [] });
@@ -97,7 +95,7 @@ userRouter.post('/register', async (req, res) => {
 
   const totalUsers = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   const memberNo = `PSK-${String(1001 + totalUsers).padStart(4, '0')}`;
-  const role = ENV.OWNER_IDS.includes(uid) ? 'owner' : 'member';
+  const role = (ENV.OWNER_IDS || []).includes(uid) ? 'owner' : 'member';
   const now = Date.now();
 
   db.prepare(`
@@ -121,7 +119,6 @@ userRouter.post('/register', async (req, res) => {
   res.json({ user: formatUser(freshUser), inv: [] });
 });
 
-// POST /api/profile/banner -> Upload file gambar/GIF kustom untuk latar belakang profil
 userRouter.post('/profile/banner', requireUser, uploadMem.single('banner'), async (req, res) => {
   try {
     const publicPath = await processAndSaveImage(req.file, 'banners', { width: 900, height: 450, fit: 'cover' });
@@ -133,7 +130,6 @@ userRouter.post('/profile/banner', requireUser, uploadMem.single('banner'), asyn
   }
 });
 
-// POST /api/profile -> Update nama panggilan, bio, Spotify, dan ring avatar
 userRouter.post('/profile', requireUser, (req, res) => {
   const name = String(req.body?.name || req.dbUser.name).trim().slice(0, 24);
   const bio = String(req.body?.bio || '').trim().slice(0, 90);
@@ -150,52 +146,8 @@ userRouter.post('/profile', requireUser, (req, res) => {
   res.json({ user: formatUser(updated) });
 });
 
-// POST /api/profile/sync-telegram -> Tarik ulang foto profil & username terbaru dari Telegram
-userRouter.post('/profile/sync-telegram', requireUser, async (req, res) => {
-  await syncTelegramAvatar(req.dbUser.id, req.tgUser);
-  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
-  res.json({ user: formatUser(updated) });
-});
-
-// POST /api/profile/equip -> Pasang / lepas Discord-Style Avatar Border, Pin Gift, atau Card Skin
-userRouter.post('/profile/equip', requireUser, (req, res) => {
-  const { type, itemId } = req.body || {};
-  const uid = req.dbUser.id;
-
-  if (itemId) {
-    const owned = db.prepare('SELECT 1 FROM inventory WHERE user_id = ? AND item_id = ?').get(uid, itemId);
-    if (!owned) return res.status(403).json({ error: 'Item tidak ditemukan di Gudang Barang lo.' });
-  }
-
-  if (type === 'border') {
-    db.prepare('UPDATE users SET equipped_border_id = ? WHERE id = ?').run(itemId || '', uid);
-  } else if (type === 'pin') {
-    db.prepare('UPDATE users SET pinned_gift_id = ? WHERE id = ?').run(itemId || '', uid);
-  } else if (type === 'skin') {
-    db.prepare('UPDATE users SET equipped_skin_id = ? WHERE id = ?').run(itemId || '', uid);
-  } else {
-    return res.status(400).json({ error: 'Tipe equip tidak valid.' });
-  }
-
-  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
-  res.json({ user: formatUser(updated) });
-});
-
-// POST /api/profile/birthday -> Simpan tanggal ulang tahun (Birthday Club)
-userRouter.post('/profile/birthday', requireUser, (req, res) => {
-  const bday = String(req.body?.birthday || '').trim();
-  if (!/^\d{2}-\d{2}$/.test(bday)) {
-    return res.status(400).json({ error: 'Format tanggal harus DD-MM.' });
-  }
-  db.prepare('UPDATE users SET birthday = ? WHERE id = ?').run(bday, req.dbUser.id);
-  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
-  res.json({ user: formatUser(updated) });
-});
-
-// POST /api/presence -> Update status "Siapa yang Masih Hidup?"
 userRouter.post('/presence', requireUser, (req, res) => {
-  const status = String(req.body?.status || '').trim().slice(0, 32);
-  if (!status) return res.status(400).json({ error: 'Status tidak boleh kosong.' });
+  const status = String(req.body?.status || '☕ Nongki Dulu').trim().slice(0, 32);
 
   db.prepare('UPDATE users SET presence = ?, presence_at = ? WHERE id = ?')
     .run(status, Date.now(), req.dbUser.id);
