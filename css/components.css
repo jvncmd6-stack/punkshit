@@ -1,0 +1,385 @@
+/* =========================================================
+   1. PROFIL, AVATAR TELEGRAM & DISCORD-STYLE AVATAR BORDER
+   ========================================================= */
+.pc {
+  background: #ffffff10;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 0.5px solid #ffffff22;
+}
+
+.cv {
+  height: 156px;
+  border-radius: 22px 22px 0 0;
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 10px 14px;
+  background-size: cover;
+  background-position: center;
+  background-color: #16223b;
+}
+
+/* Overlay gelap tipis di banner agar badge & pin gift tetap kontras */
+.cv::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 11, 18, 0.1) 0%, rgba(12, 19, 34, 0.72) 100%);
+  pointer-events: none;
+}
+.cv > * {
+  position: relative;
+  z-index: 2;
+}
+
+.pb {
+  padding: 0 16px 18px;
+}
+
+/* Wrapper Avatar Utama (92px) + Lapisan Border Ala Discord */
+.av-wrap {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  margin-top: -48px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+}
+
+.ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  padding: 3px;
+  position: relative;
+  background: #ffffff30;
+}
+
+.ring span, .ring img.pfp {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #176BFF, #0b2a6e);
+  font-size: 36px;
+  font-weight: 700;
+  border: 3px solid #0c1322;
+  object-fit: cover;
+}
+
+/* Ring Warna Dasar */
+.r0 { background: #ffffff40; }
+.r1 { background: conic-gradient(#ffd633, #ff9500, #fff3a0, #ffd633); }
+.r2 { background: #4d9bff; box-shadow: 0 0 20px #176BFF; }
+.r3 { background: conic-gradient(#f33, #fd3, #3f6, #3df, #53f, #f3d, #f33); animation: hue 4s linear infinite; }
+
+/* Discord-Style Animated/Custom Border Overlay (PNG/GIF/WEBP Transparan) */
+.dc-border {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scale(1.26);
+  pointer-events: none;
+  z-index: 6;
+  object-fit: contain;
+  animation: borderFloat 4s ease-in-out infinite;
+}
+
+/* Mini Avatar di List Warga & Leaderboard */
+.mini-av {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.mini-av img.pfp, .mini-av span {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #176BFF, #0b2a6e);
+  font-weight: 700;
+  font-size: 16px;
+}
+.mini-av .dc-border {
+  transform: scale(1.26);
+  animation: none;
+}
+
+.nm {
+  font-size: 23px;
+  font-weight: 700;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.role-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--yel);
+  color: var(--navy);
+  text-transform: uppercase;
+}
+.hd {
+  color: var(--mut);
+  font-size: 13.5px;
+  margin-top: 2px;
+}
+.bio {
+  margin: 10px 0;
+  line-height: 1.4;
+  font-size: 14.5px;
+}
+.sp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1DB95433;
+  color: #6df0a0;
+  border: 0.5px solid #1DB95488;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 4px;
+}
+
+/* Upload Banner Box (Edit Profil & Ruang Dalang) */
+.up-box {
+  border: 1.5px dashed var(--gb);
+  border-radius: 16px;
+  padding: 14px;
+  background: #ffffff0a;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.up-box:active {
+  border-color: var(--yel);
+  background: #ffffff14;
+}
+.up-prev {
+  width: 100%;
+  height: 110px;
+  border-radius: 12px;
+  object-fit: cover;
+  margin-top: 8px;
+  display: block;
+  border: 0.5px solid #ffffff33;
+}
+.up-prev.icon-mode {
+  width: 96px;
+  height: 96px;
+  margin: 8px auto 0;
+  object-fit: contain;
+  background: #080b12;
+  padding: 8px;
+}
+
+/* =========================================================
+   2. KARTU PUNKID (DEPAN & BELAKANG)
+   ========================================================= */
+.cr { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.br { color: var(--yel); letter-spacing: 0.12em; font-size: 13px; }
+.chp {
+  width: 44px;
+  height: 33px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #ffe879, #c98f00);
+  box-shadow: inset 0 0 0 0.5px #0004;
+}
+.cn {
+  font: 600 18px/1.2 ui-monospace, Menlo, monospace;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.mag { height: 42px; background: #000; margin-top: 18px; }
+.sig {
+  margin: 0 18px;
+  height: 34px;
+  background: repeating-linear-gradient(90deg, #f5f7fc 0 6px, #dfe5f1 6px 12px);
+  color: var(--navy);
+  font: italic 600 15px/34px Georgia, serif;
+  padding: 0 10px;
+}
+.stt {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0 14px;
+  text-align: center;
+  font-size: 11px;
+  color: #c9d6f0;
+}
+.stt b { display: block; font-size: 19px; color: #fff; }
+.tn { text-align: center; font-size: 11px; color: var(--mut); }
+
+/* =========================================================
+   3. LAPAK RONGSOK, INVENTORY & TABS
+   ========================================================= */
+.tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: none;
+  padding: 7px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #ffffff12;
+  color: var(--mut);
+  border: 0.5px solid transparent;
+}
+.tab.on {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--gblue);
+}
+
+.bal { font-size: 14.5px; color: var(--mut); margin: -6px 0 14px; }
+.bal b { color: var(--yel); }
+
+.gg { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.gc {
+  border-radius: 20px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff10;
+  border: 0.5px solid #ffffff22;
+  position: relative;
+  text-align: center;
+}
+.gc b { font-size: 14.5px; }
+.gc small { color: var(--mut); font-size: 11.5px; }
+.gc .stk {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #FF453A33;
+  color: #ff857d;
+  padding: 2px 7px;
+  border-radius: 8px;
+}
+.pr {
+  margin-top: 6px;
+  background: #ffffff1c;
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--yel);
+}
+
+/* Preview Try-On Discord Border di Sheet Lapak */
+.try-box {
+  position: relative;
+  width: 116px;
+  height: 116px;
+  margin: 10px auto 14px;
+  display: grid;
+  place-items: center;
+}
+.try-box img.pfp, .try-box span {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #176BFF, #0b2a6e);
+  font-size: 36px;
+  font-weight: 700;
+}
+.try-box .dc-border {
+  transform: scale(1.15);
+}
+
+.hs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.hs button {
+  flex: none;
+  min-width: 86px;
+  border-radius: 16px;
+  padding: 8px 10px;
+  background: #ffffff10;
+  border: 0.5px solid #ffffff22;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--mut);
+}
+.hs .on { border-color: var(--yel); color: var(--yel); background: #ffd63314; }
+
+/* =========================================================
+   4. CHIPS, ARENA GABUT & PHOTOBOOTH
+   ========================================================= */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background: #ffffff12;
+  border: 0.5px solid var(--gb);
+  font-size: 13.5px;
+}
+.chip.on { background: var(--blue); border-color: var(--gblue); font-weight: 600; }
+
+.game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.game-card {
+  background: linear-gradient(160deg, #ffffff16, #ffffff08);
+  border: 0.5px solid #ffffff22;
+  border-radius: 20px;
+  padding: 16px 14px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.game-card em { font-style: normal; font-size: 28px; }
+.game-card b { font-size: 15px; }
+.game-card small { font-size: 12px; color: var(--mut); line-height: 1.3; }
+
+.pb-canvas {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 18px;
+  margin: 10px auto;
+  display: block;
+  border: 1px solid var(--gb);
+  background: #080b12;
+}
+
+.emp {
+  text-align: center;
+  color: var(--mut);
+  margin: 44px 0;
+  line-height: 1.5;
+  font-size: 14px;
+}
