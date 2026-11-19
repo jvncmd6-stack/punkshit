@@ -2,6 +2,10 @@ window.PunkAPI = (function () {
   var CFG = window.PUNK_CONFIG;
   var tg = window.Telegram && window.Telegram.WebApp;
 
+  function getBaseUrl() {
+    return String(CFG.API_URL || '').replace(/\/+$/, '');
+  }
+
   function getInitData() {
     return (tg && tg.initData) ? tg.initData : '';
   }
@@ -16,12 +20,13 @@ window.PunkAPI = (function () {
   function assetUrl(path) {
     if (!path) return '';
     if (/^(https?:|data:|blob:)/.test(path)) return path;
-    return CFG.API_URL.replace(/\/$/, '') + '/' + path.replace(/^\//, '');
+    var cleanPath = '/' + String(path).replace(/^\/+/, '');
+    return getBaseUrl() + cleanPath;
   }
 
   // Request JSON Standar
   async function request(endpoint, method, body) {
-    setSyncStatus(''); // Kuning (loading)
+    setSyncStatus('');
     try {
       var opts = {
         method: method || 'GET',
@@ -34,7 +39,8 @@ window.PunkAPI = (function () {
         opts.body = JSON.stringify(body);
       }
 
-      var res = await fetch(CFG.API_URL + endpoint, opts);
+      var cleanEp = '/' + String(endpoint).replace(/^\/+/, '');
+      var res = await fetch(getBaseUrl() + cleanEp, opts);
       var data = await res.json().catch(function () { return {}; });
 
       if (!res.ok) {
@@ -50,11 +56,12 @@ window.PunkAPI = (function () {
     }
   }
 
-  // Upload File Multipart (Untuk Custom Banner Profil User & Aset Gift/Border Admin)
+  // Upload File Multipart (Untuk Custom Banner Profil & Meme)
   async function upload(endpoint, formData) {
     setSyncStatus('');
     try {
-      var res = await fetch(CFG.API_URL + endpoint, {
+      var cleanEp = '/' + String(endpoint).replace(/^\/+/, '');
+      var res = await fetch(getBaseUrl() + cleanEp, {
         method: 'POST',
         headers: {
           'Authorization': 'tma ' + getInitData()
