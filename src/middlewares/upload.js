@@ -2,56 +2,53 @@ import multer from 'multer';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
-import crypto from 'crypto';
 import { ENV } from '../config/env.js';
 
-const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-
-export const uploadMem = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 3 * 1024 * 1024 }, // Maksimal 3MB
-  fileFilter: (_req, file, cb) => {
-    if (!ALLOWED_MIMES.includes(file.mimetype)) {
-      return cb(new Error('Format file harus JPG, PNG, WEBP, atau GIF.'));
-    }
-    cb(null, true);
+// Pastikan folder direktori upload utama & subfolder wajib tersedia
+const uploadDir = ENV.UPLOAD_DIR || path.join(process.cwd(), 'data', 'uploads');
+['memes', 'shop', 'avatars'].forEach(sub => {
+  const p = path.join(uploadDir, sub);
+  if (!fs.existsSync(p)) {
+    fs.mkdirSync(p, { recursive: true });
   }
 });
 
-// Simpan file ke folder uploads/<subFolder> dan kembalikan path publik (/uploads/...)
-export async function processAndSaveImage(file, subFolder, options = {}) {
-  if (!file || !file.buffer) throw new Error('File gambar tidak ditemukan.');
+const storage = multer.memoryStorage();
 
-  const id = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-  const isGif = file.mimetype === 'image/gif';
+export const uploadMem = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // Max 10MB (support gambar, webm, gif)
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/webm', 'application/octet-stream'];
+    if (allowed.includes(file.mimetype) || file.originalname.match(/\.(jpg|jpeg|png|webp|gif|webm)$/i)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Format file kaga didukung, bro! Pake gambar, gif, atau webm.'), false);
+    }
+  }
+});
 
-  // Jika GIF animasi, simpan langsung agar animasinya tetap jalan
-  if (isGif) {
-    const filename = `${id}.gif`;
-    const fullPath = path.join(ENV.UPLOAD_DIR, subFolder, filename);
-    await fs.promises.writeFile(fullPath, file.buffer);
-    return `/uploads/${subFolder}/${filename}`;
+export async function processAndSaveImage(file, subfolder = 'memes', options = { width: 1080, height: 1080, fit: 'inside' }) {
+  const targetFolder = path.join(uploadDir, subfolder);
+  if (!fs.existsSync(targetFolder)) {
+    fs.mkdirSync(targetFolder, { recursive: true });
   }
 
-  // Untuk PNG/WEBP/JPG, optimalkan ukuran dengan sharp sambil menjaga transparansi
-  const isTransparent = file.mimetype === 'image/png' || file.mimetype === 'image/webp';
-  const ext = isTransparent ? 'webp' : 'jpg';
-  const filename = `${id}.${ext}`;
-  const fullPath = path.join(ENV.UPLOAD_DIR, subFolder, filename);
+  const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${path.extname(file.originalname) || '.jpg'}`;
+  const filepath = path.join(targetFolder, filename);
 
-  let pipeline = sharp(file.buffer).rotate();
-  if (options.width || options.height) {
-    pipeline = pipeline.resize(options.width, options.height, {
-      fit: options.fit || 'inside',
-      withoutEnlargement: true
-    });
-  }
-
-  if (isTransparent) {
-    await pipeline.webp({ quality: 86, alphaQuality: 100 }).toFile(fullPath);
+  // Jika format webm atau gif besar, simpan langsung tanpa sharp resize jika error
+  if (file.mimetype === 'video/webm' || file.mimetype === 'image/gif' || file.originalname.endsWith('.webm') || file.originalname.endsWith('.gif')) {
+    fs.writeFileSync(filepath, file.buffer);
   } else {
-    await pipeline.jpeg({ quality: 84 }).toFile(fullPath);
+    try {
+      await sharp(file.buffer)
+        .resize(options.width, options.height, { fit: options.fit, withoutEnlargement: true })
+        .toFile(filepath);
+    } catch (e) {
+      fs.writeFileSync(filepath, file.buffer);
+    }
   }
 
-  return `/uploads/${subFolder}/${filename}`;
+  return `/uploads/${subfolder}/${filename}`;
 }
