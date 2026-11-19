@@ -198,25 +198,34 @@ socialRouter.post('/capsule', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/meme -> Upload meme ke server & kirim ke Grup Telegram
+// POST /api/meme -> Upload meme ke server & kirim ke Grup Telegram (kebal error broadcast)
 socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, res) => {
   try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Pilih file gambar meme dulu bro!' });
+    }
+
     const publicPath = await processAndSaveImage(req.file, 'memes', { width: 1080, height: 1080, fit: 'inside' });
     const caption = String(req.body?.caption || '').trim().slice(0, 90);
 
     const bot = getBot();
     if (bot && ENV.GROUP_ID) {
-      const localFile = path.join(ENV.UPLOAD_DIR, 'memes', path.basename(publicPath));
-      const kb = new InlineKeyboard().url('🖼️ KIRIM MEME DI WEB', `${ENV.MINIAPP_LINK}?startapp=meme`);
-      await bot.api.sendPhoto(ENV.GROUP_ID, new InputFile(localFile), {
-        caption: `🖼️ <b>NEW MEME JUST DROPPED!</b>\nOleh: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n💬 <i>${escHtml(caption)}</i>` : ''),
-        parse_mode: 'HTML',
-        reply_markup: kb
-      });
+      try {
+        const localFile = path.join(ENV.UPLOAD_DIR, 'memes', path.basename(publicPath));
+        const kb = new InlineKeyboard().url('🖼️ KIRIM MEME DI WEB', `${ENV.MINIAPP_LINK}?startapp=meme`);
+        await bot.api.sendPhoto(ENV.GROUP_ID, new InputFile(localFile), {
+          caption: `🖼️ <b>NEW MEME JUST DROPPED!</b>\nOleh: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n💬 <i>${escHtml(caption)}</i>` : ''),
+          parse_mode: 'HTML',
+          reply_markup: kb
+        });
+      } catch (botErr) {
+        console.error('[Meme Telegram Broadcast Error]:', botErr.message);
+      }
     }
 
     res.json({ ok: true, imageUrl: publicPath });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error('[Meme Upload Error]:', err);
+    res.status(400).json({ error: err.message || 'Gagal memproses gambar.' });
   }
 });
