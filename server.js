@@ -9,7 +9,7 @@ import { userRouter } from './src/api/userRoutes.js';
 import { actionRouter } from './src/api/actionRoutes.js';
 import { gameRouter } from './src/api/gameRoutes.js';
 import { socialRouter } from './src/api/socialRoutes.js';
-import { startBot } from './src/bot/index.js';
+import * as botMod from './src/bot/index.js';
 
 // Pastikan folder data & uploads tersedia di Volume Railway
 fs.mkdirSync(ENV.DATA_DIR, { recursive: true });
@@ -58,5 +58,8 @@ const PORT = Number(process.env.PORT) || ENV.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[PUNKSHIT.OS] API berjalan di port ${PORT}`);
-  startBot();
+  const runBot = botMod.startBot || botMod.initBot || botMod.launchBot || botMod.default;
+  if (typeof runBot === 'function') {
+    runBot();
+  }
 });
