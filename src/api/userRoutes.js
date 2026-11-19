@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { InlineKeyboard } from 'grammy';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
@@ -10,18 +9,16 @@ import {
   getOnlineUsers,
   syncTelegramAvatar,
   broadcastToTelegram,
-  escHtml,
-  todayWib
+  escHtml
 } from '../services/syncEngine.js';
 
 export const userRouter = Router();
 
-// GET /api/me -> Sinkronisasi seluruh state awal saat Mini App dibuka
+// GET /api/me -> Sinkronisasi seluruh state awal + konfigurasi publik dari Railway Variables
 userRouter.get('/me', async (req, res) => {
   const uid = String(req.tgUser.id);
   let user = req.dbUser;
 
-  // Jika user sudah terdaftar tapi belum punya foto profil lokal, tarik otomatis dari Telegram
   if (user && !user.photo_url) {
     await syncTelegramAvatar(uid, req.tgUser);
     user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
@@ -70,6 +67,11 @@ userRouter.get('/me', async (req, res) => {
   });
 
   res.json({
+    config: {
+      groupUrl: (process.env.GROUP_URL || '').trim(),
+      channelUrl: (process.env.CHANNEL_URL || '').trim(),
+      miniappLink: ENV.MINIAPP_LINK
+    },
     user: formatUser(user),
     inv,
     catalog: getCatalog(),
@@ -81,7 +83,7 @@ userRouter.get('/me', async (req, res) => {
   });
 });
 
-// POST /api/register -> Aktivasi PunkID pertama kali (Auto-Connect Telegram)
+// POST /api/register -> Aktivasi PunkID pertama kali
 userRouter.post('/register', async (req, res) => {
   if (req.dbUser) {
     return res.json({ user: formatUser(req.dbUser), inv: [] });
@@ -106,7 +108,6 @@ userRouter.post('/register', async (req, res) => {
   db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
     .run(uid, 'bonus', 110, 'Modal awal warga baru PunkID', now);
 
-  // Tarik foto profil Telegram otomatis
   await syncTelegramAvatar(uid, req.tgUser);
   const freshUser = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
 
