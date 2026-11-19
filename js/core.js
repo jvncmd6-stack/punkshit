@@ -16,6 +16,8 @@ window.PunkCore = (function () {
     wanted: [],
     polls: [],
     market: [],
+    rulesHelp: { pasal: '', help: '' },
+    adminStats: { totalUsers: 0, totalWaitingRadio: 0, users: [] },
     curApp: '',
     curTab: {}
   };
@@ -39,7 +41,6 @@ window.PunkCore = (function () {
     return { title: '🌱 Mayat Baru', bonus: 2 };
   }
 
-  // Render Ikon Aplikasi
   function ico(id) {
     var i = (CFG.ICONS && CFG.ICONS[id]) || ['#8FC7FF', '#176BFF', 'M12 2L2 7l10 5 10-5-10-5z'];
     if (Array.isArray(i) && i.length >= 4) {
@@ -48,7 +49,6 @@ window.PunkCore = (function () {
     return '<div class="ic" style="--a:#8FC7FF;--b:#176BFF"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></div>';
   }
 
-  // Cari Item dari Katalog Server atau Default (Return null jika kosong agar bisa dicopot)
   function findItem(id) {
     if (!id) return null;
     var all = (S.catalog && S.catalog.length) ? S.catalog : (CFG.DEFAULT_ITEMS || []);
@@ -58,7 +58,6 @@ window.PunkCore = (function () {
     return null;
   }
 
-  // Render Visual Item (Gambar/GIF Upload maupun 3D SVG Layer)
   function renderItemVisual(item, size, draggable) {
     if (!item) return '';
     var dragAttr = draggable ? ' data-d' : '';
@@ -78,14 +77,14 @@ window.PunkCore = (function () {
     return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:' + cols[1] + '99"><div class="rot">' + layers + '</div></div>';
   }
 
-  // Render Avatar + Discord-Style Border + 1 Pin Gift Rapi di Pojok Foto Profil
   function renderAvatar(u, mode) {
     if (!u) return '';
     var initial = esc((u.name || '?')[0].toUpperCase());
-    var photo = u.photoUrl
-      ? '<img class="pfp" src="' + esc(API.assetUrl(u.photoUrl)) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'
+    var photoSrc = u.photoUrl || u.avatar || '';
+    var photo = photoSrc
+      ? '<img class="pfp" src="' + esc(API.assetUrl(photoSrc)) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'
       : '';
-    var fallback = '<span style="' + (u.photoUrl ? 'display:none' : '') + '">' + initial + '</span>';
+    var fallback = '<span style="' + (photoSrc ? 'display:none' : '') + '">' + initial + '</span>';
 
     var borderHtml = '';
     if (u.equippedBorderUrl) {
@@ -113,7 +112,6 @@ window.PunkCore = (function () {
     '</div>';
   }
 
-  // Drag-to-Spin 3D Controller
   function bindDrag(root) {
     if (!root) return;
     root.querySelectorAll('.g3[data-d]').forEach(function (g) {
@@ -137,7 +135,6 @@ window.PunkCore = (function () {
     });
   }
 
-  // Banner Notifikasi Mas Raka
   function notify(who, tag, txt) {
     var b = $('ban');
     if (!b) return;
@@ -149,7 +146,6 @@ window.PunkCore = (function () {
     banTimer = setTimeout(function () { b.classList.remove('on'); }, 4200);
   }
 
-  // Bottom Sheet Modal
   function sheet(html) {
     $('sh').innerHTML = '<div class="grab"></div>' + html;
     $('sh').classList.add('open');
@@ -162,7 +158,6 @@ window.PunkCore = (function () {
     $('scr').classList.remove('open');
   }
 
-  // Buka Link Grup / Channel Telegram Eksternal
   function openExternalLink(url, label) {
     if (!url) {
       return notify('Mas Raka', 'Belum Diatur', 'Link ' + label + ' belum diisi di Railway Variables.');
@@ -176,17 +171,8 @@ window.PunkCore = (function () {
     }
   }
 
-  // Render Home Screen
   function renderHome() {
     var gridList = (CFG.BASE_GRID || []).slice();
-
-    // Pastikan modul tambahan muncul otomatis di grid jika ikonnya tersedia
-    ['absen', 'capsule', 'lapakwarga', 'pasal'].forEach(function (extraId) {
-      if (CFG.ICONS && CFG.ICONS[extraId] && gridList.indexOf(extraId) === -1) {
-        gridList.push(extraId);
-      }
-    });
-
     var role = S.user && S.user.role;
     if (role === 'owner' || role === 'admin' || role === 'moderator') {
       if (gridList.indexOf('dalang') === -1) gridList.push('dalang');
@@ -203,7 +189,7 @@ window.PunkCore = (function () {
     }).join('');
 
     if (S.user) {
-      $('wp').textContent = S.user.psc || 0;
+      $('wp').textContent = S.user.psc || S.user.cred || 0;
       $('ws').textContent = 'Streak ' + (S.user.streak || 0) + ' hari';
     }
 
@@ -211,14 +197,15 @@ window.PunkCore = (function () {
     $('wc').textContent = online.length + ' warga nongki di markas';
     var colors = ['#FFD633', '#8FC7FF', '#34C759', '#FF9ad5', '#c8b6ff'];
     $('wf').innerHTML = online.slice(0, 5).map(function (w, idx) {
-      if (w.photoUrl) {
-        return '<img src="' + esc(API.assetUrl(w.photoUrl)) + '" alt="">';
+      var pUrl = w.photoUrl || w.avatar || '';
+      if (pUrl) {
+        return '<img src="' + esc(API.assetUrl(pUrl)) + '" alt="">';
       }
       return '<i style="background:' + colors[idx % colors.length] + '">' + esc((w.name || '?')[0].toUpperCase()) + '</i>';
     }).join('') || '<i style="background:#FFD633">P</i>';
   }
 
-  // Tampilan Bawaan untuk Modul Absen Nyawa, Time Capsule, Lapak Warga, & Pasal/Help
+  // Tampilan Lengkap untuk Modul Absen, Time Capsule (kapsul), Lapak Warga Shopee-style (lapakwarga), & Pasal/Help (rules)
   function getFallbackView(id) {
     if (id === 'absen') {
       var u = S.user || {};
@@ -231,10 +218,10 @@ window.PunkCore = (function () {
       '</div>';
     }
 
-    if (id === 'capsule') {
+    if (id === 'kapsul' || id === 'capsule') {
       return '<div class="card">' +
         '<h3>⏳ Time Capsule</h3>' +
-        '<p class="sub">Tulis pesan rahasia buat diri lu sendiri di masa depan.</p>' +
+        '<p class="sub">Tulis pesan rahasia buat diri lu sendiri di masa depan. Bakal terkunci sampai tanggal yang lu tentuin.</p>' +
         '<label>TANGGAL BUKA KAPSUL</label>' +
         '<input id="cap-date" type="date">' +
         '<label>ISI PESAN KAPSUL</label>' +
@@ -244,50 +231,96 @@ window.PunkCore = (function () {
     }
 
     if (id === 'lapakwarga') {
-      var curUid = S.user && String(S.user.id);
-      var isAdmin = S.user && (S.user.role === 'owner' || S.user.role === 'admin');
-      var itemsHtml = (S.market || []).map(function (m) {
-        var canClose = (String(m.sellerId) === curUid) || isAdmin;
-        return '<div class="card" style="margin-top:10px">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center">' +
-            '<b>[' + esc(m.category) + '] ' + esc(m.title) + '</b>' +
-            (canClose ? '<button class="pill" style="background:rgba(255,69,58,.2);color:#ff6b6b" data-act="core-market-close" data-id="' + esc(m.id) + '">Tutup</button>' : '') +
+      var uShop = S.user || {};
+      var items = S.market || [];
+      var cardsHtml = items.map(function (m) {
+        var mediaUrl = m.image_url || m.imageUrl || '';
+        var isWebm = /\.webm$/i.test(mediaUrl);
+        var mediaHtml = '';
+        if (mediaUrl) {
+          var fullSrc = esc(API.assetUrl(mediaUrl));
+          mediaHtml = isWebm
+            ? '<video src="' + fullSrc + '" autoplay loop muted playsinline style="width:100%;height:140px;object-fit:cover;border-radius:10px;background:#0f172a"></video>'
+            : '<img src="' + fullSrc + '" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:10px;background:#0f172a">';
+        } else {
+          mediaHtml = '<div style="width:100%;height:110px;border-radius:10px;background:linear-gradient(135deg,#1e293b,#0f172a);display:grid;place-items:center;color:#64748b;font-size:12px">Tanpa Foto</div>';
+        }
+
+        return '<div class="card" style="padding:10px;display:flex;flex-direction:column;justify-content:space-between">' +
+          mediaHtml +
+          '<div style="margin-top:8px">' +
+            '<span class="pill" style="font-size:10px;padding:2px 7px">' + esc(m.category || 'Etalase') + '</span>' +
+            '<div style="font-weight:700;font-size:13px;margin-top:4px;line-height:1.25">' + esc(m.title) + '</div>' +
+            '<div style="color:#FFD633;font-weight:800;font-size:14px;margin-top:4px">' + esc(m.price) + ' PSC</div>' +
+            '<p class="sub" style="font-size:11px;margin:4px 0 8px;line-height:1.3">' + esc(m.description || '') + '</p>' +
           '</div>' +
-          '<p class="sub" style="margin:6px 0">' + esc(m.description) + '</p>' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">' +
-            '<span style="color:#FFD633;font-weight:700">' + esc(m.price) + '</span>' +
-            '<small>Pelapak: ' + esc(m.sellerUsername ? '@' + m.sellerUsername : m.sellerName) + '</small>' +
+          '<div style="display:flex;align-items:center;gap:6px;border-top:1px solid rgba(255,255,255,.08);padding-top:6px">' +
+            '<div style="width:18px;height:18px;border-radius:50%;background:#334155;display:grid;place-items:center;font-size:10px;font-weight:700;overflow:hidden">' +
+              (m.seller_avatar ? '<img src="' + esc(API.assetUrl(m.seller_avatar)) + '" style="width:100%;height:100%;object-fit:cover">' : esc((m.seller_name || 'W')[0])) +
+            '</div>' +
+            '<small style="font-size:10px;opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(m.seller_name || 'Warga') + '</small>' +
           '</div>' +
         '</div>';
-      }).join('') || '<p class="sub" style="margin-top:12px">Belum ada lapak warga yang buka.</p>';
+      }).join('');
 
-      return '<div class="card">' +
-        '<h3>🏪 Buka Lapak Barang / Jasa</h3>' +
-        '<label>KATEGORI</label>' +
-        '<select id="lp-cat"><option value="Barang">Barang</option><option value="Jasa">Jasa</option></select>' +
-        '<label>NAMA BARANG / JASA</label>' +
-        '<input id="lp-title" maxlength="50" placeholder="Contoh: Joki Rank / Akun / Desain">' +
-        '<label>HARGA / MAHAR</label>' +
-        '<input id="lp-price" maxlength="25" placeholder="Contoh: 50 PSC atau Rp 25.000">' +
-        '<label>DESKRIPSI SINGKAT</label>' +
-        '<textarea id="lp-desc" rows="2" maxlength="160" placeholder="Detail barang/jasa & cara kontak..."></textarea>' +
-        '<button class="btn" data-act="core-market-create">BUKA LAPAK SEKARANG</button>' +
-      '</div>' + itemsHtml;
+      return '<div class="card" style="background:linear-gradient(135deg,rgba(234,88,12,.22),rgba(15,23,42,.9));border:1px solid rgba(251,146,60,.3)">' +
+        '<div style="display:flex;align-items:center;gap:12px">' +
+          renderAvatar(uShop, 'mini') +
+          '<div>' +
+            '<div style="font-weight:800;font-size:15px">TOKO ' + esc((uShop.name || 'WARGA').toUpperCase()) + '</div>' +
+            '<div style="font-size:11px;opacity:.8">Etalase Resmi • Support Gambar, Stiker, GIF & WebM</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="btn" style="margin-top:12px" data-act="core-shop-modal">+ PAJANG PRODUK DI ETALASE</button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">' +
+        (cardsHtml || '<div class="card" style="grid-column:1/-1"><p class="sub">Etalase masih kosong. Jadi pelapak pertama di markas!</p></div>') +
+      '</div>';
     }
 
-    if (id === 'pasal' || id === 'help') {
+    if (id === 'rules' || id === 'pasal' || id === 'help') {
+      var rh = S.rulesHelp || {};
+      var pasalTxt = esc(rh.pasal || '1. Saling hargai sesama warga markas.\n2. Dilarang spam link judi, scam, atau SARA.\n3. Gunakan fitur Radio Gang dengan tertib saat OS.').replace(/\n/g, '<br>');
+      var helpTxt = esc(rh.help || '• Cetak PunkID di menu utama.\n• Request lagu Spotify lewat Radio Gang atau kirim file MP3 langsung ke PC Bot Mas Raka.').replace(/\n/g, '<br>');
+
       return '<div class="card">' +
-        '<h3>📜 Pasal & Panduan Markas</h3>' +
-        '<p class="sub"><b>Pasal 1:</b> Dilarang spam link phising, SARA, atau drama merusak tongkrongan.</p>' +
-        '<p class="sub"><b>Pasal 2:</b> Transaksi di Lapak Warga wajib jujur; segala bentuk penipuan berujung ban permanen.</p>' +
-        '<p class="sub"><b>Pasal 3:</b> Kumpulkan PSC lewat Absen Nyawa, Arena Game, dan bagi rezeki lewat Saweran.</p>' +
+        '<h3>📜 Pasal & Aturan Tongkrongan</h3>' +
+        '<p class="sub" style="line-height:1.6;margin-top:8px">' + pasalTxt + '</p>' +
+      '</div>' +
+      '<div class="card" style="margin-top:12px">' +
+        '<h3>🆘 Pusat Bantuan (Help)</h3>' +
+        '<p class="sub" style="line-height:1.6;margin-top:8px">' + helpTxt + '</p>' +
+      '</div>';
+    }
+
+    if (id === 'dalang') {
+      var st = S.adminStats || { totalUsers: 0, totalWaitingRadio: 0, users: [] };
+      var userRows = (st.users || []).map(function (usr) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)">' +
+          '<div>' +
+            '<b>' + esc(usr.name) + '</b> <small style="opacity:.7">(' + esc(usr.role || 'member') + ')</small>' +
+            '<div style="font-size:11px;color:#FFD633">Saldo: ' + (usr.cred || 0) + ' PSC • ID: ' + esc(usr.id) + '</div>' +
+          '</div>' +
+          '<button class="pill" data-act="core-admin-coin-modal" data-uid="' + esc(usr.id) + '" data-uname="' + esc(usr.name) + '">+/- Koin</button>' +
+        '</div>';
+      }).join('') || '<p class="sub">Memuat daftar warga...</p>';
+
+      return '<div class="card">' +
+        '<h3>👑 Ruang Dalang (Admin Panel)</h3>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">' +
+          '<div style="background:rgba(255,255,255,.05);padding:10px;border-radius:10px"><small>TOTAL WARGA</small><div style="font-size:18px;font-weight:800">' + st.totalUsers + '</div></div>' +
+          '<div style="background:rgba(255,255,255,.05);padding:10px;border-radius:10px"><small>ANTREAN RADIO</small><div style="font-size:18px;font-weight:800">' + st.totalWaitingRadio + '</div></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:12px">' +
+        '<h3>💰 Kelola Saldo PSC & Warga</h3>' +
+        userRows +
       '</div>';
     }
 
     return '<div class="emp">' + ico(id) + 'Modul dalam pengembangan.</div>';
   }
 
-  // Buka Modul Aplikasi
   function openApp(id, el) {
     if (id === 'grup' || id === 'group') {
       return openExternalLink(CFG.GROUP_URL, 'Grup Markas');
@@ -314,9 +347,23 @@ window.PunkCore = (function () {
     $('nav-extra').innerHTML = '';
 
     if (id === 'lapakwarga') {
-      API.get('/api/market').then(function (r) {
-        S.market = r.list || [];
+      API.get('/api/shop').then(function (r) {
+        S.market = r.items || [];
         if (S.curApp === 'lapakwarga') refresh();
+      }).catch(function () {});
+    }
+
+    if (id === 'rules' || id === 'pasal' || id === 'help') {
+      API.get('/api/rules-help').then(function (r) {
+        S.rulesHelp = r || {};
+        if (S.curApp === id) refresh();
+      }).catch(function () {});
+    }
+
+    if (id === 'dalang') {
+      API.get('/api/admin/stats').then(function (r) {
+        S.adminStats = r || { totalUsers: 0, totalWaitingRadio: 0, users: [] };
+        if (S.curApp === 'dalang') refresh();
       }).catch(function () {});
     }
 
@@ -336,7 +383,6 @@ window.PunkCore = (function () {
     renderHome();
   }
 
-  // Sheet Registrasi Pertama Kali
   function openWelcomeSheet() {
     var tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
     var defName = ((tgUser.first_name || '') + ' ' + (tgUser.last_name || '')).trim() || 'Warga Baru';
@@ -349,7 +395,6 @@ window.PunkCore = (function () {
     );
   }
 
-  // Sinkronisasi Awal dari Server Railway
   async function syncFromServer(silent) {
     var dot = $('sync-dot');
     try {
@@ -451,31 +496,81 @@ window.PunkCore = (function () {
       } finally {
         t.disabled = false;
       }
-    } else if (act === 'core-market-create') {
-      var category = $('lp-cat').value;
-      var title = ($('lp-title').value || '').trim();
-      var price = ($('lp-price').value || '').trim();
-      var description = ($('lp-desc').value || '').trim();
+    } else if (act === 'core-shop-modal') {
+      sheet(
+        '<h2>🛍️ Pajang Produk di Etalase</h2>' +
+        '<label>NAMA PRODUK / JASA</label>' +
+        '<input id="sh-title" maxlength="60" placeholder="Contoh: Stiker Pack / Akun / Jasa">' +
+        '<label>HARGA (PSC)</label>' +
+        '<input id="sh-price" type="number" min="0" placeholder="Contoh: 50">' +
+        '<label>KATEGORI</label>' +
+        '<select id="sh-cat"><option value="Barang">Barang</option><option value="Stiker / GIF">Stiker / GIF</option><option value="Jasa">Jasa</option></select>' +
+        '<label>FOTO / GIF / WEBM PRODUK</label>' +
+        '<input id="sh-file" type="file" accept="image/*,video/webm,.gif,.webm">' +
+        '<label>DESKRIPSI</label>' +
+        '<textarea id="sh-desc" rows="2" maxlength="200" placeholder="Keterangan produk..."></textarea>' +
+        '<button class="btn" data-act="core-shop-submit">UPLOAD KE ETALASE</button>'
+      );
+    } else if (act === 'core-shop-submit') {
+      var title = ($('sh-title').value || '').trim();
+      var price = Number($('sh-price').value) || 0;
+      var category = $('sh-cat').value;
+      var description = ($('sh-desc').value || '').trim();
+      var fileInput = $('sh-file');
+
+      if (title.length < 3) return notify('Mas Raka', 'Lapak Warga', 'Nama produk minimal 3 karakter.');
       t.disabled = true;
+
       try {
-        await API.post('/api/market/create', { category: category, title: title, price: price, description: description });
-        var listRes = await API.get('/api/market');
-        S.market = listRes.list || [];
+        var fd = new FormData();
+        fd.append('title', title);
+        fd.append('price', String(price));
+        fd.append('category', category);
+        fd.append('description', description);
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+          fd.append('media', fileInput.files[0]);
+        }
+
+        var token = (tg && tg.initData) || '';
+        var resp = await fetch(CFG.API_URL + '/api/shop', {
+          method: 'POST',
+          headers: { 'x-telegram-init-data': token },
+          body: fd
+        });
+        var json = await resp.json();
+        if (!resp.ok) throw new Error(json.error || 'Gagal upload produk.');
+
+        shut();
+        var listRes = await API.get('/api/shop');
+        S.market = listRes.items || [];
         refresh();
-        notify('Mas Raka', 'Lapak Warga', 'Lapak "' + title + '" berhasil dibuka!');
+        notify('Mas Raka', 'Lapak Warga', 'Produk "' + title + '" berhasil dipajang di etalase!');
       } catch (err) {
         t.disabled = false;
-        notify('Mas Raka', 'Gagal Buka Lapak', err.message);
+        notify('Mas Raka', 'Gagal Upload', err.message);
       }
-    } else if (act === 'core-market-close') {
-      var marketId = t.getAttribute('data-id');
+    } else if (act === 'core-admin-coin-modal') {
+      var uid = t.getAttribute('data-uid');
+      var uname = t.getAttribute('data-uname');
+      sheet(
+        '<h2>💰 Atur Koin PSC</h2>' +
+        '<p class="sub">Warga: <b>' + esc(uname) + '</b></p>' +
+        '<label>NOMINAL KOIN (Gunakan tanda minus - untuk mengurangi)</label>' +
+        '<input id="adm-coin-amt" type="number" placeholder="Contoh: 100 atau -50">' +
+        '<button class="btn" data-act="core-admin-coin-submit" data-uid="' + esc(uid) + '">SIMPAN PERUBAHAN KOIN</button>'
+      );
+    } else if (act === 'core-admin-coin-submit') {
+      var targetUid = t.getAttribute('data-uid');
+      var amt = Number($('adm-coin-amt').value);
+      if (!amt) return notify('Mas Raka', 'Admin', 'Masukkan nominal koin dulu.');
       t.disabled = true;
       try {
-        await API.post('/api/market/close', { marketId: marketId });
-        var listRes = await API.get('/api/market');
-        S.market = listRes.list || [];
+        await API.post('/api/admin/add-coin', { targetUserId: targetUid, amount: amt });
+        shut();
+        var statsRes = await API.get('/api/admin/stats');
+        S.adminStats = statsRes;
         refresh();
-        notify('Mas Raka', 'Lapak Warga', 'Lapak berhasil ditutup.');
+        notify('Mas Raka', 'Admin Panel', 'Saldo koin warga berhasil diperbarui!');
       } catch (err) {
         t.disabled = false;
         notify('Mas Raka', 'Error', err.message);
