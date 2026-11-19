@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="id"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PUNKSHIT.OS</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>window.API="https://GANTI-INI.up.railway.app";</script>
+<style>
+:root{--ink:#F5F7FC;--mut:#929BAE;--blue:#176BFF;--yel:#FFD633;--navy:#101827;--stage:#05070c;--gb:rgba(255,255,255,.28);--ease:cubic-bezier(.22,1,.36,1);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:light){:root:not([data-theme=dark]){--stage:#dfe5f1}}
+:root[data-theme=light]{--stage:#dfe5f1}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}html,body{height:100%}
+body{background:var(--stage);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);display:grid;place-items:center;overflow:hidden}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.phone{position:relative;width:min(100vw,390px);height:min(100dvh,844px);overflow:hidden;isolation:isolate;background:#0a0f1c}
+@media(min-width:500px){.phone{border-radius:55px;box-shadow:0 0 0 11px #0b0d12,0 0 0 13px #3a3f4b,0 30px 80px rgba(0,0,0,.5)}}
+.wall{position:absolute;inset:0;z-index:-1;background:radial-gradient(70% 40% at 15% 8%,#2f7bff 0,transparent 70%),radial-gradient(60% 40% at 95% 45%,#ffd63380 0,transparent 70%),radial-gradient(80% 50% at 10% 95%,#7a3cff66 0,transparent 70%),linear-gradient(180deg,#12213f,#090d18)}
+.wall::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,transparent 0 46px,rgba(255,255,255,.035) 46px 48px)}
+.glass{background:rgba(255,255,255,.16);backdrop-filter:blur(24px) saturate(1.7);-webkit-backdrop-filter:blur(24px) saturate(1.7);border:.5px solid var(--gb);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 10px 30px rgba(0,0,0,.18)}
+.isl{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:90}
+.sb{position:absolute;top:0;left:0;right:0;height:54px;z-index:80;display:flex;justify-content:space-between;align-items:center;padding:6px 30px 0 52px;pointer-events:none}
+.sb b{font-size:16.5px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.2px}.sb span{display:flex;gap:6px;align-items:center}
+.home{position:absolute;inset:0;padding:60px 21px 0;display:flex;flex-direction:column;transition:transform .4s var(--ease),filter .4s var(--ease)}
+.home.bk{transform:scale(.93);filter:blur(5px) brightness(.65)}
+.wd{display:grid;grid-template-columns:1fr 1fr;gap:20px;height:158px}
+.w{border-radius:26px;padding:14px 15px;display:flex;flex-direction:column;justify-content:space-between;text-align:left}
+.w small{font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--yel)}.w b{font-size:34px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums}.w p{font-size:12.5px;color:#dbe4f6;line-height:1.3}
+.faces{display:flex}.faces i{width:26px;height:26px;border-radius:50%;margin-right:-8px;border:2px solid #1b2a4a;display:grid;place-items:center;font:700 11px/1 -apple-system,sans-serif;color:#101827;font-style:normal}
+.grid{display:grid;grid-template-columns:repeat(4,60px);justify-content:space-between;gap:24px 0;margin-top:26px}
+.app{display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .13s var(--ease)}.app:active{transform:scale(.92)}
+.app span{font-size:11.5px;font-weight:500;text-shadow:0 1px 3px rgba(0,0,0,.45);white-space:nowrap}
+.ic{width:60px;height:60px;border-radius:22.4%;background:linear-gradient(160deg,var(--a),var(--b));display:grid;place-items:center;position:relative;overflow:hidden;box-shadow:inset 0 .5px 0 rgba(255,255,255,.6),inset 0 -10px 16px rgba(0,0,0,.16),0 5px 12px rgba(0,0,0,.32)}
+.ic::before{content:"";position:absolute;left:0;right:0;top:0;height:52%;background:linear-gradient(rgba(255,255,255,.34),rgba(255,255,255,0))}
+.ic svg{width:31px;height:31px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3));position:relative}
+.srch{margin:auto auto 0;display:flex;gap:6px;align-items:center;height:34px;padding:0 18px;border-radius:17px;font-size:14px;color:#e6ecfa}
+.dots{display:flex;gap:7px;justify-content:center;margin:12px 0 14px}.dots i{width:7px;height:7px;border-radius:50%;background:#fff6}.dots i:first-child{background:#fff}
+.dock{height:94px;border-radius:36px;padding:0 17px;margin:0 -9px 24px;display:flex;justify-content:space-between;align-items:center}
+.hi{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:140px;height:5px;border-radius:3px;background:#fff;z-index:95}
+.av{position:absolute;inset:0;z-index:60;background:#0c1322;transform:scale(.2);opacity:0;pointer-events:none;border-radius:50px;transition:transform .42s var(--ease),opacity .25s,border-radius .42s}
+.av.open{transform:none;opacity:1;pointer-events:auto;border-radius:0}
+.nav{position:absolute;top:0;left:0;right:0;height:96px;z-index:5;padding:54px 8px 0;display:flex;align-items:center;justify-content:space-between;border:0;border-bottom:.5px solid transparent;background:transparent;backdrop-filter:none;transition:background .2s,border-color .2s}
+.nav.s{background:rgba(12,19,34,.72);backdrop-filter:blur(22px) saturate(1.6);-webkit-backdrop-filter:blur(22px) saturate(1.6);border-bottom-color:#ffffff1f}
+.bk{color:#4d9bff;font-size:17px;height:44px;padding:0 8px;display:flex;align-items:center;gap:2px}
+.nt{position:absolute;left:0;right:0;text-align:center;bottom:11px;font-weight:600;font-size:17px;opacity:0;transition:opacity .2s;pointer-events:none}.nav.s .nt{opacity:1}
+.sc{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain;padding:100px 18px 40px}
+.lt{font-size:34px;font-weight:700;letter-spacing:-.6px;margin:2px 0 16px}
+.grp{background:#ffffff12;border-radius:14px;overflow:hidden}.rw{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;min-height:52px}.rw+.rw{border-top:.5px solid #ffffff1f}.rw small{display:block;color:var(--mut);font-size:13px;margin-top:2px}
+.gh{font-size:13px;color:var(--mut);margin:22px 16px 7px;font-weight:500;letter-spacing:.02em}
+.pill{background:var(--blue);color:#fff;font-weight:600;font-size:14px;padding:7px 16px;border-radius:16px}.pill:disabled{background:#ffffff1f;color:var(--mut)}
+.bal{font-size:15px;color:var(--mut);margin:-8px 0 16px}.bal b{color:var(--yel)}
+.gg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gc{border-radius:20px;padding:12px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:3px;background:#ffffff10;border:.5px solid #ffffff22}
+.gc b{font-size:15px}.gc small{color:var(--mut);font-size:12px}.pr{margin-top:6px;background:#ffffff1c;border-radius:12px;padding:4px 12px;font-size:13px;font-weight:600;color:var(--yel)}
+.g3{width:var(--s);height:var(--s);perspective:520px;filter:drop-shadow(0 6px 12px var(--gl));margin:6px 0}.g3[data-d]{touch-action:none;cursor:grab}
+.rot{position:relative;width:100%;height:100%;transform-style:preserve-3d;animation:sway 4.5s ease-in-out infinite alternate}.rot svg{position:absolute;inset:0;width:100%;height:100%}
+@keyframes sway{from{transform:rotateY(-38deg) rotateX(8deg)}to{transform:rotateY(38deg) rotateX(-6deg)}}
+.cv{height:150px;border-radius:22px 22px 0 0;position:relative;display:flex;justify-content:flex-end;padding:6px 12px}
+.pc{background:#ffffff10;border-radius:22px;overflow:hidden;border:.5px solid #ffffff22}.pb{padding:0 16px 16px}
+.ring{width:90px;height:90px;border-radius:50%;padding:3px;margin-top:-46px;position:relative}.ring span{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#176BFF,#0b2a6e);font-size:36px;font-weight:700;border:3px solid #0c1322}
+.r0{background:#ffffff40}.r1{background:conic-gradient(#ffd633,#ff9500,#fff3a0,#ffd633)}.r2{background:#4d9bff;box-shadow:0 0 20px #176BFF}.r3{background:conic-gradient(#f33,#fd3,#3f6,#3df,#53f,#f3d,#f33);animation:hue 4s linear infinite}
+@keyframes hue{to{filter:hue-rotate(360deg)}}
+.nm{font-size:24px;font-weight:700;margin-top:8px}.hd{color:var(--mut);font-size:14px}.bio{margin:10px 0;line-height:1.4;font-size:15px}
+.sp{display:inline-flex;align-items:center;gap:6px;background:#1DB95433;color:#6df0a0;border:.5px solid #1DB95488;border-radius:16px;padding:6px 12px;font-size:13px;font-weight:600;text-decoration:none}
+.hs{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}.hs button{flex:none;border-radius:16px;padding:6px 10px;background:#ffffff10;border:.5px solid #ffffff22;display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--mut)}.hs .on{border-color:var(--yel);color:var(--yel)}
+.flip{perspective:900px;height:212px;margin-bottom:18px;cursor:pointer}.cd{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .7s var(--ease)}.flip.on .cd{transform:rotateY(180deg)}
+.fc{position:absolute;inset:0;border-radius:20px;padding:16px 18px;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(135deg,#2a7bff,#0b2a6e 60%,#101827);border:.5px solid #8FC7FF99;box-shadow:inset 0 1px 0 #fff6,0 16px 34px rgba(23,107,255,.35)}
+.fc::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.2) 48%,transparent 60%);pointer-events:none}
+.fb{transform:rotateY(180deg);background:linear-gradient(135deg,#18243f,#0a0f1c);padding:0 0 14px}.cr{display:flex;justify-content:space-between;align-items:center;font-size:12px}.br{color:var(--yel);letter-spacing:.12em;font-size:13px}
+.chp{width:44px;height:33px;border-radius:7px;background:linear-gradient(135deg,#ffe879,#c98f00);box-shadow:inset 0 0 0 .5px #0004}.cn{font:600 19px/1.2 ui-monospace,Menlo,monospace;letter-spacing:2px;margin-bottom:8px}
+.mag{height:42px;background:#000;margin-top:20px}.sig{margin:0 18px;height:34px;background:repeating-linear-gradient(90deg,#f5f7fc 0 6px,#dfe5f1 6px 12px);color:#101827;font:italic 600 15px/34px Georgia,serif;padding:0 10px}
+.stt{display:grid;grid-template-columns:repeat(4,1fr);padding:0 14px;text-align:center;font-size:11px;color:#c9d6f0}.stt b{display:block;font-size:20px;color:#fff}.tn{text-align:center;font-size:11px;color:var(--mut)}
+.scrim{position:absolute;inset:0;z-index:100;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .3s}.scrim.open{opacity:1;pointer-events:auto}
+.sh{position:absolute;left:0;right:0;bottom:0;z-index:110;background:#121b30;border-radius:30px 30px 0 0;padding:8px 20px calc(30px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .42s var(--ease);max-height:90%;overflow-y:auto;border-top:.5px solid var(--gb);text-align:center}
+.sh.open{transform:none}.grab{width:38px;height:5px;border-radius:3px;background:#ffffff40;margin:0 auto 14px}
+.sh h1{font-size:26px;font-weight:800;line-height:1.1}.sh h2{font-size:22px;margin-top:2px}.sub{color:var(--mut);font-size:15px;line-height:1.45;margin:8px 0 12px}.sub i{color:var(--yel);font-style:normal}
+label{display:block;text-align:left;font-size:12px;font-weight:600;letter-spacing:.05em;color:var(--mut);margin:14px 0 6px}
+input{width:100%;height:48px;border-radius:14px;border:.5px solid var(--gb);background:#ffffff12;color:var(--ink);font:inherit;font-size:17px;padding:0 14px;outline:none;margin-bottom:8px}input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #176BFF55}
+.btn{width:100%;height:52px;border-radius:16px;margin-top:12px;font-size:17px;font-weight:700;color:#101827;background:linear-gradient(#ffe879,var(--yel));box-shadow:inset 0 1px 0 #fff9;transition:transform .13s var(--ease)}.btn:active{transform:scale(.97)}
+.b2{background:#ffffff18;color:var(--ink);box-shadow:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{height:38px;padding:0 14px;border-radius:19px;background:#ffffff12;border:.5px solid var(--gb);font-size:14px}.chip.on{background:var(--blue);border-color:#8FC7FF}
+.ban{position:absolute;top:10px;left:10px;right:10px;z-index:120;border-radius:24px;padding:12px 14px;display:flex;gap:11px;transform:translateY(-140%);transition:transform .45s var(--ease);background:rgba(28,38,62,.78);text-align:left}.ban.on{transform:none}
+.ban .ic{width:38px;height:38px;flex:none}.ban .ic svg{width:20px;height:20px}.ban b{font-size:13.5px;display:flex;justify-content:space-between}.ban b em{font-style:normal;color:var(--yel);font-size:11px;font-weight:600}.ban span{font-size:13px;color:#e4ebfa;line-height:1.3;display:block;margin-top:1px}
+.emp{text-align:center;color:var(--mut);margin-top:70px;line-height:1.5}.emp .ic{margin:0 auto 14px;width:76px;height:76px}.emp .ic svg{width:40px;height:40px}
+.shake{animation:shk .4s}@keyframes shk{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation:none!important}}
+@media(prefers-reduced-transparency:reduce){.glass,.nav.s{backdrop-filter:none;background:#1c2740}}
+</style></head>
+<body>
+<div class="phone" id="ph">
+<div class="wall"></div><div class="isl"></div>
+<div class="sb"><b id="clk">9:41</b><span>
+<svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" width="3" height="12" rx="1"/></svg>
+<svg width="17" height="12" viewBox="0 0 17 12" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"><path d="M1.5 4.2a10 10 0 0114 0M4 7a6.4 6.4 0 019 0"/><circle cx="8.5" cy="10" r="1.2" fill="#fff"/></svg>
+<svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="22" height="12" rx="3.8" fill="none" stroke="#fff" opacity=".4"/><rect x="2" y="2" width="19" height="9" rx="2.5" fill="#fff"/><path d="M24 4.5v4c1-.3 1.8-1.1 1.8-2s-.8-1.7-1.8-2z" fill="#fff" opacity=".5"/></svg></span></div>
+<div class="ban glass" id="ban"></div>
+<main class="home" id="home">
+ <div class="wd">
+  <div class="w glass"><small>DOMPET PSC</small><b id="wp">0</b><p id="ws">Streak 0 hari</p></div>
+  <div class="w glass"><small>MASIH HIDUP</small><div class="faces" id="wf"></div><p>7 warga nongki di markas</p></div>
+ </div>
+ <div class="grid" id="grid"></div>
+ <div class="srch glass">⌕ Search</div><div class="dots"><i></i><i></i></div>
+ <nav class="dock glass" id="dock"></nav>
+</main>
+<section class="av" id="av"><div class="nav" id="nav"><button class="bk" data-act="close"><svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="#4d9bff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2L2 10l8 8"/></svg>Home</button><span class="nt" id="nt"></span></div><div class="sc" id="sc"><h1 class="lt" id="lt"></h1><div id="bd"></div></div></section>
+<div class="scrim" id="scr" data-act="shut"></div><section class="sh" id="sh" role="dialog" aria-modal="true"></section>
+<div class="hi"></div>
+</div>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)},tg=window.Telegram&&window.Telegram.WebApp;
+var IC={markas:['Markas','#3b8bff','#0b3fae','M3 11l9-8 9 8M5 9.5V20h14V9.5M10 20v-6h4v6'],warga:['Warga','#34C759','#12803a','M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16.5 4.5a3 3 0 010 6M18 14c2 .6 3.5 2.6 3.5 5.5'],arena:['Arena','#AF52DE','#5b2490','M6 8h12a4 4 0 014 4v3a3 3 0 01-5.2 2L15 15H9l-1.8 2A3 3 0 012 15v-3a4 4 0 014-4zM7 10.5v3M5.5 12h3M16 11h.01M18 13h.01'],lapak:['Lapak','#FF9500','#c24f00','M4 8h16v4H4zM5 12v8h14v-8M12 8v12M12 8C10 3.5 6 4.5 7.5 8M12 8c2-4.5 6-3.5 4.5 0'],misi:['Misi Rusuh','#FF453A','#9a1810','M12 3c1 4 5 5 5 10a5 5 0 01-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 .5-3-1-5 1-8.5z'],kas:['Dompet','#FFD633','#c28a00','M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v10M14.5 9.5h-3.5a1.7 1.7 0 000 3.4h2a1.7 1.7 0 010 3.4H9.5'],event:['Kalender','#5AC8FA','#1565c0','M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zM3 10h18M8 3v4M16 3v4'],radio:['Radio Gang','#FF2D55','#8f1034','M4 15v-3a8 8 0 0116 0v3M4 14h3v6H5.5A1.5 1.5 0 014 18.5zM20 14h-3v6h1.5a1.5 1.5 0 001.5-1.5z'],wanted:['Wanted','#8E8E93','#3a3a3c','M11 4a7 7 0 100 14 7 7 0 000-14zM16 16l5 5'],museum:['Museum','#4f6bff','#16203f','M3 8h4l2-3h6l2 3h4v12H3zM12 10a3.5 3.5 0 100 7 3.5 3.5 0 000-7z'],fame:['Hall of Fame','#FFCC00','#ff7a00','M7 4h10v5a5 5 0 01-10 0zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3M12 14v4M8 20h8'],gue:['Gue','#64D2FF','#176BFF','M12 4a4 4 0 100 8 4 4 0 000-8zM4 21c0-4 3.5-7 8-7s8 3 8 7'],absen:['Absen','#34C759','#0f6e32','M12 3a9 9 0 100 18 9 9 0 000-18zM8 12l3 3 5-6'],sidang:['Sidang','#FF9F0A','#b04a00','M5 20V11M12 20V4M19 20v-6'],kotak:['Kotak Rahasia','#5E5CE6','#2a2a8a','M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM3 7l9 7 9-7'],meme:['Meme Board','#FF6AC1','#a0207a','M12 3a9 9 0 100 18 9 9 0 000-18zM8.5 14a4.5 4 0 007 0M9 10h.01M15 10h.01']};
+var GRID=['absen','misi','kas','arena','event','radio','wanted','sidang','kotak','meme','museum','fame'],DOCK=['markas','warga','lapak','gue'];
+var GF=[{id:'heart',n:'Chrome Heart',p:50,r:'Rare',t:'Hati krom buat yang spesial.',c:['#cfeaff','#176BFF'],d:'M50 88C18 64 8 46 8 33a21 21 0 0142-5 21 21 0 0142 5c0 13-10 31-42 55z'},
+{id:'bolt',n:'Neon Bolt',p:80,r:'Rare',t:'Kilat buat yang selalu on fire.',c:['#fff7a0','#ffb800'],d:'M60 4L18 56h27l-7 40 44-56H55z'},
+{id:'star',n:'Punk Star',p:120,r:'Epic',t:'Bintang jalanan, bersinar di gang.',c:['#ffb3e6','#9a3cff'],d:'M50 6l13 28 30 3-22 21 7 30-28-16-28 16 7-30L7 37l30-3z'},
+{id:'fish',n:'Golden Punkfish',p:300,r:'Legendary',t:'Ikan emas langka. Main character luck.',c:['#fff3b0','#e09a00'],d:'M5 50C22 22 52 20 70 43l23-19v52L70 57C52 80 22 78 5 50z'},
+{id:'crown',n:'Fosil Crown',p:500,r:'Legendary',t:'Mahkota buat fosil sejati markas.',c:['#c8f7ff','#1e8ab8'],d:'M8 80V28l24 24 18-34 18 34 24-24v52z'}];
+var BG=['radial-gradient(circle at 25% 20%,#8FC7FF,transparent 55%),linear-gradient(135deg,#176BFF,#0b2a6e)','linear-gradient(120deg,#FFD633 0 14%,transparent 14%),repeating-linear-gradient(115deg,#0a0f1c 0 14px,#18243f 14px 28px)','radial-gradient(circle at 80% 10%,#6e6cff,transparent 50%),linear-gradient(#0a0f1c,#1b1044)','radial-gradient(circle at 15% 85%,#FF6AC1,transparent 50%),radial-gradient(circle at 85% 15%,#5AC8FA,transparent 55%),#101827'],BGN=['Aero','Street','Midnight','Y2K'],BDN=['Polos','Emas','Neon','Pelangi'];
+var S={u:null,psc:0,streak:0,best:0,last:'',inv:[],feed:[]},cur='',E={};
+try{Object.assign(S,JSON.parse(localStorage.getItem('psk2')||'{}'))}catch(e){}
+function save(){try{localStorage.setItem('psk2',JSON.stringify(S))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return'&#'+c.charCodeAt(0)+';'})}
+function ico(id){var i=IC[id];return'<div class="ic" style="--a:'+i[1]+';--b:'+i[2]+'"><svg viewBox="0 0 24 24"><path d="'+i[3]+'"/></svg></div>'}
+function g3(g,s,drag){var L='',i,t;for(i=0;i<10;i++){t=Math.round(i/9*100);L+='<svg viewBox="0 0 100 100" style="transform:translateZ(calc(var(--s)*'+((i-4.5)*.014).toFixed(3)+'))"><path d="'+g.d+'" fill="color-mix(in srgb,'+g.c[0]+' '+t+'%,'+g.c[1]+')"'+(i==9?' stroke="#fff" stroke-opacity=".75" stroke-width="2.5" stroke-linejoin="round"':'')+'/></svg>'}
+return'<div class="g3" '+(drag?'data-d ':'')+'style="--s:'+s+'px;--gl:'+g.c[1]+'99"><div class="rot">'+L+'</div></div>'}
+function drag(r){r.querySelectorAll('.g3[data-d]').forEach(function(g){var o=g.firstChild,x,y,ry=0,rx=0,on=0,tm;g.onpointerdown=function(e){on=1;x=e.clientX;y=e.clientY;clearTimeout(tm);o.style.animation='none';g.setPointerCapture(e.pointerId)};g.onpointermove=function(e){if(!on)return;ry+=(e.clientX-x)*.9;rx-=(e.clientY-y)*.9;x=e.clientX;y=e.clientY;o.style.transform='rotateX('+rx+'deg) rotateY('+ry+'deg)'};g.onpointerup=g.onpointercancel=function(){on=0;tm=setTimeout(function(){o.style.animation='';o.style.transform=''},2500)}})}
+function gf(id){return GF.filter(function(g){return g.id===id})[0]}
+var timer;function ban(who,tag,txt){var b=$('ban');b.innerHTML=ico('markas').replace('class="ic"','class="ic" aria-hidden="true"')+'<div><b>'+who+'<em>'+tag+'</em></b><span>'+esc(txt)+'</span></div>';b.firstChild.style.cssText='--a:#FFD633;--b:#c28a00';b.firstChild.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 3v3M5 9h14v9a2 2 0 01-2 2H7a2 2 0 01-2-2zM9 13h.01M15 13h.01M9 16.5h6"/></svg>';b.classList.add('on');clearTimeout(timer);timer=setTimeout(function(){b.classList.remove('on')},4200)}
+function bot(type,data,text){S.feed.unshift({t:Date.now(),x:text});S.feed=S.feed.slice(0,8);save();
+/* BRIDGE: kirim ke backend -> bot Mas Raka -> posting ke grup. Ganti API dgn URL server.
+ fetch(API+'/api/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:type,data:data,initData:tg&&tg.initData})}) */
+if(window.API){try{fetch(window.API+'/api/event',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'tma '+(tg&&tg.initData||'')},body:JSON.stringify({type:type,data:data})}).catch(function(){})}catch(e){}}
+ban('Mas Raka','→ Grup Punkshit',text)}
+function home(){$('grid').innerHTML=GRID.map(function(i){return tile(i)}).join('');$('dock').innerHTML=DOCK.map(function(i){return tile(i,1)}).join('');$('wp').textContent=S.psc;$('ws').textContent='Streak '+S.streak+' hari';
+$('wf').innerHTML=['#FFD633','#8FC7FF','#34C759','#FF9ad5','#c8b6ff'].map(function(c,i){return'<i style="background:'+c+'">'+'JRKMA'[i]+'</i>'}).join('')}
+function tile(id,d){return'<button class="app" data-act="app" data-id="'+id+'" aria-label="'+IC[id][0]+'">'+ico(id)+(d?'':'<span>'+IC[id][0]+'</span>')+'</button>'}
+function sheet(h){$('sh').innerHTML='<div class="grab"></div>'+h;$('sh').classList.add('open');$('scr').classList.add('open');drag($('sh'))}
+function shut(){$('sh').classList.remove('open');$('scr').classList.remove('open')}
+function reg(){sheet('<h1>NEW CHARACTER UNLOCKED!</h1><p class="sub">Wih, ada yang nyasar. Bikin <i>PunkID</i> dulu biar resmi jadi Warga Punkshit. Tenang, ini bukan SIM.</p><label for="nk">NAMA TONGKRONGAN</label><input id="nk" maxlength="16" placeholder="mis. Jex" autocomplete="off"><button class="btn" data-act="reg">BIKIN PUNKID</button>');try{var u=tg&&tg.initDataUnsafe.user;if(u)$('nk').value=(u.first_name||'').slice(0,16)}catch(e){}}
+function today(){return new Date().toDateString()}
+function bonus(n){var b=n<4?2:n<7?3:n<14?5:n<30?7:n<60?10:15;return b+(n%7==0?25:0)}
+var V={
+markas:function(){var done=S.last===today();return'<div class="grp"><div class="rw"><div><b>Absen Nyawa</b><small>Streak '+S.streak+' hari · terbaik '+S.best+'</small></div><button class="pill" data-act="absen"'+(done?' disabled':'')+'>'+(done?'SUDAH':'ABSEN')+'</button></div></div><h3 class="gh">PESAN MAS RAKA KE GRUP</h3><div class="grp">'+(S.feed.length?S.feed.map(function(f){return'<div class="rw"><div>'+esc(f.x)+'<small>'+new Date(f.t).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})+' · terkirim lewat bot</small></div></div>'}).join(''):'<div class="rw"><small>Belum ada. Absen atau kirim gift buat mancing Mas Raka.</small></div>')+'</div>'},
+lapak:function(){return'<p class="bal">Saldo <b>'+S.psc+' PSC</b> · Gift lo: '+S.inv.length+'</p><div class="gg">'+GF.map(function(g){return'<button class="gc" data-act="gift" data-id="'+g.id+'">'+g3(g,84)+'<b>'+g.n+'</b><small>'+g.r+'</small><span class="pr">'+g.p+' PSC</span></button>'}).join('')+'</div>'},
+kas:function(){return card(S.u)+'<p class="bal">Saldo <b>'+S.psc+' PSC</b> · tap kartu buat diputar</p><div class="grp"><div class="rw"><div>Riwayat transaksi<small>Segera hadir, nunggu database</small></div></div></div>'},
+gue:function(){var u=S.u,p=u.pin>=0&&S.inv[u.pin]?gf(S.inv[u.pin].g):null;return'<div class="pc"><div class="cv" style="background:'+BG[u.bg]+'">'+(p?g3(p,96,1):'')+'</div><div class="pb"><div class="ring r'+u.bd+'"><span>'+esc(u.name[0].toUpperCase())+'</span></div><div class="nm">'+esc(u.name)+'</div><div class="hd">'+u.no+' · 🌱 Mayat Baru</div>'+(u.bio?'<p class="bio">'+esc(u.bio)+'</p>':'')+(u.sp?'<a class="sp" href="'+esc(u.sp)+'" target="_blank" rel="noopener noreferrer">♫ Spotify</a>':'')+'<button class="btn b2" data-act="edit">Edit Profil</button></div></div><h3 class="gh">KOLEKSI GIFT · tap buat dipasang</h3>'+(S.inv.length?'<div class="hs">'+S.inv.map(function(x,i){return'<button data-act="pin" data-i="'+i+'" class="'+(u.pin===i?'on':'')+'">'+g3(gf(x.g),64)+gf(x.g).n+'</button>'}).join('')+'</div>':'<div class="grp"><div class="rw"><small>Kosong. Beli di Lapak atau dapet dari warga lain.</small></div></div>')}};
+function card(u){var dg=u.no.slice(4),nm=esc(u.name.toUpperCase());return'<div class="flip" data-act="flip" role="button" tabindex="0" aria-label="Kartu PunkID. Tap untuk memutar"><div class="cd"><div class="fc"><div class="cr"><b class="br">PUNKSHIT.OS</b><span>PUNKID</span></div><div class="cr"><div class="chp"></div><span style="font-size:22px;opacity:.8">)))</span></div><div><div class="cn">PSK '+dg+' •••• ••••</div><div class="cr"><b>'+nm+'</b><small>SALDO '+S.psc+' PSC</small></div></div></div><div class="fc fb"><div class="mag"></div><div class="sig">'+esc(u.name)+'</div><div class="stt"><div><b>'+S.streak+'</b>Streak</div><div><b>'+S.best+'</b>Terbaik</div><div><b>'+S.inv.length+'</b>Gift</div><div><b>0</b>Cred</div></div><div class="tn">Bukan SIM, bukan ATM. Tap buat balik.</div></div></div></div>'}
+function ph(id){return'<div class="emp">'+ico(id)+'Modul ini belum dibuka di prototipe.</div>'}
+function open(id,el){if(!S.u){$('home').classList.remove('shake');void $('home').offsetWidth;$('home').classList.add('shake');return reg()}
+cur=id;var v=$('av');if(el){var a=el.getBoundingClientRect(),p=$('ph').getBoundingClientRect();v.style.transformOrigin=(a.left+a.width/2-p.left)+'px '+(a.top+a.height/2-p.top)+'px'}
+$('lt').textContent=$('nt').textContent=IC[id][0];$('bd').innerHTML=(V[id]||ph)(id);drag($('bd'));$('sc').scrollTop=0;$('nav').classList.remove('s');v.classList.add('open');$('home').classList.add('bk')}
+function refresh(){if(cur&&V[cur]){$('bd').innerHTML=V[cur]();drag($('bd'))}home()}
+$('sc').onscroll=function(){$('nav').classList.toggle('s',$('sc').scrollTop>34)};
+function giftSheet(g){sheet('<div style="display:grid;place-items:center">'+g3(g,170,1)+'</div><h2>'+g.n+'</h2><p class="sub">'+g.r+' · '+g.t+'<br>Putar pakai jari.</p><button class="btn" data-act="buy" data-id="'+g.id+'">Beli buat gue · '+g.p+' PSC</button><button class="btn b2" data-act="tog">Kirim ke warga</button><div id="sf" hidden><label>PENERIMA</label><input id="to" placeholder="@username" maxlength="24"><input id="ms" placeholder="Pesan (opsional)" maxlength="60"><button class="btn" data-act="send" data-id="'+g.id+'">Kirim · '+g.p+' PSC</button></div>')}
+function pay(g){if(S.psc<g.p){ban('Mas Raka','Sistem','Saldo kurang. Dompet lu lagi cosplay gurun Sahara. Absen dulu.');return 0}S.psc-=g.p;return 1}
+document.addEventListener('click',function(e){var t=e.target.closest('[data-act]');if(!t)return;var a=t.getAttribute('data-act'),id=t.getAttribute('data-id'),g=id&&gf(id);
+if(a==='app')open(id,t);else if(a==='close'){$('av').classList.remove('open');$('home').classList.remove('bk');cur=''}else if(a==='shut')shut();
+else if(a==='reg'){var n=$('nk').value.trim();if(n.length<2)return;S.u={name:n,no:'PSK-'+(1000+Math.floor(Math.random()*9000)),bio:'',sp:'',bg:0,bd:1,pin:-1};S.psc=110;save();shut();home();bot('join',{n:n},'NEW CHARACTER UNLOCKED! '+n+' resmi jadi warga. Good luck, rookie.');setTimeout(function(){open('gue',document.querySelector('[data-id=gue]'))},700)}
+else if(a==='absen'){if(S.last===today())return;var y=new Date(Date.now()-864e5).toDateString();S.streak=S.last===y?S.streak+1:1;S.best=Math.max(S.best,S.streak);S.last=today();var b=bonus(S.streak);S.psc+=b;save();bot('absen',{s:S.streak},'MASIH HIDUP TERNYATA. '+S.u.name+' absen hari ke-'+S.streak+' (+'+b+' PSC).');refresh()}
+else if(a==='gift')giftSheet(g);else if(a==='tog')$('sf').hidden=!$('sf').hidden;
+else if(a==='buy'){if(!pay(g))return;S.inv.push({g:g.id});if(S.u.pin<0)S.u.pin=S.inv.length-1;save();shut();bot('buy',{g:g.id},S.u.name+' baru beli '+g.n+'. Dompet berkurang, gaya bertambah.');refresh()}
+else if(a==='send'){var to=$('to').value.trim().replace(/^@?/,'@');if(to.length<3)return;if(!pay(g))return;var m=$('ms').value.trim();save();shut();bot('gift',{g:g.id,to:to,m:m},S.u.name+' ngirim '+g.n+' ke '+to+'!'+(m?' "'+m+'"':''));refresh()}
+else if(a==='flip')t.classList.toggle('on');else if(a==='pin'){S.u.pin=+t.getAttribute('data-i');save();refresh()}
+else if(a==='edit'){var u=S.u;E={bg:u.bg,bd:u.bd};sheet('<h2 style="margin-bottom:6px">Edit Profil</h2><label>BIO</label><input id="bi" maxlength="80" value="'+esc(u.bio)+'" placeholder="Tulis bio lo"><label>LINK SPOTIFY</label><input id="sl" value="'+esc(u.sp)+'" placeholder="https://open.spotify.com/..."><label>LATAR PROFIL</label><div class="chips">'+BGN.map(function(n,i){return'<button class="chip'+(i==E.bg?' on':'')+'" data-act="pk" data-k="bg" data-i="'+i+'">'+n+'</button>'}).join('')+'</div><label>BORDER</label><div class="chips">'+BDN.map(function(n,i){return'<button class="chip'+(i==E.bd?' on':'')+'" data-act="pk" data-k="bd" data-i="'+i+'">'+n+'</button>'}).join('')+'</div><button class="btn" data-act="sv">SIMPAN</button>')}
+else if(a==='pk'){var k=t.getAttribute('data-k');E[k]=+t.getAttribute('data-i');t.parentNode.querySelectorAll('.chip').forEach(function(c){c.classList.toggle('on',c===t)})}
+else if(a==='sv'){var s=$('sl').value.trim();if(s&&!/^https:\/\/open\.spotify\.com\/(track|album|playlist|artist|user|episode)\/[\w-]+/.test(s)){$('sl').style.borderColor='#FF453A';return}S.u.bio=$('bi').value.trim();S.u.sp=s;S.u.bg=E.bg;S.u.bd=E.bd;save();shut();refresh()}});
+document.addEventListener('keydown',function(e){var f=e.target.classList&&e.target.classList.contains('flip');if(f&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.target.classList.toggle('on')}});
+function tick(){var d=new Date();$('clk').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')}
+tick();setInterval(tick,20000);try{if(tg){tg.ready();tg.expand()}}catch(e){}
+home();if(!S.u)setTimeout(reg,500)
+})();
+</script></body></html>
