@@ -1,0 +1,11 @@
+{
+  "name": "PUNKSHIT.OS",
+  "short_name": "PunkshitOS",
+  "description": "The Underground Digital Hangout — Tongkrongan Punkshit Mini App",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080B12",
+  "theme_color": "#101827",
+  "categories": ["social", "games", "entertainment"]
+}
