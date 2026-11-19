@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0a0f1c">
+  <title>PUNKSHIT.OS — The Underground Digital Hangout</title>
+  <link rel="manifest" href="./manifest.json">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="./css/theme.css">
+  <link rel="stylesheet" href="./css/animations.css">
+  <link rel="stylesheet" href="./css/components.css">
+</head>
+<body>
+  <div class="phone" id="ph">
+    <!-- Wallpaper & Dynamic Island -->
+    <div class="wall"></div>
+    <div class="isl"></div>
+
+    <!-- iOS Status Bar -->
+    <div class="sb">
+      <b id="clk">9:41</b>
+      <span>
+        <span id="sync-dot" class="sync-dot" title="Status Koneksi Server"></span>
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" width="3" height="12" rx="1"/></svg>
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"><path d="M1.5 4.2a10 10 0 0114 0M4 7a6.4 6.4 0 019 0"/><circle cx="8.5" cy="10" r="1.2" fill="#fff"/></svg>
+        <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="22" height="12" rx="3.8" fill="none" stroke="#fff" opacity=".4"/><rect x="2" y="2" width="19" height="9" rx="2.5" fill="#fff"/><path d="M24 4.5v4c1-.3 1.8-1.1 1.8-2s-.8-1.7-1.8-2z" fill="#fff" opacity=".5"/></svg>
+      </span>
+    </div>
+
+    <!-- Mas Raka Live Notification Banner -->
+    <div class="ban glass" id="ban"></div>
+
+    <!-- Home Screen -->
+    <main class="home" id="home">
+      <div class="wd">
+        <div class="w glass" data-act="app" data-id="kas" role="button" tabindex="0">
+          <small>DOMPET PSC</small>
+          <b id="wp">0</b>
+          <p id="ws">Streak 0 hari</p>
+        </div>
+        <div class="w glass" data-act="app" data-id="warga" role="button" tabindex="0">
+          <small>MASIH HIDUP</small>
+          <div class="faces" id="wf"></div>
+          <p id="wc">Memuat warga...</p>
+        </div>
+      </div>
+
+      <!-- App Icons Grid (Otomatis nambah ikon Ruang Dalang jika Role Owner/Admin/Mod) -->
+      <div class="grid" id="grid"></div>
+
+      <button class="srch glass" data-act="search">⌕ Cari Warga atau Fitur...</button>
+      <div class="dots"><i></i><i></i></div>
+
+      <!-- Bottom Dock -->
+      <nav class="dock glass" id="dock"></nav>
+    </main>
+
+    <!-- Fullscreen App Container -->
+    <section class="av" id="av">
+      <div class="nav" id="nav">
+        <button class="bk" data-act="close">
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="#4d9bff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2L2 10l8 8"/></svg>
+          Home
+        </button>
+        <span class="nt" id="nt"></span>
+        <div id="nav-extra"></div>
+      </div>
+      <div class="sc" id="sc">
+        <h1 class="lt" id="lt"></h1>
+        <div id="bd"></div>
+      </div>
+    </section>
+
+    <!-- Modal Bottom Sheet -->
+    <div class="scrim" id="scr" data-act="shut"></div>
+    <section class="sh" id="sh" role="dialog" aria-modal="true"></section>
+
+    <!-- Home Indicator -->
+    <div class="hi"></div>
+  </div>
+
+  <!-- Core & Config -->
+  <script src="./js/config.js"></script>
+  <script src="./js/api.js"></script>
+  <script src="./js/core.js"></script>
+
+  <!-- 10 Modul Utama + Ruang Dalang -->
+  <script src="./js/modules/01-markas.js"></script>
+  <script src="./js/modules/02-punkid.js"></script>
+  <script src="./js/modules/03-progression.js"></script>
+  <script src="./js/modules/04-kas.js"></script>
+  <script src="./js/modules/05-arena.js"></script>
+  <script src="./js/modules/06-warga.js"></script>
+  <script src="./js/modules/07-kalender.js"></script>
+  <script src="./js/modules/08-lapak.js"></script>
+  <script src="./js/modules/09-museum.js"></script>
+  <script src="./js/modules/10-dalang.js"></script>
+</body>
+</html>
