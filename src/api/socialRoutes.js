@@ -11,6 +11,10 @@ import { getBot, broadcastToTelegram, escHtml } from '../services/syncEngine.js'
 export const socialRouter = Router();
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS bot_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS radio_queue (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,
@@ -22,12 +26,69 @@ db.exec(`
     message TEXT DEFAULT '',
     status TEXT DEFAULT 'waiting',
     created_at INTEGER NOT NULL
-  )
+  );
+  CREATE TABLE IF NOT EXISTS shop_items (
+    id TEXT PRIMARY KEY,
+    seller_id TEXT NOT NULL,
+    seller_name TEXT NOT NULL,
+    seller_avatar TEXT DEFAULT '',
+    title TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    category TEXT DEFAULT 'Etalase',
+    image_url TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    created_at INTEGER NOT NULL
+  );
 `);
 
-// Pengaman migrasi kolom jika tabel radio_queue versi lama sudah ada di SQLite
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN source_type TEXT DEFAULT 'spotify'"); } catch (e) {}
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN file_id TEXT DEFAULT ''"); } catch (e) {}
+
+// GET /api/rules-help -> Ambil teks Pasal & Help dinamis dari setting bot untuk WebApp
+socialRouter.get('/rules-help', (req, res) => {
+  const pasalRow = db.prepare("SELECT value FROM bot_settings WHERE key = 'pasal_text'").get();
+  const helpRow = db.prepare("SELECT value FROM bot_settings WHERE key = 'help_text'").get();
+
+  res.json({
+    pasal: pasalRow ? pasalRow.value : '1. Saling hargai sesama warga markas.\n2. Dilarang spam link judi, scam, atau SARA.\n3. Gunakan fitur Radio Gang dengan tertib saat OS.',
+    help: helpRow ? helpRow.value : '• Cetak PunkID di menu utama.\n• Request lagu Spotify lewat Radio Gang atau kirim MP3 langsung ke PC Bot Mas Raka.'
+  });
+});
+
+// GET /api/shop -> Etalase Toko Warga (Support profil toko & media gambar/GIF/WebM)
+socialRouter.get('/shop', (req, res) => {
+  const items = db.prepare('SELECT * FROM shop_items ORDER BY created_at DESC LIMIT 40').all();
+  res.json({ items });
+});
+
+// POST /api/shop -> Tambah produk ke etalase Lapak Warga
+socialRouter.post('/shop', requireUser, uploadMem.single('media'), async (req, res) => {
+  try {
+    const title = String(req.body?.title || '').trim().slice(0, 60);
+    const price = Math.max(0, Number(req.body?.price) || 0);
+    const category = String(req.body?.category || 'Etalase').trim().slice(0, 30);
+    const description = String(req.body?.description || '').trim().slice(0, 220);
+
+    if (title.length < 3) {
+      return res.status(400).json({ error: 'Nama barang minimal 3 karakter cuy.' });
+    }
+
+    let imageUrl = '';
+    if (req.file) {
+      imageUrl = await processAndSaveImage(req.file, 'shop', { width: 1080, height: 1080, fit: 'inside' });
+    }
+
+    const id = 'sh_' + crypto.randomBytes(4).toString('hex');
+    db.prepare(`
+      INSERT INTO shop_items (id, seller_id, seller_name, seller_avatar, title, price, category, image_url, description, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, req.dbUser.id, req.dbUser.name, req.dbUser.avatar || '', title, price, category, imageUrl, description, Date.now());
+
+    res.json({ ok: true, id, imageUrl });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Gagal pajang barang di lapak.' });
+  }
+});
 
 // POST /api/social/greet -> Sapa warga lain di Grup
 socialRouter.post('/social/greet', requireUser, async (req, res) => {
@@ -37,7 +98,7 @@ socialRouter.post('/social/greet', requireUser, async (req, res) => {
 
   await broadcastToTelegram({
     target: 'group',
-    text: `<b>SAPAAN MARKAS</b>\n<b>${escHtml(req.dbUser.name)}</b> menyapa <b>${escHtml(target.name)}</b>${target.username ? ` (@${escHtml(target.username)})` : ''} di PUNKSHIT.OS.`,
+    text: `<b>SAPAAN MARKAS</b>\n<b>${escHtml(req.dbUser.name)}</b> nyapa <b>${escHtml(target.name)}</b>${target.username ? ` (@${escHtml(target.username)})` : ''} di PUNKSHIT.OS.`,
     buttonText: 'CEK WARGA',
     startParam: 'warga',
     feedText: `${req.dbUser.name} menyapa ${target.name} di markas.`
@@ -75,7 +136,7 @@ socialRouter.post('/wanted', requireUser, async (req, res) => {
     feedText: `${req.dbUser.name} buka Wanted: ${category} (${note}).`
   });
 
-  const wanted = db.prepare('SELECT * FROM wanted ORDER BY created_at DESC LIMIT 15').all().map(w => ({
+  const wanted = db.prepare('SELECT * FROM wanted ORDER BY created_at DESC LIMIT 15').all().map((w) => ({
     id: w.id,
     authorId: w.author_id,
     authorName: w.author_name,
@@ -102,7 +163,7 @@ socialRouter.post('/wanted/join', requireUser, (req, res) => {
 
   db.prepare('INSERT INTO wanted_joins (wanted_id, user_id, joined_at) VALUES (?, ?, ?)').run(wid, req.dbUser.id, Date.now());
 
-  const wanted = db.prepare('SELECT * FROM wanted ORDER BY created_at DESC LIMIT 15').all().map(w => ({
+  const wanted = db.prepare('SELECT * FROM wanted ORDER BY created_at DESC LIMIT 15').all().map((w) => ({
     id: w.id,
     authorId: w.author_id,
     authorName: w.author_name,
@@ -149,7 +210,7 @@ socialRouter.post('/polls/vote', requireUser, (req, res) => {
   });
   tx();
 
-  const polls = db.prepare('SELECT * FROM polls ORDER BY created_at DESC LIMIT 10').all().map(p => {
+  const polls = db.prepare('SELECT * FROM polls ORDER BY created_at DESC LIMIT 10').all().map((p) => {
     const o = JSON.parse(p.options_json || '[]');
     return { id: p.id, question: p.question, options: o, totalVotes: o.reduce((a, b) => a + (b.votes || 0), 0) };
   });
@@ -192,7 +253,6 @@ socialRouter.post('/radio', requireUser, async (req, res) => {
   const warehouseId = (process.env.WAREHOUSE_CHANNEL_ID || '').trim();
   const bot = getBot();
 
-  // Kirim kartu link Spotify ke Channel Gudang agar admin OS mudah memutarnya
   if (bot && warehouseId) {
     try {
       const kb = new InlineKeyboard().url('Buka di Spotify', link);
@@ -200,9 +260,9 @@ socialRouter.post('/radio', requireUser, async (req, res) => {
         warehouseId,
         `<b>GUDANG MUSIK — REQUEST SPOTIFY #${reqId}</b>\n` +
         `Judul: <b>${escHtml(song)}</b>\n` +
-        `Requester: <b>${escHtml(req.dbUser.name)}</b>\n` +
+        `Dari: <b>${escHtml(req.dbUser.name)}</b>\n` +
         `Link: ${escHtml(link)}` +
-        (message ? `\nPesan: <i>"${escHtml(message)}"</i>` : ''),
+        (message ? `\nTitip salam: <i>"${escHtml(message)}"</i>` : ''),
         { parse_mode: 'HTML', reply_markup: kb }
       );
     } catch (whErr) {
@@ -214,10 +274,10 @@ socialRouter.post('/radio', requireUser, async (req, res) => {
     target: 'group',
     text:
       `<b>RADIO GANG — REQUEST #${reqId}</b>\n` +
-      `Requester: <b>${escHtml(req.dbUser.name)}</b>\n` +
+      `Dari: <b>${escHtml(req.dbUser.name)}</b>\n` +
       `Lagu: <b>${escHtml(song)}</b>\n` +
       `Link: ${escHtml(link)}\n` +
-      (message ? `Pesan: <i>"${escHtml(message)}"</i>\n` : '') +
+      (message ? `Titip salam: <i>"${escHtml(message)}"</i>\n` : '') +
       `\nTotal antrean OS: <b>${waitingCount} lagu</b>`,
     buttonText: 'REQUEST LAGU',
     startParam: 'radio',
@@ -236,7 +296,7 @@ socialRouter.post('/events/rsvp', requireUser, (req, res) => {
   db.prepare('INSERT OR IGNORE INTO event_rsvps (event_id, user_id, joined_at) VALUES (?, ?, ?)')
     .run(eventId, req.dbUser.id, Date.now());
 
-  const events = db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT 15').all().map(e => ({
+  const events = db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT 15').all().map((e) => ({
     id: e.id,
     type: e.type,
     title: e.title,
@@ -264,11 +324,11 @@ socialRouter.post('/capsule', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/meme -> Upload meme ke server & kirim ke Grup Telegram
+// POST /api/meme -> Upload meme (JPG/PNG/GIF/WebM) ke server & kirim ke Grup Telegram
 socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'Pilih file gambar meme dulu.' });
+      return res.status(400).json({ error: 'Pilih file gambar, GIF, atau WebM dulu cuy.' });
     }
 
     const publicPath = await processAndSaveImage(req.file, 'memes', { width: 1080, height: 1080, fit: 'inside' });
@@ -277,13 +337,24 @@ socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, re
     const bot = getBot();
     if (bot && ENV.GROUP_ID) {
       try {
-        const localFile = path.join(ENV.UPLOAD_DIR, 'memes', path.basename(publicPath));
+        const uploadBase = ENV.UPLOAD_DIR || path.join(process.cwd(), 'data', 'uploads');
+        const localFile = path.join(uploadBase, 'memes', path.basename(publicPath));
         const kb = new InlineKeyboard().url('KIRIM MEME DI WEB', `${ENV.MINIAPP_LINK}?startapp=meme`);
-        await bot.api.sendPhoto(ENV.GROUP_ID, new InputFile(localFile), {
-          caption: `<b>MEME BARU</b>\nOleh: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n<i>${escHtml(caption)}</i>` : ''),
-          parse_mode: 'HTML',
-          reply_markup: kb
-        });
+        const isAnim = /\.(gif|webm)$/i.test(publicPath);
+
+        if (isAnim) {
+          await bot.api.sendAnimation(ENV.GROUP_ID, new InputFile(localFile), {
+            caption: `<b>MEME BARU</b>\nDari: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n<i>${escHtml(caption)}</i>` : ''),
+            parse_mode: 'HTML',
+            reply_markup: kb
+          });
+        } else {
+          await bot.api.sendPhoto(ENV.GROUP_ID, new InputFile(localFile), {
+            caption: `<b>MEME BARU</b>\nDari: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n<i>${escHtml(caption)}</i>` : ''),
+            parse_mode: 'HTML',
+            reply_markup: kb
+          });
+        }
       } catch (botErr) {
         console.error('[Meme Telegram Broadcast Error]:', botErr.message);
       }
@@ -292,6 +363,6 @@ socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, re
     res.json({ ok: true, imageUrl: publicPath });
   } catch (err) {
     console.error('[Meme Upload Error]:', err);
-    res.status(400).json({ error: err.message || 'Gagal memproses gambar.' });
+    res.status(400).json({ error: err.message || 'Gagal memproses file.' });
   }
 });
