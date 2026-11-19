@@ -11,11 +11,9 @@ import { gameRouter } from './src/api/gameRoutes.js';
 import { socialRouter } from './src/api/socialRoutes.js';
 import * as botMod from './src/bot/index.js';
 
-// Pastikan folder data & uploads tersedia di Volume Railway
 fs.mkdirSync(ENV.DATA_DIR, { recursive: true });
 fs.mkdirSync(ENV.UPLOAD_DIR, { recursive: true });
 
-// Inisialisasi tabel SQLite
 initDb();
 
 const app = express();
@@ -29,26 +27,22 @@ app.use(cors({
 app.use(express.json({ limit: '5mb' }));
 app.use('/uploads', express.static(ENV.UPLOAD_DIR));
 
-// Health check endpoint untuk Railway
 app.get('/', (req, res) => {
   res.json({ status: 'ok', service: 'PUNKSHIT.OS API', time: Date.now() });
 });
 
-// Middleware autentikasi Telegram WebApp untuk seluruh endpoint /api
 app.use('/api', authTma);
 app.use('/api', userRouter);
 app.use('/api', actionRouter);
 app.use('/api', gameRouter);
 app.use('/api', socialRouter);
 
-// Muat adminRoutes.js secara opsional jika file tersebut ada di repo
 if (fs.existsSync(path.resolve('./src/api/adminRoutes.js'))) {
   const adminMod = await import('./src/api/adminRoutes.js');
   const adminRouter = adminMod.adminRouter || adminMod.default;
   if (adminRouter) app.use('/api', adminRouter);
 }
 
-// Global error handler
 app.use((err, req, res, next) => {
   console.error('[API Error]:', err);
   res.status(500).json({ error: err.message || 'Internal Server Error' });
