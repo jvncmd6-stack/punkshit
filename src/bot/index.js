@@ -1,260 +1,331 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
-import {
-  bindBotInstance,
-  syncTelegramAvatar,
-  broadcastToTelegram,
-  escHtml,
-  todayWib
-} from '../services/syncEngine.js';
+import { escHtml } from '../services/syncEngine.js';
 
-function rankTitle(streak) {
-  if (streak >= 60) return '👑 Fosil Punkshit';
-  if (streak >= 30) return '🔥 Biang Kerok';
-  if (streak >= 14) return '🧨 Tukang Rusuh';
-  if (streak >= 7) return '☕ Warga Tetap';
-  if (streak >= 4) return '🚬 Anak Gang';
-  return '🌱 Mayat Baru';
+let botInstance = null;
+
+// Tabel penyimpanan pengaturan Greet & Bye agar permanen di Volume Railway
+db.exec(`
+  CREATE TABLE IF NOT EXISTS bot_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )
+`);
+
+function getSetting(key, fallback = '') {
+  const row = db.prepare('SELECT value FROM bot_settings WHERE key = ?').get(key);
+  return row ? row.value : fallback;
 }
 
-function calcAbsenBonus(streak) {
-  const base = streak < 4 ? 2 : streak < 7 ? 3 : streak < 14 ? 5 : streak < 30 ? 7 : streak < 60 ? 10 : 15;
-  return base + (streak % 7 === 0 ? 25 : 0);
+function setSetting(key, value) {
+  db.prepare(`
+    INSERT INTO bot_settings (key, value) VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(key, String(value));
 }
 
-export function initBot() {
+// Default teks bersih (minim emoji & informatif)
+const DEFAULT_GREET =
+  'Selamat datang di markas, {mention}.\n\n' +
+  'Silakan cetak kartu identitas PunkID, cek aturan tongkrongan di Pasal & Help, dan pantau info terbaru lewat tombol di bawah.';
+
+const DEFAULT_BYE =
+  '{name} ({username}) telah meninggalkan markas.\n\n' +
+  'Akses PunkID dan aktivitas tongkrongan resmi ditutup.';
+
+// Cek apakah pengirim adalah Owner atau Admin
+function isBotAdmin(userId) {
+  const uid = String(userId);
+  if ((ENV.OWNER_IDS || []).map(String).includes(uid)) return true;
+  const u = db.prepare('SELECT role FROM users WHERE id = ?').get(uid);
+  return Boolean(u && (u.role === 'owner' || u.role === 'admin'));
+}
+
+// Susun tombol Inline untuk pesan Greet
+function buildGreetKeyboard() {
+  const kb = new InlineKeyboard();
+  const appLink = ENV.MINIAPP_LINK || '';
+  const chUrl = (process.env.CHANNEL_URL || '').trim();
+
+  if (appLink) {
+    kb.url('Buka PunkID & Markas', appLink);
+    kb.url('Pasal & Help', `${appLink}?startapp=rules`);
+  }
+  if (chUrl) {
+    kb.row().url('Channel Info', chUrl);
+  }
+  return kb;
+}
+
+// Susun tombol Inline untuk pesan Bye
+function buildByeKeyboard() {
+  const kb = new InlineKeyboard();
+  const appLink = ENV.MINIAPP_LINK || '';
+  if (appLink) {
+    kb.url('Lihat Daftar Warga', `${appLink}?startapp=warga`);
+  }
+  return kb;
+}
+
+// Format placeholder teks
+function formatTemplate(tpl, member, totalCount) {
+  const fullName = [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Warga';
+  const safeName = escHtml(fullName);
+  const mention = `<a href="tg://user?id=${member.id}">${safeName}</a>`;
+  const username = member.username ? `@${escHtml(member.username)}` : 'tanpa username';
+
+  return escHtml(tpl)
+    .replace(/\{name\}/gi, safeName)
+    .replace(/\{mention\}/gi, mention)
+    .replace(/\{username\}/gi, username)
+    .replace(/\{count\}/gi, String(totalCount || '-'));
+}
+
+export function startBot() {
+  if (!ENV.BOT_TOKEN) {
+    console.warn('[PUNKSHIT.OS] BOT_TOKEN kosong, bot dilewati.');
+    return null;
+  }
+
   const bot = new Bot(ENV.BOT_TOKEN);
-  bindBotInstance(bot);
+  botInstance = bot;
 
-  // Alamat publik Railway otomatis tersedia di environment variable RAILWAY_PUBLIC_DOMAIN
-  const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : (process.env.API_URL || '').trim();
-
-  const openMarkasKb = (ctx, param = '') => {
+  // /start di PC atau Grup
+  bot.command('start', async (ctx) => {
     const kb = new InlineKeyboard();
-    const qs = new URLSearchParams();
-    if (railwayApi) qs.set('api', railwayApi);
-    if (param) qs.set('startapp', param);
-    const fullWebUrl = qs.toString() ? `${ENV.WEBAPP_URL}?${qs.toString()}` : ENV.WEBAPP_URL;
+    if (ENV.MINIAPP_LINK) {
+      kb.url('Buka PUNKSHIT.OS', ENV.MINIAPP_LINK);
+    }
+    const groupUrl = (process.env.GROUP_URL || '').trim();
+    if (groupUrl) {
+      kb.row().url('Grup Markas', groupUrl);
+    }
 
-    // Jika dibuka dari Grup/Channel via t.me/bot/app, sisipkan API lewat startapp
-    const startPayload = param
-      ? `${param}__${Buffer.from(railwayApi).toString('base64url')}`
-      : `home__${Buffer.from(railwayApi).toString('base64url')}`;
-    const fullDirectLink = railwayApi
-      ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(startPayload)}`
-      : (param ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(param)}` : ENV.MINIAPP_LINK);
-
-    return ctx.chat?.type === 'private'
-      ? kb.webApp('🪪 BUKA PUNKSHIT.OS', fullWebUrl)
-      : kb.url('🪪 BUKA PUNKSHIT.OS', fullDirectLink);
-  };
-
-  // /start & /markas
-  bot.command(['start', 'markas'], ctx => {
-    return ctx.reply(
-      `🪪 <b>PUNKSHIT.OS — MARKAS ONLINE</b>\n` +
-      `Wih, nongol juga. Markas masih berdiri kok, belum dialihfungsikan jadi minimarket.\n\n` +
-      `Tap tombol di bawah buat buka Mini App:`,
-      { parse_mode: 'HTML', reply_markup: openMarkasKb(ctx) }
+    await ctx.reply(
+      '<b>PUNKSHIT.OS — Sistem Markas Digital</b>\n\n' +
+      'Gunakan tombol di bawah untuk membuka aplikasi, cetak PunkID, cek Absen Nyawa, dan akses Lapak Warga.\n\n' +
+      '<i>Admin: ketik /greetinfo di chat pribadi ini untuk mengatur pesan sambutan & keluar grup.</i>',
+      { parse_mode: 'HTML', reply_markup: kb }
     );
   });
 
-  // /absen -> Absen langsung dari chat bot/grup dan otomatis sinkron ke Web
-  bot.command('absen', async ctx => {
-    const uid = String(ctx.from.id);
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
-    if (!user) {
-      return ctx.reply('Lu belum punya PunkID bro. Buka markas dulu buat daftar!', {
-        reply_markup: openMarkasKb(ctx)
-      });
-    }
+  // /greetinfo -> Panduan & preview setting di PC
+  bot.command('greetinfo', async (ctx) => {
+    if (ctx.chat.type !== 'private') return;
+    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Akses ditolak. Khusus Owner & Admin.');
 
-    const today = todayWib();
-    if (user.last_absen === today) {
-      return ctx.reply(`🔥 Santai ${escHtml(user.name)}, lu udah absen hari ini (Streak: ${user.streak} hari).`, {
-        parse_mode: 'HTML'
-      });
-    }
+    const greetText = getSetting('greet_text', DEFAULT_GREET);
+    const byeText = getSetting('bye_text', DEFAULT_BYE);
+    const greetMedia = getSetting('greet_media', '');
+    const byeMedia = getSetting('bye_media', '');
 
-    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-    const nextStreak = user.last_absen === yesterday ? user.streak + 1 : 1;
-    const nextBest = Math.max(user.best, nextStreak);
-    const earned = calcAbsenBonus(nextStreak);
-    const now = Date.now();
+    const info =
+      '<b>PENGATURAN GREET & BYE GRUP</b>\n\n' +
+      '<b>1. Ubah Teks:</b>\n' +
+      '• <code>/setgreet teks baru</code>\n' +
+      '• <code>/setbye teks baru</code>\n' +
+      'Variabel: <code>{name}</code>, <code>{mention}</code>, <code>{username}</code>, <code>{count}</code>\n\n' +
+      '<b>2. Pasang GIF atau Stiker:</b>\n' +
+      '• Reply (balas) GIF/Stiker di chat ini lalu ketik <code>/setgreetmedia</code>\n' +
+      '• Reply (balas) GIF/Stiker di chat ini lalu ketik <code>/setbyemedia</code>\n' +
+      '• Hapus media: <code>/delgreetmedia</code> atau <code>/delbyemedia</code>\n\n' +
+      '<b>Status Saat Ini:</b>\n' +
+      `• Media Greet: <b>${greetMedia ? greetMedia.split(':')[0].toUpperCase() + ' Terpasang' : 'Kosong'}</b>\n` +
+      `• Media Bye: <b>${byeMedia ? byeMedia.split(':')[0].toUpperCase() + ' Terpasang' : 'Kosong'}</b>\n\n` +
+      `<b>Teks Greet:</b>\n<i>${escHtml(greetText)}</i>\n\n` +
+      `<b>Teks Bye:</b>\n<i>${escHtml(byeText)}</i>`;
 
-    const tx = db.transaction(() => {
-      db.prepare(`
-        UPDATE users SET psc = psc + ?, streak = ?, best = ?, cred = cred + 2, last_absen = ?, presence_at = ?
-        WHERE id = ?
-      `).run(earned, nextStreak, nextBest, today, now, uid);
-      db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(uid, 'absen', earned, `Absen via Bot hari ke-${nextStreak}`, now);
-    });
-    tx();
-
-    syncTelegramAvatar(uid, ctx.from).catch(() => {});
-
-    const feedMsg = `MASIH HIDUP TERNYATA. ${user.name} absen hari ke-${nextStreak} (+${earned} PSC).`;
-    await broadcastToTelegram({
-      target: 'group',
-      text: `🔥 <b>MASIH HIDUP TERNYATA.</b>\n<b>${escHtml(user.name)}</b> absen hari ke-<b>${nextStreak}</b> (+${earned} PSC).`,
-      buttonText: '🔥 IKUT ABSEN',
-      startParam: 'absen',
-      feedText: feedMsg
-    });
-
-    if (ctx.chat.type === 'private') {
-      return ctx.reply(`✅ Absen hari ke-${nextStreak} berhasil! +${earned} PSC masuk dompet.`);
-    }
+    await ctx.reply(info, { parse_mode: 'HTML' });
   });
 
-  // /saldo & /punkid
-  bot.command(['saldo', 'punkid'], ctx => {
-    const uid = String(ctx.from.id);
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
-    if (!user) {
-      return ctx.reply('Belum punya PunkID. Buka markas dulu!', { reply_markup: openMarkasKb(ctx) });
+  // /setgreet <teks> -> Set teks welcome di PC
+  bot.command('setgreet', async (ctx) => {
+    if (ctx.chat.type !== 'private') return;
+    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Akses ditolak. Khusus Owner & Admin.');
+
+    const text = String(ctx.match || '').trim();
+    if (text.length < 3) {
+      return ctx.reply('Format salah. Contoh:\n/setgreet Selamat datang {mention} di markas! Total warga sekarang {count} orang.');
     }
 
-    return ctx.reply(
-      `🪪 <b>PUNKID — ${escHtml(user.name.toUpperCase())}</b>\n` +
-      `• No. Warga: <code>${escHtml(user.member_no)}</code>\n` +
-      `• Pangkat: <b>${rankTitle(user.streak)}</b>\n` +
-      `• Saldo PSC: <b>${user.psc} PSC</b>\n` +
-      `• Streak Aktif: <b>${user.streak} hari</b> (Rekor: ${user.best})\n` +
-      `• Street Cred: <b>${user.cred} poin</b>`,
-      { parse_mode: 'HTML', reply_markup: openMarkasKb(ctx, 'gue') }
-    );
+    setSetting('greet_text', text);
+    await ctx.reply('Teks Greet (sambutan member masuk) berhasil diperbarui.');
   });
 
-  // /top -> Hall of Fame singkat
-  bot.command('top', ctx => {
-    const rows = db.prepare('SELECT name, streak, psc FROM users ORDER BY streak DESC, psc DESC LIMIT 5').all();
-    const list = rows.length
-      ? rows.map((r, i) => `${i + 1}. <b>${escHtml(r.name)}</b> — ${r.streak} hari (${r.psc} PSC)`).join('\n')
-      : 'Belum ada warga terdaftar.';
+  // /setbye <teks> -> Set teks goodbye di PC
+  bot.command('setbye', async (ctx) => {
+    if (ctx.chat.type !== 'private') return;
+    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Akses ditolak. Khusus Owner & Admin.');
 
-    return ctx.reply(`🏆 <b>HALL OF FAME — TOP STREAK</b>\n\n${list}`, {
-      parse_mode: 'HTML',
-      reply_markup: openMarkasKb(ctx, 'fame')
-    });
+    const text = String(ctx.match || '').trim();
+    if (text.length < 3) {
+      return ctx.reply('Format salah. Contoh:\n/setbye {name} telah keluar dari markas.');
+    }
+
+    setSetting('bye_text', text);
+    await ctx.reply('Teks Bye (member keluar) berhasil diperbarui.');
   });
 
-  // /bantuan
-  bot.command('bantuan', ctx => {
-    return ctx.reply(
-      `🤖 <b>POS BANTUAN MAS RAKA</b>\n\n` +
-      `• /markas — Buka Mini App PUNKSHIT.OS\n` +
-      `• /absen — Absen harian cepat\n` +
-      `• /punkid — Cek kartu identitas & saldo PSC\n` +
-      `• /top — Klasemen warga terajin\n\n` +
-      `Fitur lengkap (Lapak Rongsok, Avatar Border, Saweran, Mancing, Menfess, & Ruang Dalang) tersedia di Mini App.`,
-      { parse_mode: 'HTML', reply_markup: openMarkasKb(ctx) }
-    );
+  // /setgreetmedia -> Reply GIF atau Stiker di PC
+  bot.command('setgreetmedia', async (ctx) => {
+    if (ctx.chat.type !== 'private') return;
+    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Akses ditolak. Khusus Owner & Admin.');
+
+    const reply = ctx.message?.reply_to_message;
+    if (!reply) {
+      return ctx.reply('Caranya: kirim atau teruskan GIF / Stiker ke chat ini, lalu balas (reply) media tersebut dengan ketik /setgreetmedia');
+    }
+
+    if (reply.animation) {
+      setSetting('greet_media', `animation:${reply.animation.file_id}`);
+      return ctx.reply('GIF berhasil dipasang untuk pesan Greet grup.');
+    }
+    if (reply.sticker) {
+      setSetting('greet_media', `sticker:${reply.sticker.file_id}`);
+      return ctx.reply('Stiker berhasil dipasang untuk pesan Greet grup.');
+    }
+
+    await ctx.reply('Format tidak didukung. Hanya bisa reply GIF atau Stiker.');
   });
 
-  // Callback tombol [💰 SIKAT SAWERAN] di Grup Telegram
-  bot.callbackQuery(/^claim_sw:(.+)$/, async ctx => {
-    const sawId = ctx.match[1];
-    const uid = String(ctx.from.id);
+  // /setbyemedia -> Reply GIF atau Stiker di PC
+  bot.command('setbyemedia', async (ctx) => {
+    if (ctx.chat.type !== 'private') return;
+    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Akses ditolak. Khusus Owner & Admin.');
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
-    if (!user) {
-      return ctx.answerCallbackQuery({
-        text: 'Bikin PunkID dulu di Mini App sebelum sikat saweran!',
-        show_alert: true
-      });
+    const reply = ctx.message?.reply_to_message;
+    if (!reply) {
+      return ctx.reply('Caranya: kirim atau teruskan GIF / Stiker ke chat ini, lalu balas (reply) media tersebut dengan ketik /setbyemedia');
     }
 
-    const saw = db.prepare('SELECT * FROM saweran WHERE id = ?').get(sawId);
-    if (!saw) {
-      return ctx.answerCallbackQuery({ text: 'Saweran tidak ditemukan.', show_alert: true });
+    if (reply.animation) {
+      setSetting('bye_media', `animation:${reply.animation.file_id}`);
+      return ctx.reply('GIF berhasil dipasang untuk pesan Bye grup.');
+    }
+    if (reply.sticker) {
+      setSetting('bye_media', `sticker:${reply.sticker.file_id}`);
+      return ctx.reply('Stiker berhasil dipasang untuk pesan Bye grup.');
     }
 
-    const claims = db.prepare('SELECT * FROM saweran_claims WHERE saweran_id = ?').all(sawId);
-    if (claims.some(c => c.user_id === uid)) {
-      return ctx.answerCallbackQuery({ text: 'Lu udah kebagian saweran ini bro, jangan maruk!', show_alert: true });
-    }
-    if (claims.length >= saw.quota || saw.remaining_amount <= 0) {
-      return ctx.answerCallbackQuery({ text: '🏃 TOO LATE! Sawerannya udah ludes disikat warga.', show_alert: true });
-    }
+    await ctx.reply('Format tidak didukung. Hanya bisa reply GIF atau Stiker.');
+  });
 
-    const slotsLeft = saw.quota - claims.length;
-    let won = 0;
-    if (slotsLeft === 1) {
-      won = saw.remaining_amount;
-    } else if (saw.mode === 'random') {
-      const maxTake = Math.max(1, Math.floor((saw.remaining_amount / slotsLeft) * 1.6));
-      won = Math.max(1, Math.min(saw.remaining_amount - (slotsLeft - 1), Math.floor(Math.random() * maxTake) + 1));
-    } else {
-      won = Math.floor(saw.remaining_amount / slotsLeft);
-    }
+  // Hapus media Greet / Bye
+  bot.command('delgreetmedia', async (ctx) => {
+    if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
+    setSetting('greet_media', '');
+    await ctx.reply('Media GIF/Stiker Greet telah dihapus.');
+  });
 
-    const now = Date.now();
-    const tx = db.transaction(() => {
-      db.prepare('INSERT INTO saweran_claims (saweran_id, user_id, amount, claimed_at) VALUES (?, ?, ?, ?)')
-        .run(sawId, uid, won, now);
-      db.prepare('UPDATE saweran SET remaining_amount = remaining_amount - ? WHERE id = ?').run(won, sawId);
-      db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(won, uid);
-      db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(uid, 'sawer_in', won, `Klaim saweran dari ${saw.creator_name}`, now);
-    });
-    tx();
+  bot.command('delbyemedia', async (ctx) => {
+    if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
+    setSetting('bye_media', '');
+    await ctx.reply('Media GIF/Stiker Bye telah dihapus.');
+  });
 
-    const nextCount = claims.length + 1;
-    const kb = new InlineKeyboard();
-    if (nextCount < saw.quota) {
-      kb.text(`💰 SIKAT SAWERAN (${nextCount}/${saw.quota})`, `claim_sw:${sawId}`);
-    } else {
-      kb.url('✅ SAWERAN HABIS — BUKA MARKAS', ENV.MINIAPP_LINK);
-    }
-
+  // Event Member Baru Masuk Grup
+  bot.on('message:new_chat_members', async (ctx) => {
+    const members = ctx.message.new_chat_members || [];
+    let count = 0;
     try {
-      await ctx.editMessageReplyMarkup({ reply_markup: kb });
-    } catch {}
+      count = await ctx.getChatMemberCount();
+    } catch (e) {}
 
-    return ctx.answerCallbackQuery({
-      text: `💰 FREE MONEY SECURED! +${won} PSC masuk dompet lo!`,
-      show_alert: true
-    });
+    const tpl = getSetting('greet_text', DEFAULT_GREET);
+    const mediaRaw = getSetting('greet_media', '');
+    const kb = buildGreetKeyboard();
+
+    for (const m of members) {
+      if (m.is_bot) continue;
+      const body = formatTemplate(tpl, m, count);
+
+      try {
+        if (mediaRaw.startsWith('animation:')) {
+          const fileId = mediaRaw.slice('animation:'.length);
+          await ctx.replyWithAnimation(fileId, {
+            caption: body,
+            parse_mode: 'HTML',
+            reply_markup: kb
+          });
+        } else if (mediaRaw.startsWith('sticker:')) {
+          const fileId = mediaRaw.slice('sticker:'.length);
+          await ctx.replyWithSticker(fileId);
+          await ctx.reply(body, {
+            parse_mode: 'HTML',
+            reply_markup: kb,
+            disable_web_page_preview: true
+          });
+        } else {
+          await ctx.reply(body, {
+            parse_mode: 'HTML',
+            reply_markup: kb,
+            disable_web_page_preview: true
+          });
+        }
+      } catch (err) {
+        console.error('[Greet Error]:', err.message);
+      }
+    }
   });
 
-  // Auto-Greet Warga Baru (Auto-delete 60 detik)
-  bot.on('message:new_chat_members', async ctx => {
-    const names = ctx.message.new_chat_members
-      .filter(m => !m.is_bot)
-      .map(m => escHtml(m.first_name))
-      .join(', ');
-    if (!names) return;
-
-    const sent = await ctx.reply(
-      `🚨 <b>WOI, ADA ORANG NYASAR!</b>\n` +
-      `Welcome to Punkshit, <b>${names}</b>!\n\n` +
-      `Satu penghuni baru berhasil masuk markas. Cetak <b>PunkID</b> lo sekarang biar resmi jadi warga! 💙💛`,
-      { parse_mode: 'HTML', reply_markup: openMarkasKb(ctx) }
-    );
-    setTimeout(() => bot.api.deleteMessage(ctx.chat.id, sent.message_id).catch(() => {}), 60000);
-  });
-
-  // Auto-Farewell Warga Keluar (Auto-delete 60 detik)
-  bot.on('message:left_chat_member', async ctx => {
+  // Event Member Keluar dari Grup
+  bot.on('message:left_chat_member', async (ctx) => {
     const m = ctx.message.left_chat_member;
     if (!m || m.is_bot) return;
 
-    const sent = await ctx.reply(
-      `⚰️ <b>SATU NYAWA TELAH GUGUR.</b>\n` +
-      `<b>${escHtml(m.first_name)}</b> resmi meninggalkan markas. Press F to pay respect.`,
-      { parse_mode: 'HTML' }
-    );
-    setTimeout(() => bot.api.deleteMessage(ctx.chat.id, sent.message_id).catch(() => {}), 60000);
+    let count = 0;
+    try {
+      count = await ctx.getChatMemberCount();
+    } catch (e) {}
+
+    const tpl = getSetting('bye_text', DEFAULT_BYE);
+    const mediaRaw = getSetting('bye_media', '');
+    const kb = buildByeKeyboard();
+    const body = formatTemplate(tpl, m, count);
+
+    try {
+      if (mediaRaw.startsWith('animation:')) {
+        const fileId = mediaRaw.slice('animation:'.length);
+        await ctx.replyWithAnimation(fileId, {
+          caption: body,
+          parse_mode: 'HTML',
+          reply_markup: kb
+        });
+      } else if (mediaRaw.startsWith('sticker:')) {
+        const fileId = mediaRaw.slice('sticker:'.length);
+        await ctx.replyWithSticker(fileId);
+        await ctx.reply(body, {
+          parse_mode: 'HTML',
+          reply_markup: kb,
+          disable_web_page_preview: true
+        });
+      } else {
+        await ctx.reply(body, {
+          parse_mode: 'HTML',
+          reply_markup: kb,
+          disable_web_page_preview: true
+        });
+      }
+    } catch (err) {
+      console.error('[Bye Error]:', err.message);
+    }
   });
 
-  bot.catch(err => console.error('[Bot Error]:', err.message));
-  bot.start({ drop_pending_updates: true });
-  console.log('[PUNKSHIT.OS] Bot Mas Raka aktif.');
+  bot.catch((err) => {
+    console.error('[Bot Error]:', err.message);
+  });
+
+  bot.start({
+    drop_pending_updates: true,
+    onStart: () => console.log('[PUNKSHIT.OS] Bot Mas Raka aktif.')
+  });
 
   return bot;
 }
+
+export function getBotInstance() {
+  return botInstance;
+}
+
+export default startBot;
