@@ -27,13 +27,29 @@ export function initBot() {
   const bot = new Bot(ENV.BOT_TOKEN);
   bindBotInstance(bot);
 
+  // Alamat publik Railway otomatis tersedia di environment variable RAILWAY_PUBLIC_DOMAIN
+  const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : (process.env.API_URL || '').trim();
+
   const openMarkasKb = (ctx, param = '') => {
     const kb = new InlineKeyboard();
-    const url = param ? `${ENV.WEBAPP_URL}?startapp=${param}` : ENV.WEBAPP_URL;
-    const link = param ? `${ENV.MINIAPP_LINK}?startapp=${param}` : ENV.MINIAPP_LINK;
+    const qs = new URLSearchParams();
+    if (railwayApi) qs.set('api', railwayApi);
+    if (param) qs.set('startapp', param);
+    const fullWebUrl = qs.toString() ? `${ENV.WEBAPP_URL}?${qs.toString()}` : ENV.WEBAPP_URL;
+
+    // Jika dibuka dari Grup/Channel via t.me/bot/app, sisipkan API lewat startapp
+    const startPayload = param
+      ? `${param}__${Buffer.from(railwayApi).toString('base64url')}`
+      : `home__${Buffer.from(railwayApi).toString('base64url')}`;
+    const fullDirectLink = railwayApi
+      ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(startPayload)}`
+      : (param ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(param)}` : ENV.MINIAPP_LINK);
+
     return ctx.chat?.type === 'private'
-      ? kb.webApp('🪪 BUKA PUNKSHIT.OS', url)
-      : kb.url('🪪 BUKA PUNKSHIT.OS', link);
+      ? kb.webApp('🪪 BUKA PUNKSHIT.OS', fullWebUrl)
+      : kb.url('🪪 BUKA PUNKSHIT.OS', fullDirectLink);
   };
 
   // /start & /markas
@@ -46,7 +62,7 @@ export function initBot() {
     );
   });
 
-  // /absen -> Bisa absen langsung dari chat bot/grup dan otomatis sinkron ke Web!
+  // /absen -> Absen langsung dari chat bot/grup dan otomatis sinkron ke Web
   bot.command('absen', async ctx => {
     const uid = String(ctx.from.id);
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
@@ -79,7 +95,6 @@ export function initBot() {
     });
     tx();
 
-    // Update foto profil Telegram diam-diam saat berinteraksi
     syncTelegramAvatar(uid, ctx.from).catch(() => {});
 
     const feedMsg = `MASIH HIDUP TERNYATA. ${user.name} absen hari ke-${nextStreak} (+${earned} PSC).`;
@@ -224,7 +239,7 @@ export function initBot() {
     setTimeout(() => bot.api.deleteMessage(ctx.chat.id, sent.message_id).catch(() => {}), 60000);
   });
 
-  // Auto-Farewell Warga Keluar (Auto-delete 60 detik)[cite: 5]
+  // Auto-Farewell Warga Keluar (Auto-delete 60 detik)
   bot.on('message:left_chat_member', async ctx => {
     const m = ctx.message.left_chat_member;
     if (!m || m.is_bot) return;
