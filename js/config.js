@@ -1,62 +1,94 @@
-window.PUNK_CONFIG = {
-  // Ganti dengan URL deploy Railway Anda (tanpa garis miring di akhir)
-  API_URL: 'https://GANTI-INI.up.railway.app',
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var apiFromUrl = params.get('api');
+  var routeParam = params.get('startapp') || '';
 
-  // Tautan Grup & Channel untuk tombol navigasi cepat
-  GROUP_URL: 'https://t.me/punkshit_group',
-  CHANNEL_URL: 'https://t.me/punkshit_channel',
+  // Cek juga parameter startapp dari Telegram WebApp (ketika dibuka dari tombol Grup/Channel)
+  var tgStart = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param) || '';
+  var rawStart = tgStart || routeParam;
 
-  // Konfigurasi Ikon Aplikasi (10 Modul + Ruang Dalang untuk Admin/Owner)
-  ICONS: {
-    markas:  ['Markas', '#3b8bff', '#0b3fae', 'M3 11l9-8 9 8M5 9.5V20h14V9.5M10 20v-6h4v6'],
-    warga:   ['Warga', '#34C759', '#12803a', 'M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16.5 4.5a3 3 0 010 6M18 14c2 .6 3.5 2.6 3.5 5.5'],
-    arena:   ['Arena', '#AF52DE', '#5b2490', 'M6 8h12a4 4 0 014 4v3a3 3 0 01-5.2 2L15 15H9l-1.8 2A3 3 0 012 15v-3a4 4 0 014-4zM7 10.5v3M5.5 12h3M16 11h.01M18 13h.01'],
-    lapak:   ['Lapak', '#FF9500', '#c24f00', 'M4 8h16v4H4zM5 12v8h14v-8M12 8v12M12 8C10 3.5 6 4.5 7.5 8M12 8c2-4.5 6-3.5 4.5 0'],
-    misi:    ['Misi Rusuh', '#FF453A', '#9a1810', 'M12 3c1 4 5 5 5 10a5 5 0 01-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 .5-3-1-5 1-8.5z'],
-    kas:     ['Dompet', '#FFD633', '#c28a00', 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v10M14.5 9.5h-3.5a1.7 1.7 0 000 3.4h2a1.7 1.7 0 010 3.4H9.5'],
-    event:   ['Kalender', '#5AC8FA', '#1565c0', 'M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zM3 10h18M8 3v4M16 3v4'],
-    radio:   ['Radio Gang', '#FF2D55', '#8f1034', 'M4 15v-3a8 8 0 0116 0v3M4 14h3v6H5.5A1.5 1.5 0 014 18.5zM20 14h-3v6h1.5a1.5 1.5 0 001.5-1.5z'],
-    wanted:  ['Wanted', '#8E8E93', '#3a3a3c', 'M11 4a7 7 0 100 14 7 7 0 000-14zM16 16l5 5'],
-    museum:  ['Museum', '#4f6bff', '#16203f', 'M3 8h4l2-3h6l2 3h4v12H3zM12 10a3.5 3.5 0 100 7 3.5 3.5 0 000-7z'],
-    fame:    ['Hall of Fame', '#FFCC00', '#ff7a00', 'M7 4h10v5a5 5 0 01-10 0zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3M12 14v4M8 20h8'],
-    gue:     ['Gue', '#64D2FF', '#176BFF', 'M12 4a4 4 0 100 8 4 4 0 000-8zM4 21c0-4 3.5-7 8-7s8 3 8 7'],
-    absen:   ['Absen', '#34C759', '#0f6e32', 'M12 3a9 9 0 100 18 9 9 0 000-18zM8 12l3 3 5-6'],
-    sidang:  ['Sidang', '#FF9F0A', '#b04a00', 'M5 20V11M12 20V4M19 20v-6'],
-    kotak:   ['Kotak Rahasia', '#5E5CE6', '#2a2a8a', 'M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM3 7l9 7 9-7'],
-    meme:    ['Meme Board', '#FF6AC1', '#a0207a', 'M12 3a9 9 0 100 18 9 9 0 000-18zM8.5 14a4.5 4 0 007 0M9 10h.01M15 10h.01'],
-    dalang:  ['Ruang Dalang', '#FF3B30', '#1c1c1e', 'M12 2l3 6 6 .9-4.5 4.4 1 6.2L12 16.5 6.5 19.5l1-6.2L3 8.9 9 8z']
-  },
+  if (rawStart && rawStart.indexOf('__') !== -1) {
+    var parts = rawStart.split('__');
+    routeParam = parts[0];
+    try {
+      var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      var decodedApi = atob(b64);
+      if (decodedApi && decodedApi.indexOf('http') === 0) {
+        apiFromUrl = decodedApi;
+      }
+    } catch (e) {}
+  }
 
-  // Susunan Grid & Dock Default
-  BASE_GRID: ['absen', 'misi', 'kas', 'arena', 'event', 'radio', 'wanted', 'sidang', 'kotak', 'meme', 'museum', 'fame'],
-  DOCK: ['markas', 'warga', 'lapak', 'gue'],
+  if (apiFromUrl) {
+    localStorage.setItem('psk_api_url', apiFromUrl.replace(/\/$/, ''));
+  }
 
-  // 14 Status "Siapa yang Masih Hidup?" (Bab III - 3.2)
-  PRESENCE_LIST: [
-    { e: '☕', t: 'Nongki Dulu', d: 'Siap ngobrol' },
-    { e: '🎮', t: 'Gas Mabar', d: 'Cari teman main' },
-    { e: '🎧', t: 'Mode Budeg', d: 'Lagi denger musik' },
-    { e: '💤', t: 'Mati Suri', d: 'AFK' },
-    { e: '💻', t: 'Sok Sibuk', d: 'Nugas atau kerja' },
-    { e: '🔥', t: 'Cari Ribut', d: 'Siap ikut keseruan' },
-    { e: '👀', t: 'Cuma Nyimak', d: 'Silent reader' },
-    { e: '💌', t: 'Cari Ayang', d: 'Open kenalan' },
-    { e: '🌙', t: 'Night Owl', d: 'Aktif malam' },
-    { e: '🎬', t: 'Movie Time', d: 'Lagi nonton' },
-    { e: '📸', t: 'Cari Partner JJ', d: 'Mau bikin konten' },
-    { e: '🚪', t: 'Keluyuran', d: 'Sedang ada aktivitas lain' },
-    { e: '🫠', t: 'Loading Dulu', d: 'Lagi bingung mau ngapain' },
-    { e: '🍜', t: 'Isi Bensin', d: 'Lagi makan' }
-  ],
+  var savedApi = localStorage.getItem('psk_api_url') || '';
 
-  // Fallback Item Bawaan (Jika server belum menambah item dinamis)
-  DEFAULT_ITEMS: [
-    { id: 'heart', type: 'gift', name: 'Chrome Heart', price: 50, rarity: 'Rare', desc: 'Hati krom buat yang spesial.', colors: ['#cfeaff', '#176BFF'], svgPath: 'M50 88C18 64 8 46 8 33a21 21 0 0142-5 21 21 0 0142 5c0 13-10 31-42 55z' },
-    { id: 'bolt', type: 'gift', name: 'Neon Bolt', price: 80, rarity: 'Rare', desc: 'Kilat buat yang selalu on fire.', colors: ['#fff7a0', '#ffb800'], svgPath: 'M60 4L18 56h27l-7 40 44-56H55z' },
-    { id: 'star', type: 'gift', name: 'Punk Star', price: 120, rarity: 'Epic', desc: 'Bintang jalanan, bersinar di gang.', colors: ['#ffb3e6', '#9a3cff'], svgPath: 'M50 6l13 28 30 3-22 21 7 30-28-16-28 16 7-30L7 37l30-3z' },
-    { id: 'fish', type: 'gift', name: 'Golden Punkfish', price: 300, rarity: 'Legendary', desc: 'Ikan emas langka. Main character luck.', colors: ['#fff3b0', '#e09a00'], svgPath: 'M5 50C22 22 52 20 70 43l23-19v52L70 57C52 80 22 78 5 50z' },
-    { id: 'crown', type: 'gift', name: 'Fosil Crown', price: 500, rarity: 'Legendary', desc: 'Mahkota buat fosil sejati markas.', colors: ['#c8f7ff', '#1e8ab8'], svgPath: 'M8 80V28l24 24 18-34 18 34 24-24v52z' }
-  ],
+  window.PUNK_CONFIG = {
+    API_URL: savedApi,
+    INITIAL_ROUTE: routeParam,
+    GROUP_URL: '',
+    CHANNEL_URL: '',
 
-  RING_NAMES: ['Polos', 'Emas', 'Neon', 'Pelangi']
-};
+    ICONS: {
+      absen:    '<svg viewBox="0 0 24 24"><path d="M12 2c1 4-2 6-2 9a4 4 0 008 0c0-2-1-4-1-6 3 2 5 5 5 9a10 10 0 11-20 0c0-5 4-9 10-12z"/></svg>',
+      kas:      '<svg viewBox="0 0 24 24"><path d="M3 7a3 3 0 013-3h12a3 3 0 013 3v10a3 3 0 01-3 3H6a3 3 0 01-3-3V7zm13 5a2 2 0 100 .01V12z"/></svg>',
+      lapak:    '<svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9v2a3 3 0 01-2 2.8V20H6v-6.2A3 3 0 014 11V9zm6 6v3h4v-3h-4z"/></svg>',
+      arena:    '<svg viewBox="0 0 24 24"><path d="M6 7h12a4 4 0 013.9 4.9l-1 4.5A2.5 2.5 0 0118.5 18c-1 0-1.8-.5-2.3-1.3L15 15H9l-1.2 1.7A2.6 2.6 0 015.5 18a2.5 2.5 0 01-2.4-1.6l-1-4.5A4 4 0 016 7zm2 3v2H6v2h2v2h2v-2h2v-2h-2v-2H8zm7.5 1a1.2 1.2 0 100 2.4 1.2 1.2 0 000-2.4zm2.5 2a1.2 1.2 0 100 2.4 1.2 1.2 0 000-2.4z"/></svg>',
+      warga:    '<svg viewBox="0 0 24 24"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zm7 1a3 3 0 100-6 3 3 0 000 6zM2 19a6 6 0 0112 0v1H2v-1zm13 1v-1a6 6 0 00-1.3-3.7A5 5 0 0122 19v1h-7z"/></svg>',
+      fame:     '<svg viewBox="0 0 24 24"><path d="M7 3h10v3h3v3a5 5 0 01-4.2 4.9A6 6 0 0113 16.9V19h4v2H7v-2h4v-2.1a6 6 0 01-2.8-3A5 5 0 014 9V6h3V3z"/></svg>',
+      kotak:    '<svg viewBox="0 0 24 24"><path d="M4 5h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2zm0 2v.4l8 5.1 8-5.1V7H4z"/></svg>',
+      sidang:   '<svg viewBox="0 0 24 24"><path d="M18 3v18l-6-4H5a2 2 0 01-2-2V9a2 2 0 012-2h7l6-4zM6 17h3l1 4H7l-1-4z"/></svg>',
+      wanted:   '<svg viewBox="0 0 24 24"><path d="M10.5 3a7.5 7.5 0 015.9 12.1l4.7 4.7-1.4 1.4-4.7-4.7A7.5 7.5 0 1110.5 3zm0 2a5.5 5.5 0 100 11 5.5 5.5 0 000-11z"/></svg>',
+      radio:    '<svg viewBox="0 0 24 24"><path d="M4 13a8 8 0 0116 0v6a2 2 0 01-2 2h-2v-7h2v-1a6 6 0 00-12 0v1h2v7H6a2 2 0 01-2-2v-6z"/></svg>',
+      event:    '<svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3a2 2 0 012 2v14a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h3V2zm13 8H4v10h16V10z"/></svg>',
+      meme:     '<svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zm4.5 4a1.8 1.8 0 100 3.6 1.8 1.8 0 000-3.6zM4 17h16l-5-6.5-4 5-2.5-3L4 17z"/></svg>',
+      misi:     '<svg viewBox="0 0 24 24"><path d="M9 2h6v2h4a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h4V2zm1.5 13.6l6.2-6.2-1.4-1.4-4.8 4.8-2.3-2.3-1.4 1.4 3.7 3.7z"/></svg>',
+      kapsul:   '<svg viewBox="0 0 24 24"><path d="M6 2h12v3l-4 5 4 5v7H6v-7l4-5-4-5V2zm3 15v3h6v-3l-3-3.8L9 17z"/></svg>',
+      rules:    '<svg viewBox="0 0 24 24"><path d="M12 2l8 3.5v6.2c0 5.1-3.4 9.7-8 11.3-4.6-1.6-8-6.2-8-11.3V5.5L12 2zm-1 6v6h2V8h-2zm0 8v2h2v-2h-2z"/></svg>',
+      dalang:   '<svg viewBox="0 0 24 24"><path d="M3 18l2-11 7 5 7-5 2 11H3zm2 2h14v2H5v-2z"/></svg>',
+      home:     '<svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z"/></svg>',
+      user:     '<svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm-8 9a8 8 0 0116 0H4z"/></svg>',
+      group:    '<svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 012 2v10a2 2 0 01-2 2H8l-4 4V6a2 2 0 012-2z"/></svg>',
+      channel:  '<svg viewBox="0 0 24 24"><path d="M21 4L3 11.2l6.2 2.2L17.8 7l-6.6 7.6 5.4 2.1L21 4zM9 15.2V20l2.8-3.4L9 15.2z"/></svg>',
+      qr:       '<svg viewBox="0 0 24 24"><path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm9-2h7v7h-7V3zm2 2v3h3V5h-3zM3 14h7v7H3v-7zm2 2v3h3v-3H5zm9-2h3v3h-3v-3zm4 0h3v3h-3v-3zm-4 4h3v3h-3v-3zm4 0h3v3h-3v-3z"/></svg>',
+      spotify:  '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.5 14.4a.6.6 0 01-.8.2c-2.3-1.4-5.2-1.7-8.6-.9a.6.6 0 11-.3-1.2c3.8-.8 7-.5 9.5 1.1.3.2.4.6.2.8zm1.2-2.7a.8.8 0 01-1.1.3c-2.6-1.6-6.6-2.1-9.7-1.1a.8.8 0 11-.5-1.5c3.5-1.1 7.9-.5 10.9 1.3.4.2.5.7.4 1zm.1-2.8C14.6 9 9.4 8.8 6.4 9.7a.9.9 0 11-.5-1.8c3.5-1 9.2-.8 12.8 1.3a.9.9 0 01-.9 1.7z"/></svg>',
+      bell:     '<svg viewBox="0 0 24 24"><path d="M12 2a6 6 0 016 6v5l2 2v1H4v-1l2-2V8a6 6 0 016-6zm-2 16h4a2 2 0 01-4 0z"/></svg>'
+    },
+
+    BASE_GRID: [
+      { id: 'absen',  label: 'Absen Nyawa',  color: 'c-yellow', badgeKey: 'absen' },
+      { id: 'kas',    label: 'Kas Rusuh',    color: 'c-blue' },
+      { id: 'lapak',  label: 'Lapak Rongsok',color: 'c-cyan' },
+      { id: 'arena',  label: 'Arena Gabut',  color: 'c-purple', badgeKey: 'arena' },
+      { id: 'warga',  label: 'Warga Punk',   color: 'c-green' },
+      { id: 'fame',   label: 'Hall of Fame', color: 'c-amber' },
+      { id: 'kotak',  label: 'Kotak Rahasia',color: 'c-pink' },
+      { id: 'sidang', label: 'Sidang Warga', color: 'c-indigo' },
+      { id: 'wanted', label: 'Wanted Board', color: 'c-orange' },
+      { id: 'radio',  label: 'Radio Gang',   color: 'c-teal' },
+      { id: 'event',  label: 'Event & Rusuh',color: 'c-red' },
+      { id: 'meme',   label: 'Meme Board',   color: 'c-sky' },
+      { id: 'misi',   label: 'Misi Jalanan', color: 'c-lime' },
+      { id: 'kapsul', label: 'Time Capsule', color: 'c-slate' },
+      { id: 'rules',  label: 'Pasal & Help', color: 'c-dark' }
+    ],
+
+    DOCK: [
+      { id: 'home',    label: 'Markas',  icon: 'home',    color: 'c-blue' },
+      { id: 'gue',     label: 'Gue',     icon: 'user',    color: 'c-yellow' },
+      { id: 'group',   label: 'Grup',    icon: 'group',   color: 'c-green', external: 'GROUP_URL' },
+      { id: 'channel', label: 'Channel', icon: 'channel', color: 'c-cyan',  external: 'CHANNEL_URL' }
+    ],
+
+    PRESENCE_LIST: [
+      '☕ Nongki Dulu',
+      '🎮 Gas Mabar',
+      '💀 Lagi Buntu',
+      '🎧 Dengerin Lagu',
+      '🚬 Butuh Asupan',
+      '😴 mode Mayat'
+    ]
+  };
+})();
