@@ -6,7 +6,6 @@
 
   var pendingBannerFile = null;
 
-  // Kartu 3D PunkID (Depan & Belakang)
   function renderPunkCard(u) {
     var dg = (u.memberNo || 'PSK-0001').replace('PSK-', '');
     var rk = C.rankInfo(u.streak);
@@ -16,7 +15,6 @@
     return (
       '<div class="flip" data-act="pid-flip" role="button" tabindex="0" aria-label="Kartu PunkID. Tap untuk memutar">' +
         '<div class="cd">' +
-          // Sisi Depan
           '<div class="fc' + skinCls + '">' +
             '<div class="cr"><b class="br">PUNKSHIT.OS</b><span>' + C.esc(rk.title) + '</span></div>' +
             '<div class="cr">' +
@@ -31,7 +29,6 @@
               '<div class="cr"><b>' + C.esc(u.presence || '☕ Nongki Dulu') + '</b><small>SALDO ' + (u.psc || 0) + ' PSC</small></div>' +
             '</div>' +
           '</div>' +
-          // Sisi Belakang
           '<div class="fc fb">' +
             '<div class="mag"></div>' +
             '<div class="sig">' + C.esc(u.name) + '</div>' +
@@ -53,12 +50,10 @@
     var rk = C.rankInfo(u.streak);
     var pinnedItem = u.pinnedGiftId ? C.findItem(u.pinnedGiftId) : null;
 
-    // Latar belakang profil: pakai custom banner upload user jika ada, atau default gradient
     var bannerStyle = u.bannerUrl
-      ? 'background-image:url(\'' + C.esc(API.assetUrl(u.bannerUrl)) + '\')'
+      ? 'background-image:url(\'' + C.esc(API.assetUrl(u.bannerUrl)) + '\');background-size:cover;background-position:center'
       : 'background:radial-gradient(circle at 25% 20%,#8FC7FF,transparent 55%),linear-gradient(135deg,#176BFF,#0b2a6e)';
 
-    // Filter inventory berdasarkan tipe
     var gifts = (S.inv || []).filter(function (x) {
       var it = C.findItem(x.itemId);
       return it && it.type === 'gift';
@@ -73,7 +68,6 @@
       : '';
 
     return (
-      // Profile Card dengan Custom Banner & Auto-Connect Avatar Telegram
       '<div class="pc" style="margin-bottom:18px">' +
         '<div class="cv" style="' + bannerStyle + '">' +
           (pinnedItem ? C.renderItemVisual(pinnedItem, 92, true) : '') +
@@ -91,20 +85,17 @@
         '</div>' +
       '</div>' +
 
-      // Status "Siapa yang Masih Hidup?"
       '<h3 class="gh">STATUS AKTIVITAS (LIVE PRESENCE)</h3>' +
       '<div class="grp" style="margin-bottom:18px">' +
         '<div class="rw">' +
-          '<div><b>' + C.esc(u.presence || '☕ Nongki Dulu') + '</b><small>Tampil di daftar warga aktif (otomatis reset 6 jam)</small></div>' +
+          '<div><b>' + C.esc((u.presence || '☕ Nongki Dulu').replace(/undefined/gi, '').trim() || '☕ Nongki Dulu') + '</b><small>Tampil di daftar warga aktif (otomatis reset 6 jam)</small></div>' +
           '<button class="pill" data-act="pid-presence-sheet">Ganti</button>' +
         '</div>' +
       '</div>' +
 
-      // 3D Flip PunkID Card
       '<h3 class="gh">KARTU PUNKID (TAP UNTUK PUTAR)</h3>' +
       renderPunkCard(u) +
 
-      // Koleksi Discord-Style Avatar Border
       '<h3 class="gh">AVATAR BORDER (DISCORD STYLE) · TAP PASANG</h3>' +
       (borders.length
         ? '<div class="hs" style="margin-bottom:14px">' +
@@ -117,8 +108,7 @@
           '</div>'
         : '<div class="grp" style="margin-bottom:14px"><div class="rw"><small>Belum punya Avatar Border. Beli di Lapak Rongsok!</small></div></div>') +
 
-      // Koleksi Gift 3D
-      '<h3 class="gh">KOLEKSI GIFT · TAP UNTUK PIN DI BANNER</h3>' +
+      '<h3 class="gh">KOLEKSI GIFT · TAP PASANG DI PROFIL & BANNER</h3>' +
       (gifts.length
         ? '<div class="hs">' +
             gifts.map(function (x) {
@@ -134,20 +124,20 @@
   C.Views.gue = renderGue;
   C.renderPunkCard = renderPunkCard;
 
-  // Sheet Edit Profil (Upload File Custom Banner + Ring + Bio + Spotify)
   function openEditProfileSheet() {
     var u = S.user;
     pendingBannerFile = null;
     var curBanner = u.bannerUrl ? API.assetUrl(u.bannerUrl) : '';
+    var ringNames = CFG.RING_NAMES || ['Biru Neon', 'Emas', 'Hijau Toxic', 'Ungu Cyber'];
 
     C.sheet(
       '<h2 style="margin-bottom:4px">Edit Profil & Banner</h2>' +
-      '<p class="sub">Nama & foto profil otomatis terhubung dengan akun Telegram lo.</p>' +
+      '<p class="sub">Upload foto/GIF latar belakang atau ubah bio profil lo.</p>' +
 
       '<label>LATAR BELAKANG PROFIL (UPLOAD GAMBAR / GIF)</label>' +
       '<div class="up-box" id="bn-drop">' +
-        '<input type="file" id="bn-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>' +
-        '<div style="font-size:13px;font-weight:600;color:var(--gblue)">📁 Pilih File dari Galeri (Maks. 3MB)</div>' +
+        '<input type="file" id="bn-file" accept="image/*" hidden>' +
+        '<div style="font-size:13px;font-weight:600;color:var(--gblue)">📁 Pilih File dari Galeri (Maks. 5MB)</div>' +
         '<small style="color:var(--mut);font-size:11.5px">Mendukung JPG, PNG, WEBP, atau GIF animasi</small>' +
         (curBanner ? '<img id="bn-prev" class="up-prev" src="' + C.esc(curBanner) + '" alt="Preview">' : '<img id="bn-prev" class="up-prev" style="display:none" alt="Preview">') +
       '</div>' +
@@ -163,15 +153,14 @@
 
       '<label>WARNA RING DASAR AVATAR</label>' +
       '<div class="chips" id="ed-rings">' +
-        CFG.RING_NAMES.map(function (n, idx) {
-          return '<button type="button" class="chip' + (Number(u.ringStyle) === idx ? ' on' : '') + '" data-act="pid-pick-ring" data-idx="' + idx + '">' + n + '</button>';
+        ringNames.map(function (n, idx) {
+          return '<button type="button" class="chip' + (Number(u.ringStyle) === idx ? ' on' : '') + '" data-act="pid-pick-ring" data-idx="' + idx + '">' + C.esc(n) + '</button>';
         }).join('') +
       '</div>' +
 
       '<button class="btn" data-act="pid-save-profile">SIMPAN PERUBAHAN</button>'
     );
 
-    // Bind File Picker Preview
     var box = document.getElementById('bn-drop');
     var inp = document.getElementById('bn-file');
     var prev = document.getElementById('bn-prev');
@@ -180,8 +169,8 @@
     inp.onchange = function () {
       var file = inp.files && inp.files[0];
       if (!file) return;
-      if (file.size > 3 * 1024 * 1024) {
-        C.notify('Mas Raka', 'File Kegedean', 'Maksimal ukuran banner 3MB ya bro.');
+      if (file.size > 5 * 1024 * 1024) {
+        C.notify('Mas Raka', 'File Kegedean', 'Maksimal ukuran banner 5MB ya bro.');
         return;
       }
       pendingBannerFile = file;
@@ -190,15 +179,23 @@
     };
   }
 
-  // Sheet Ganti Status "Siapa yang Masih Hidup?"
   function openPresenceSheet() {
     var cur = S.user.presence || '';
+    var list = CFG.PRESENCE_LIST || [
+      '☕ Nongki Dulu',
+      '🎮 Lagi Mabar',
+      '🎧 Dengerin Lagu',
+      '💻 Ngoding / Kerja',
+      '😴 Mode Turu',
+      '🔥 Siap Rusuh'
+    ];
+
     C.sheet(
       '<h2>Siapa yang Masih Hidup?</h2>' +
       '<p class="sub">Pilih status tongkrongan lo sekarang. Muncul di daftar warga aktif.</p>' +
       '<div class="chips" style="justify-content:center">' +
-        CFG.PRESENCE_LIST.map(function (p) {
-          var label = p.e + ' ' + p.t;
+        list.map(function (p) {
+          var label = (typeof p === 'string') ? p : ((p.e || '') + ' ' + (p.t || '')).trim();
           return '<button class="chip' + (cur === label ? ' on' : '') + '" data-act="pid-set-presence" data-val="' + C.esc(label) + '">' + C.esc(label) + '</button>';
         }).join('') +
       '</div>'
@@ -228,29 +225,23 @@
         C.notify('Mas Raka', 'Validasi', 'Nama minimal 2 huruf.');
         return;
       }
-      if (sp && !/^https:\/\/open\.spotify\.com\/(track|album|playlist|artist|user|episode)\/[\w-]+/.test(sp)) {
-        document.getElementById('ed-sp').style.borderColor = '#FF453A';
-        return;
-      }
 
       t.disabled = true;
       t.textContent = 'Menyimpan...';
       try {
-        // 1. Jika ada file banner baru yang dipilih, upload dulu ke Railway Volume
         if (pendingBannerFile) {
           var fd = new FormData();
           fd.append('banner', pendingBannerFile);
           var upRes = await API.upload('/api/profile/banner', fd);
           if (upRes.user) S.user = upRes.user;
         }
-        // 2. Simpan metadata profil
         var res = await API.post('/api/profile', {
           name: name,
           bio: bio,
           spotifyUrl: sp,
           ringStyle: ringStyle
         });
-        S.user = res.user;
+        if (res.user) S.user = res.user;
         pendingBannerFile = null;
         C.shut();
         C.refresh();
@@ -263,8 +254,8 @@
     } else if (act === 'pid-sync-tele') {
       t.disabled = true;
       try {
-        var res = await API.post('/api/profile/sync-telegram');
-        S.user = res.user;
+        var res = await API.post('/api/profile/sync-telegram', {});
+        if (res.user) S.user = res.user;
         C.refresh();
         C.notify('Mas Raka', 'Auto-Sync Tele', 'Foto profil & info Telegram lo berhasil ditarik ulang!');
       } catch (err) {
@@ -278,7 +269,7 @@
       var val = t.getAttribute('data-val');
       try {
         var res = await API.post('/api/presence', { status: val });
-        S.user = res.user;
+        if (res.user) S.user = res.user;
         if (res.onlineUsers) S.onlineUsers = res.onlineUsers;
         C.shut();
         C.refresh();
@@ -290,7 +281,7 @@
       var borderId = t.getAttribute('data-id') || null;
       try {
         var res = await API.post('/api/profile/equip', { type: 'border', itemId: borderId });
-        S.user = res.user;
+        if (res.user) S.user = res.user;
         C.refresh();
         C.notify('Mas Raka', 'Avatar Border', borderId ? 'Border terpasang ke foto profil!' : 'Border dilepas.');
       } catch (err) {
@@ -301,8 +292,9 @@
       var nextPin = (S.user.pinnedGiftId === giftId) ? null : giftId;
       try {
         var res = await API.post('/api/profile/equip', { type: 'pin', itemId: nextPin });
-        S.user = res.user;
+        if (res.user) S.user = res.user;
         C.refresh();
+        C.notify('Mas Raka', 'Gift Profil', nextPin ? 'Gift dipasang di profil & banner!' : 'Gift dilepas.');
       } catch (err) {
         C.notify('Mas Raka', 'Error', err.message);
       }
