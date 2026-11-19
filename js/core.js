@@ -4,6 +4,7 @@ window.PunkCore = (function () {
   var tg = window.Telegram && window.Telegram.WebApp;
   var $ = function (id) { return document.getElementById(id); };
 
+  // State Global Tersinkronisasi dengan Railway
   var S = {
     user: null,
     inv: [],
@@ -38,6 +39,7 @@ window.PunkCore = (function () {
     return { title: '🌱 Mayat Baru', bonus: 2 };
   }
 
+  // Render Ikon Aplikasi
   function ico(id) {
     var i = (CFG.ICONS && CFG.ICONS[id]) || ['#8FC7FF', '#176BFF', 'M12 2L2 7l10 5 10-5-10-5z'];
     if (Array.isArray(i) && i.length >= 4) {
@@ -46,14 +48,17 @@ window.PunkCore = (function () {
     return '<div class="ic" style="--a:#8FC7FF;--b:#176BFF"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></div>';
   }
 
+  // Cari Item dari Katalog Server atau Default (Return null jika kosong agar bisa dicopot)
   function findItem(id) {
+    if (!id) return null;
     var all = (S.catalog && S.catalog.length) ? S.catalog : (CFG.DEFAULT_ITEMS || []);
     for (var i = 0; i < all.length; i++) {
       if (all[i].id === id) return all[i];
     }
-    return (CFG.DEFAULT_ITEMS && CFG.DEFAULT_ITEMS[0]) || null;
+    return null;
   }
 
+  // Render Visual Item (Gambar/GIF Upload maupun 3D SVG Layer)
   function renderItemVisual(item, size, draggable) {
     if (!item) return '';
     var dragAttr = draggable ? ' data-d' : '';
@@ -73,7 +78,7 @@ window.PunkCore = (function () {
     return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:' + cols[1] + '99"><div class="rot">' + layers + '</div></div>';
   }
 
-  // Render Avatar + Border Discord-Style + Gift Terpasang di Sekitar Profil
+  // Render Avatar + Discord-Style Border + 1 Pin Gift Rapi di Pojok Foto Profil
   function renderAvatar(u, mode) {
     if (!u) return '';
     var initial = esc((u.name || '?')[0].toUpperCase());
@@ -91,7 +96,7 @@ window.PunkCore = (function () {
     if (u.pinnedGiftId && mode !== 'mini') {
       var giftItem = findItem(u.pinnedGiftId);
       if (giftItem) {
-        pinHtml = '<div class="av-gift-pin" title="' + esc(giftItem.name) + '" style="position:absolute;right:-6px;bottom:-6px;z-index:5;background:rgba(15,23,42,.92);border:1.5px solid rgba(255,255,255,.22);border-radius:50%;padding:3px;box-shadow:0 4px 12px rgba(0,0,0,.5)">' +
+        pinHtml = '<div class="av-gift-pin" title="' + esc(giftItem.name) + '" style="position:absolute;right:-6px;bottom:-6px;z-index:5;background:rgba(15,23,42,.94);border:1.5px solid rgba(255,255,255,.24);border-radius:50%;padding:3px;box-shadow:0 4px 12px rgba(0,0,0,.55);pointer-events:none">' +
           renderItemVisual(giftItem, 26, false) +
         '</div>';
       }
@@ -108,6 +113,7 @@ window.PunkCore = (function () {
     '</div>';
   }
 
+  // Drag-to-Spin 3D Controller
   function bindDrag(root) {
     if (!root) return;
     root.querySelectorAll('.g3[data-d]').forEach(function (g) {
@@ -131,6 +137,7 @@ window.PunkCore = (function () {
     });
   }
 
+  // Banner Notifikasi Mas Raka
   function notify(who, tag, txt) {
     var b = $('ban');
     if (!b) return;
@@ -142,6 +149,7 @@ window.PunkCore = (function () {
     banTimer = setTimeout(function () { b.classList.remove('on'); }, 4200);
   }
 
+  // Bottom Sheet Modal
   function sheet(html) {
     $('sh').innerHTML = '<div class="grab"></div>' + html;
     $('sh').classList.add('open');
@@ -154,6 +162,7 @@ window.PunkCore = (function () {
     $('scr').classList.remove('open');
   }
 
+  // Buka Link Grup / Channel Telegram Eksternal
   function openExternalLink(url, label) {
     if (!url) {
       return notify('Mas Raka', 'Belum Diatur', 'Link ' + label + ' belum diisi di Railway Variables.');
@@ -167,9 +176,11 @@ window.PunkCore = (function () {
     }
   }
 
+  // Render Home Screen
   function renderHome() {
     var gridList = (CFG.BASE_GRID || []).slice();
-    // Pastikan ikon modul baru ikut tampil jika belum ada di BASE_GRID
+
+    // Pastikan modul tambahan muncul otomatis di grid jika ikonnya tersedia
     ['absen', 'capsule', 'lapakwarga', 'pasal'].forEach(function (extraId) {
       if (CFG.ICONS && CFG.ICONS[extraId] && gridList.indexOf(extraId) === -1) {
         gridList.push(extraId);
@@ -207,7 +218,7 @@ window.PunkCore = (function () {
     }).join('') || '<i style="background:#FFD633">P</i>';
   }
 
-  // Fallback Views untuk modul yang belum terdaftar di file terpisah
+  // Tampilan Bawaan untuk Modul Absen Nyawa, Time Capsule, Lapak Warga, & Pasal/Help
   function getFallbackView(id) {
     if (id === 'absen') {
       var u = S.user || {};
@@ -219,6 +230,7 @@ window.PunkCore = (function () {
         '<button class="btn" data-act="core-absen">ABSEN NYAWA SEKARANG</button>' +
       '</div>';
     }
+
     if (id === 'capsule') {
       return '<div class="card">' +
         '<h3>⏳ Time Capsule</h3>' +
@@ -230,17 +242,24 @@ window.PunkCore = (function () {
         '<button class="btn" data-act="core-capsule">SEGEL TIME CAPSULE</button>' +
       '</div>';
     }
+
     if (id === 'lapakwarga') {
+      var curUid = S.user && String(S.user.id);
+      var isAdmin = S.user && (S.user.role === 'owner' || S.user.role === 'admin');
       var itemsHtml = (S.market || []).map(function (m) {
+        var canClose = (String(m.sellerId) === curUid) || isAdmin;
         return '<div class="card" style="margin-top:10px">' +
-          '<b>[' + esc(m.category) + '] ' + esc(m.title) + '</b>' +
-          '<p class="sub" style="margin:4px 0">' + esc(m.description) + '</p>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center">' +
+            '<b>[' + esc(m.category) + '] ' + esc(m.title) + '</b>' +
+            (canClose ? '<button class="pill" style="background:rgba(255,69,58,.2);color:#ff6b6b" data-act="core-market-close" data-id="' + esc(m.id) + '">Tutup</button>' : '') +
+          '</div>' +
+          '<p class="sub" style="margin:6px 0">' + esc(m.description) + '</p>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">' +
             '<span style="color:#FFD633;font-weight:700">' + esc(m.price) + '</span>' +
-            '<small>Oleh: ' + esc(m.sellerUsername ? '@' + m.sellerUsername : m.sellerName) + '</small>' +
+            '<small>Pelapak: ' + esc(m.sellerUsername ? '@' + m.sellerUsername : m.sellerName) + '</small>' +
           '</div>' +
         '</div>';
-      }).join('') || '<p class="sub">Belum ada lapak warga yang buka.</p>';
+      }).join('') || '<p class="sub" style="margin-top:12px">Belum ada lapak warga yang buka.</p>';
 
       return '<div class="card">' +
         '<h3>🏪 Buka Lapak Barang / Jasa</h3>' +
@@ -255,6 +274,7 @@ window.PunkCore = (function () {
         '<button class="btn" data-act="core-market-create">BUKA LAPAK SEKARANG</button>' +
       '</div>' + itemsHtml;
     }
+
     if (id === 'pasal' || id === 'help') {
       return '<div class="card">' +
         '<h3>📜 Pasal & Panduan Markas</h3>' +
@@ -263,11 +283,12 @@ window.PunkCore = (function () {
         '<p class="sub"><b>Pasal 3:</b> Kumpulkan PSC lewat Absen Nyawa, Arena Game, dan bagi rezeki lewat Saweran.</p>' +
       '</div>';
     }
+
     return '<div class="emp">' + ico(id) + 'Modul dalam pengembangan.</div>';
   }
 
+  // Buka Modul Aplikasi
   function openApp(id, el) {
-    // Handle link eksternal Grup & Channel di Dock
     if (id === 'grup' || id === 'group') {
       return openExternalLink(CFG.GROUP_URL, 'Grup Markas');
     }
@@ -315,6 +336,7 @@ window.PunkCore = (function () {
     renderHome();
   }
 
+  // Sheet Registrasi Pertama Kali
   function openWelcomeSheet() {
     var tgUser = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
     var defName = ((tgUser.first_name || '') + ' ' + (tgUser.last_name || '')).trim() || 'Warga Baru';
@@ -327,6 +349,7 @@ window.PunkCore = (function () {
     );
   }
 
+  // Sinkronisasi Awal dari Server Railway
   async function syncFromServer(silent) {
     var dot = $('sync-dot');
     try {
@@ -370,6 +393,7 @@ window.PunkCore = (function () {
     }
   }
 
+  // Global Event Listeners
   document.addEventListener('click', async function (e) {
     var t = e.target.closest('[data-act]');
     if (!t) return;
@@ -442,6 +466,19 @@ window.PunkCore = (function () {
       } catch (err) {
         t.disabled = false;
         notify('Mas Raka', 'Gagal Buka Lapak', err.message);
+      }
+    } else if (act === 'core-market-close') {
+      var marketId = t.getAttribute('data-id');
+      t.disabled = true;
+      try {
+        await API.post('/api/market/close', { marketId: marketId });
+        var listRes = await API.get('/api/market');
+        S.market = listRes.list || [];
+        refresh();
+        notify('Mas Raka', 'Lapak Warga', 'Lapak berhasil ditutup.');
+      } catch (err) {
+        t.disabled = false;
+        notify('Mas Raka', 'Error', err.message);
       }
     } else if (act === 'search') {
       openApp('warga');
