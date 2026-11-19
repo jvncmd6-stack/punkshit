@@ -5,7 +5,7 @@ import { escHtml } from '../services/syncEngine.js';
 
 let botInstance = null;
 
-// Tabel pengaturan bot & antrean radio di SQLite
+// Pastikan tabel pengaturan bot & antrean radio tersedia di SQLite
 db.exec(`
   CREATE TABLE IF NOT EXISTS bot_settings (
     key TEXT PRIMARY KEY,
@@ -44,7 +44,7 @@ function setSetting(key, value) {
   `).run(key, String(value));
 }
 
-// Default Greet & Bye gaya Mas Raka (santai, tengil, minim emoji)
+// Default Greet & Bye gaya Mas Raka
 const DEFAULT_GREET =
   'Wih, ada nyawa baru nyasar ke markas. Selamat datang, {mention}.\n\n' +
   'Cetak PunkID lo dulu biar sah jadi warga, terus baca Pasal & Help biar kaga salah tingkah di tongkrongan. Warga ke-{count} resmi tercatat.';
@@ -52,6 +52,19 @@ const DEFAULT_GREET =
 const DEFAULT_BYE =
   'Yah, {name} ({username}) cabut dari markas.\n\n' +
   'Yaudah deh, akses PunkID resmi ditutup. Sisa warga di tongkrongan sekarang {count} orang.';
+
+const DEFAULT_PASAL =
+  '<b>PASAL & ATURAN TONGKRONGAN</b>\n\n' +
+  '1. Saling hargai sesama warga markas.\n' +
+  '2. Dilarang keras spam link judi, scam, atau hal berbau SARA.\n' +
+  '3. Kalau mau putar lagu pas OS, gunakan fitur Radio Gang dengan tertib.\n' +
+  '4. Langgar aturan? Siap-siap disidang warga.';
+
+const DEFAULT_HELP =
+  '<b>PUSAT BANTUAN (HELP)</b>\n\n' +
+  '• <b>Cetak PunkID:</b> Buka Mini App lewat tombol utama.\n' +
+  '• <b>Request Lagu:</b> Kirim link Spotify via Mini App atau kirim file MP3 langsung ke PC Mas Raka.\n' +
+  '• <b>Butuh Bantuan Lain?</b> Hubungi admin atau pantau info di channel.';
 
 function isBotAdmin(userId) {
   const uid = String(userId);
@@ -168,17 +181,19 @@ function renderKamusText() {
     '• <i>Kirim File Audio (MP3/M4A) ke PC bot</i> — Otomatis masuk Gudang & antrean\n' +
     '• <code>/done 12</code> — Coret request ID #12 setelah diputer di OS\n' +
     '• <code>/clearradio</code> — Bersihin semua antrean lagu\n\n' +
-    '<b>2. Setting Greet (Warga Baru Masuk):</b>\n' +
+    '<b>2. Setting Greet & Bye (Warga Masuk/Keluar):</b>\n' +
     '• <code>/setgreet teks baru</code> — Ganti kata-kata sambutan\n' +
     '• <code>/setgreetmedia</code> — Reply GIF/Stiker di PC ini buat pelengkap greet\n' +
-    '• <code>/delgreetmedia</code> — Copot GIF/Stiker greet\n\n' +
-    '<b>3. Setting Bye (Warga Cabut):</b>\n' +
+    '• <code>/delgreetmedia</code> — Copot GIF/Stiker greet\n' +
     '• <code>/setbye teks baru</code> — Ganti kata-kata perpisahan\n' +
     '• <code>/setbyemedia</code> — Reply GIF/Stiker di PC ini buat pelengkap bye\n' +
     '• <code>/delbyemedia</code> — Copot GIF/Stiker bye\n' +
     '• <code>/greetinfo</code> — Intip teks & media Greet/Bye yang lagi kepasang\n\n' +
-    '<b>Variabel Otomatis Greet & Bye:</b>\n' +
-    '<code>{name}</code> (Nama), <code>{mention}</code> (Tag), <code>{username}</code> (@user), <code>{count}</code> (Total Warga)'
+    '<b>3. Setting Pasal & Help:</b>\n' +
+    '• <code>/setpasal teks aturan baru</code> — Ganti isi Pasal & Aturan\n' +
+    '• <code>/sethelp teks bantuan baru</code> — Ganti isi Pusat Bantuan\n\n' +
+    '<b>Variabel Greet & Bye:</b>\n' +
+    '<code>{name}</code>, <code>{mention}</code>, <code>{username}</code>, <code>{count}</code>'
   );
 }
 
@@ -240,6 +255,38 @@ export function startBot() {
       .text('« Kembali', 'pc_home');
 
     await ctx.reply(renderKamusText(), { parse_mode: 'HTML', reply_markup: kb });
+  });
+
+  // Endpoint publik bot untuk mengambil Pasal & Help (jika dibutuhkan frontend)
+  bot.command('pasal', async (ctx) => {
+    const text = getSetting('pasal_text', DEFAULT_PASAL);
+    await ctx.reply(text, { parse_mode: 'HTML' });
+  });
+
+  bot.command('help', async (ctx) => {
+    const text = getSetting('help_text', DEFAULT_HELP);
+    await ctx.reply(text, { parse_mode: 'HTML' });
+  });
+
+  // Command Admin: /setpasal & /sethelp
+  bot.command('setpasal', async (ctx) => {
+    if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
+    const text = String(ctx.match || '').trim();
+    if (text.length < 5) {
+      return ctx.reply('Format: /setpasal 1. Dilarang rusuh...\n(Minimal 5 karakter)');
+    }
+    setSetting('pasal_text', text);
+    await ctx.reply('Sip, teks Pasal & Aturan tongkrongan berhasil di-update.');
+  });
+
+  bot.command('sethelp', async (ctx) => {
+    if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
+    const text = String(ctx.match || '').trim();
+    if (text.length < 5) {
+      return ctx.reply('Format: /sethelp • Cara pakai bot...\n(Minimal 5 karakter)');
+    }
+    setSetting('help_text', text);
+    await ctx.reply('Sip, teks Pusat Bantuan (Help) berhasil di-update.');
   });
 
   // /req Judul Lagu | https://open.spotify.com/... -> Request lagu via command
