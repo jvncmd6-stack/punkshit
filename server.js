@@ -1,42 +1,62 @@
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
+import path from 'path';
 import { ENV } from './src/config/env.js';
 import { initDb } from './src/database/db.js';
-import { apiRouter } from './src/api/routes.js';
-import { initBot } from './src/bot/index.js';
-import { startScheduler } from './src/jobs/scheduler.js';
+import { authTma } from './src/middlewares/authTma.js';
+import { userRouter } from './src/api/userRoutes.js';
+import { actionRouter } from './src/api/actionRoutes.js';
+import { gameRouter } from './src/api/gameRoutes.js';
+import { socialRouter } from './src/api/socialRoutes.js';
+import { startBot } from './src/bot/index.js';
 
-// Pastikan folder penyimpanan permanen & sub-folder uploads tersedia
-for (const sub of ['', 'banners', 'items', 'memes']) {
-  const dir = sub ? `${ENV.UPLOAD_DIR}/${sub}` : ENV.UPLOAD_DIR;
-  fs.mkdirSync(dir, { recursive: true });
-}
+// Pastikan folder data & uploads tersedia di Volume Railway
+fs.mkdirSync(ENV.DATA_DIR, { recursive: true });
+fs.mkdirSync(ENV.UPLOAD_DIR, { recursive: true });
 
-// Inisialisasi Database SQLite & seed katalog bawaan
+// Inisialisasi tabel SQLite
 initDb();
 
 const app = express();
-const ORIGIN = new URL(ENV.WEBAPP_URL).origin;
 
-app.use(cors({ origin: ORIGIN }));
-app.use(express.json({ limit: '50kb' }));
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-// Sajikan file gambar (Banner Profil, Border Discord, Gift, Meme) secara publik
-app.use('/uploads', express.static(ENV.UPLOAD_DIR, { maxAge: '7d' }));
+app.use(express.json({ limit: '5mb' }));
+app.use('/uploads', express.static(ENV.UPLOAD_DIR));
 
-// Healthcheck endpoint
-app.get('/', (_req, res) => {
-  res.json({ status: 'online', service: 'PUNKSHIT.OS Core v3.0' });
+// Health check endpoint untuk Railway
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', service: 'PUNKSHIT.OS API', time: Date.now() });
 });
 
-// Daftarkan seluruh REST API untuk Mini App
-app.use('/api', apiRouter);
+// Middleware autentikasi Telegram WebApp untuk seluruh endpoint /api
+app.use('/api', authTma);
+app.use('/api', userRouter);
+app.use('/api', actionRouter);
+app.use('/api', gameRouter);
+app.use('/api', socialRouter);
 
-// Jalankan server HTTP, Bot Mas Raka, dan Cron Scheduler
-app.listen(ENV.PORT, '0.0.0.0', () => {
-  console.log(`[PUNKSHIT.OS] API berjalan di port ${ENV.PORT}`);
+// Muat adminRoutes.js secara opsional jika file tersebut ada di repo
+if (fs.existsSync(path.resolve('./src/api/adminRoutes.js'))) {
+  const adminMod = await import('./src/api/adminRoutes.js');
+  const adminRouter = adminMod.adminRouter || adminMod.default;
+  if (adminRouter) app.use('/api', adminRouter);
+}
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('[API Error]:', err);
+  res.status(500).json({ error: err.message || 'Internal Server Error' });
 });
 
-const bot = initBot();
-startScheduler(bot);
+const PORT = Number(process.env.PORT) || ENV.PORT || 3000;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[PUNKSHIT.OS] API berjalan di port ${PORT}`);
+  startBot();
+});
