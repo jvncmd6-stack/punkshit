@@ -15,14 +15,13 @@ export function getBot() {
 }
 
 export function todayWib() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); // YYYY-MM-DD
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
 }
 
 export function escHtml(s = '') {
   return String(s).replace(/[&<>]/g, c => ({ '&': '&', '<': '<', '>': '>' }[c]));
 }
 
-// Tarik foto profil terbaru pengguna langsung dari Telegram Bot API dan simpan lokal
 export async function syncTelegramAvatar(userId, tgUserObj = null) {
   const uid = String(userId);
   if (tgUserObj && tgUserObj.username !== undefined) {
@@ -34,7 +33,6 @@ export async function syncTelegramAvatar(userId, tgUserObj = null) {
     const photos = await botInstance.api.getUserProfilePhotos(Number(uid), { limit: 1 });
     if (!photos || !photos.total_count || !photos.photos[0]?.length) return null;
 
-    // Ambil resolusi sedang (index 1 atau terakhir)
     const sizes = photos.photos[0];
     const picked = sizes[Math.min(1, sizes.length - 1)];
     const fileInfo = await botInstance.api.getFile(picked.file_id);
@@ -57,19 +55,16 @@ export async function syncTelegramAvatar(userId, tgUserObj = null) {
   }
 }
 
-// Format baris database `users` menjadi objek JSON bersih untuk Mini App
 export function formatUser(row) {
   if (!row) return null;
   const today = todayWib();
 
-  // Cari URL gambar Avatar Border yang sedang dipakai user
   let equippedBorderUrl = '';
   if (row.equipped_border_id) {
     const bItem = db.prepare('SELECT image_url FROM items WHERE id = ?').get(row.equipped_border_id);
     if (bItem) equippedBorderUrl = bItem.image_url || '';
   }
 
-  // Cek apakah status presence sudah melewati 6 jam
   const sixHours = 6 * 3600 * 1000;
   const activePresence = (Date.now() - (row.presence_at || 0) < sixHours)
     ? row.presence
@@ -127,12 +122,22 @@ export function getOnlineUsers() {
   return rows.map(formatUser);
 }
 
-// Broadcaster Mas Raka ke Grup dan/atau Channel
 export async function broadcastToTelegram({ target = 'group', text, buttonText = '🪪 BUKA MARKAS', startParam = '', feedText = '' }) {
   if (feedText) addFeed(feedText);
   if (!botInstance) return;
 
-  const url = startParam ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(startParam)}` : ENV.MINIAPP_LINK;
+  const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : (process.env.API_URL || '').trim();
+
+  const payload = railwayApi
+    ? `${startParam || 'home'}__${Buffer.from(railwayApi).toString('base64url')}`
+    : startParam;
+
+  const url = payload
+    ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(payload)}`
+    : ENV.MINIAPP_LINK;
+
   const kb = new InlineKeyboard().url(buttonText, url);
 
   const sendSafe = async chatId => {
