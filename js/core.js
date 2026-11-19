@@ -236,6 +236,11 @@ window.PunkCore = (function () {
         refresh();
         if (!silent) {
           // Cek parameter deep link ?startapp=...
+          var data = await API.get('/api/me');
+      if (data.config) {
+        CFG.GROUP_URL = data.config.groupUrl || '';
+        CFG.CHANNEL_URL = data.config.channelUrl || '';
+      }
           var startParam = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param;
           if (startParam && CFG.ICONS[startParam]) {
             openApp(startParam);
