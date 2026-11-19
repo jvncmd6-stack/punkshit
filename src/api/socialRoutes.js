@@ -6,7 +6,7 @@ import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
 import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
-import { formatUser, getBot, broadcastToTelegram, escHtml } from '../services/syncEngine.js';
+import { getBot, broadcastToTelegram, escHtml } from '../services/syncEngine.js';
 
 export const socialRouter = Router();
 
@@ -18,8 +18,8 @@ socialRouter.post('/social/greet', requireUser, async (req, res) => {
 
   await broadcastToTelegram({
     target: 'group',
-    text: `👋 <b>SAPAAN MARKAS!</b>\n<b>${escHtml(req.dbUser.name)}</b> nyapa <b>${escHtml(target.name)}</b>${target.username ? ` (@${escHtml(target.username)})` : ''} di PUNKSHIT.OS!`,
-    buttonText: '👥 CEK WARGA',
+    text: `<b>SAPAAN MARKAS</b>\n<b>${escHtml(req.dbUser.name)}</b> menyapa <b>${escHtml(target.name)}</b>${target.username ? ` (@${escHtml(target.username)})` : ''} di PUNKSHIT.OS.`,
+    buttonText: 'Cek Warga',
     startParam: 'warga',
     feedText: `${req.dbUser.name} nyapa ${target.name} di markas.`
   });
@@ -47,11 +47,11 @@ socialRouter.post('/wanted', requireUser, async (req, res) => {
   await broadcastToTelegram({
     target: 'group',
     text:
-      `🔎 <b>WANTED: ${escHtml(category.toUpperCase())}</b>\n` +
-      `Posted by: <b>${escHtml(req.dbUser.name)}</b>\n` +
-      `Slots: <b>1/${slots} warga</b>\n\n` +
-      `💬 <i>"${escHtml(note)}"</i>`,
-    buttonText: '🤝 GAS BARENG DI WEB',
+      `<b>WANTED: ${escHtml(category.toUpperCase())}</b>\n` +
+      `Oleh: <b>${escHtml(req.dbUser.name)}</b>\n` +
+      `Slot: <b>1/${slots} warga</b>\n\n` +
+      `<i>"${escHtml(note)}"</i>`,
+    buttonText: 'Gas Bareng di Web',
     startParam: 'wanted',
     feedText: `${req.dbUser.name} buka Wanted: ${category} (${note}).`
   });
@@ -96,7 +96,7 @@ socialRouter.post('/wanted/join', requireUser, (req, res) => {
   res.json({ wanted });
 });
 
-// POST /api/menfess -> Kirim Kotak Rahasia (Menunggu moderasi Ruang Dalang)
+// POST /api/menfess -> Kirim Kotak Rahasia
 socialRouter.post('/menfess', requireUser, (req, res) => {
   const category = String(req.body?.category || 'Confession').trim().slice(0, 30);
   const text = String(req.body?.text || '').trim().slice(0, 280);
@@ -109,7 +109,7 @@ socialRouter.post('/menfess', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/polls/vote -> Sidang Warga (Voting)
+// POST /api/polls/vote -> Sidang Warga
 socialRouter.post('/polls/vote', requireUser, (req, res) => {
   const pollId = String(req.body?.pollId || '');
   const idx = Number(req.body?.optionIndex);
@@ -138,30 +138,59 @@ socialRouter.post('/polls/vote', requireUser, (req, res) => {
   res.json({ polls });
 });
 
-// POST /api/radio -> Request lagu & dedikasi ke Grup
+// POST /api/radio -> Request lagu + Auto-Kirim MP3 dari Gudang Radio jika tersedia
 socialRouter.post('/radio', requireUser, async (req, res) => {
   const song = String(req.body?.song || '').trim().slice(0, 80);
   const link = String(req.body?.link || '').trim().slice(0, 180);
   const message = String(req.body?.message || '').trim().slice(0, 100);
   if (song.length < 3) return res.status(400).json({ error: 'Judul lagu wajib diisi.' });
 
+  // Cari apakah lagu/link Spotify sudah tersimpan di Gudang Radio Bot
+  const cleanLink = link.split('?')[0].toLowerCase();
+  let track = null;
+  if (cleanLink) {
+    track = db.prepare('SELECT * FROM radio_tracks WHERE query_key LIKE ? ORDER BY id DESC LIMIT 1').get(`%${cleanLink}%`);
+  }
+  if (!track) {
+    track = db.prepare('SELECT * FROM radio_tracks WHERE query_key LIKE ? ORDER BY id DESC LIMIT 1').get(`%${song.toLowerCase()}%`);
+  }
+
+  const bot = getBot();
+  const caption =
+    `<b>RADIO GANG — NOW REQUESTING</b>\n` +
+    `Request oleh: <b>${escHtml(req.dbUser.name)}</b>\n` +
+    `Track: <b>${escHtml(song)}</b>\n` +
+    (link ? `Link: ${escHtml(link)}\n` : '') +
+    (message ? `\n<i>"${escHtml(message)}"</i>` : '');
+
+  if (track && bot && ENV.GROUP_ID) {
+    try {
+      const kb = new InlineKeyboard().url('Request Lagu', `${ENV.MINIAPP_LINK}?startapp=radio`);
+      await bot.api.sendAudio(ENV.GROUP_ID, track.file_id, {
+        caption,
+        parse_mode: 'HTML',
+        reply_markup: kb
+      });
+      db.prepare('INSERT INTO feed (text, created_at) VALUES (?, ?)').run(`${req.dbUser.name} memutar "${song}" di Radio Gang.`, Date.now());
+      return res.json({ ok: true, played: true });
+    } catch (err) {
+      console.error('[Radio SendAudio Error]:', err.message);
+    }
+  }
+
+  // Fallback jika MP3 belum ada di Gudang Radio: kirim kartu request ke grup
   await broadcastToTelegram({
     target: 'group',
-    text:
-      `🎧 <b>RADIO GANG — NOW REQUESTING</b>\n` +
-      `Requested by: <b>${escHtml(req.dbUser.name)}</b>\n` +
-      `🎵 Track: <b>${escHtml(song)}</b>\n` +
-      (link ? `🔗 Link: ${escHtml(link)}\n` : '') +
-      (message ? `\n💌 <i>"${escHtml(message)}"</i>` : ''),
-    buttonText: '🎧 REQUEST LAGU',
+    text: caption,
+    buttonText: 'Request Lagu',
     startParam: 'radio',
     feedText: `${req.dbUser.name} request lagu "${song}" di Radio Gang.`
   });
 
-  res.json({ ok: true });
+  res.json({ ok: true, played: false });
 });
 
-// POST /api/events/rsvp -> Ikut Rusuh (RSVP Event)
+// POST /api/events/rsvp -> Ikut Rusuh
 socialRouter.post('/events/rsvp', requireUser, (req, res) => {
   const eventId = String(req.body?.eventId || '');
   const ev = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
@@ -198,7 +227,7 @@ socialRouter.post('/capsule', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/meme -> Upload meme ke server & kirim ke Grup Telegram (kebal error broadcast)
+// POST /api/meme -> Upload meme ke server & kirim ke Grup Telegram
 socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, res) => {
   try {
     if (!req.file) {
@@ -212,9 +241,9 @@ socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, re
     if (bot && ENV.GROUP_ID) {
       try {
         const localFile = path.join(ENV.UPLOAD_DIR, 'memes', path.basename(publicPath));
-        const kb = new InlineKeyboard().url('🖼️ KIRIM MEME DI WEB', `${ENV.MINIAPP_LINK}?startapp=meme`);
+        const kb = new InlineKeyboard().url('Kirim Meme di Web', `${ENV.MINIAPP_LINK}?startapp=meme`);
         await bot.api.sendPhoto(ENV.GROUP_ID, new InputFile(localFile), {
-          caption: `🖼️ <b>NEW MEME JUST DROPPED!</b>\nOleh: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n💬 <i>${escHtml(caption)}</i>` : ''),
+          caption: `<b>NEW MEME JUST DROPPED</b>\nOleh: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n<i>${escHtml(caption)}</i>` : ''),
           parse_mode: 'HTML',
           reply_markup: kb
         });
