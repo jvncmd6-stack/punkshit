@@ -10,6 +10,21 @@ import { getBot, broadcastToTelegram, escHtml } from '../services/syncEngine.js'
 
 export const socialRouter = Router();
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS radio_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    source_type TEXT DEFAULT 'spotify',
+    song TEXT NOT NULL,
+    link TEXT DEFAULT '',
+    file_id TEXT DEFAULT '',
+    message TEXT DEFAULT '',
+    status TEXT DEFAULT 'waiting',
+    created_at INTEGER NOT NULL
+  )
+`);
+
 // POST /api/social/greet -> Sapa warga lain di Grup
 socialRouter.post('/social/greet', requireUser, async (req, res) => {
   const targetId = String(req.body?.targetUserId || '');
@@ -19,9 +34,9 @@ socialRouter.post('/social/greet', requireUser, async (req, res) => {
   await broadcastToTelegram({
     target: 'group',
     text: `<b>SAPAAN MARKAS</b>\n<b>${escHtml(req.dbUser.name)}</b> menyapa <b>${escHtml(target.name)}</b>${target.username ? ` (@${escHtml(target.username)})` : ''} di PUNKSHIT.OS.`,
-    buttonText: 'Cek Warga',
+    buttonText: 'CEK WARGA',
     startParam: 'warga',
-    feedText: `${req.dbUser.name} nyapa ${target.name} di markas.`
+    feedText: `${req.dbUser.name} menyapa ${target.name} di markas.`
   });
 
   res.json({ ok: true });
@@ -51,7 +66,7 @@ socialRouter.post('/wanted', requireUser, async (req, res) => {
       `Oleh: <b>${escHtml(req.dbUser.name)}</b>\n` +
       `Slot: <b>1/${slots} warga</b>\n\n` +
       `<i>"${escHtml(note)}"</i>`,
-    buttonText: 'Gas Bareng di Web',
+    buttonText: 'GABUNG KOMPLOTAN',
     startParam: 'wanted',
     feedText: `${req.dbUser.name} buka Wanted: ${category} (${note}).`
   });
@@ -138,59 +153,77 @@ socialRouter.post('/polls/vote', requireUser, (req, res) => {
   res.json({ polls });
 });
 
-// POST /api/radio -> Request lagu + Auto-Kirim MP3 dari Gudang Radio jika tersedia
+// GET /api/radio/queue -> Ambil daftar antrean request lagu untuk WebApp
+socialRouter.get('/radio/queue', (req, res) => {
+  const list = db.prepare(`
+    SELECT id, user_name AS userName, source_type AS sourceType, song, link, message, created_at AS createdAt
+    FROM radio_queue
+    WHERE status = 'waiting'
+    ORDER BY id ASC
+    LIMIT 25
+  `).all();
+  res.json({ list });
+});
+
+// POST /api/radio -> Request lagu wajib link Spotify -> Masuk Channel Gudang & Antrean OS
 socialRouter.post('/radio', requireUser, async (req, res) => {
   const song = String(req.body?.song || '').trim().slice(0, 80);
   const link = String(req.body?.link || '').trim().slice(0, 180);
   const message = String(req.body?.message || '').trim().slice(0, 100);
-  if (song.length < 3) return res.status(400).json({ error: 'Judul lagu wajib diisi.' });
 
-  // Cari apakah lagu/link Spotify sudah tersimpan di Gudang Radio Bot
-  const cleanLink = link.split('?')[0].toLowerCase();
-  let track = null;
-  if (cleanLink) {
-    track = db.prepare('SELECT * FROM radio_tracks WHERE query_key LIKE ? ORDER BY id DESC LIMIT 1').get(`%${cleanLink}%`);
+  if (song.length < 3) {
+    return res.status(400).json({ error: 'Judul lagu wajib diisi.' });
   }
-  if (!track) {
-    track = db.prepare('SELECT * FROM radio_tracks WHERE query_key LIKE ? ORDER BY id DESC LIMIT 1').get(`%${song.toLowerCase()}%`);
+  if (!/^https:\/\/open\.spotify\.com\//.test(link)) {
+    return res.status(400).json({ error: 'Wajib menyertakan link Spotify (https://open.spotify.com/...) atau kirim file MP3 langsung ke PC Bot.' });
   }
 
+  const info = db.prepare(`
+    INSERT INTO radio_queue (user_id, user_name, source_type, song, link, file_id, message, status, created_at)
+    VALUES (?, ?, 'spotify', ?, ?, '', ?, 'waiting', ?)
+  `).run(req.dbUser.id, req.dbUser.name, song, link, message, Date.now());
+
+  const reqId = info.lastInsertRowid;
+  const waitingCount = db.prepare("SELECT COUNT(*) AS c FROM radio_queue WHERE status = 'waiting'").get().c;
+  const warehouseId = (process.env.WAREHOUSE_CHANNEL_ID || '').trim();
   const bot = getBot();
-  const caption =
-    `<b>RADIO GANG — NOW REQUESTING</b>\n` +
-    `Request oleh: <b>${escHtml(req.dbUser.name)}</b>\n` +
-    `Track: <b>${escHtml(song)}</b>\n` +
-    (link ? `Link: ${escHtml(link)}\n` : '') +
-    (message ? `\n<i>"${escHtml(message)}"</i>` : '');
 
-  if (track && bot && ENV.GROUP_ID) {
+  // Kirim kartu link Spotify ke Channel Gudang agar admin OS mudah memutarnya
+  if (bot && warehouseId) {
     try {
-      const kb = new InlineKeyboard().url('Request Lagu', `${ENV.MINIAPP_LINK}?startapp=radio`);
-      await bot.api.sendAudio(ENV.GROUP_ID, track.file_id, {
-        caption,
-        parse_mode: 'HTML',
-        reply_markup: kb
-      });
-      db.prepare('INSERT INTO feed (text, created_at) VALUES (?, ?)').run(`${req.dbUser.name} memutar "${song}" di Radio Gang.`, Date.now());
-      return res.json({ ok: true, played: true });
-    } catch (err) {
-      console.error('[Radio SendAudio Error]:', err.message);
+      const kb = new InlineKeyboard().url('Buka di Spotify', link);
+      await bot.api.sendMessage(
+        warehouseId,
+        `<b>GUDANG MUSIK — REQUEST SPOTIFY #${reqId}</b>\n` +
+        `Judul: <b>${escHtml(song)}</b>\n` +
+        `Requester: <b>${escHtml(req.dbUser.name)}</b>\n` +
+        `Link: ${escHtml(link)}` +
+        (message ? `\nPesan: <i>"${escHtml(message)}"</i>` : ''),
+        { parse_mode: 'HTML', reply_markup: kb }
+      );
+    } catch (whErr) {
+      console.error('[Warehouse Spotify Broadcast Error]:', whErr.message);
     }
   }
 
-  // Fallback jika MP3 belum ada di Gudang Radio: kirim kartu request ke grup
   await broadcastToTelegram({
     target: 'group',
-    text: caption,
-    buttonText: 'Request Lagu',
+    text:
+      `<b>RADIO GANG — REQUEST #${reqId}</b>\n` +
+      `Requester: <b>${escHtml(req.dbUser.name)}</b>\n` +
+      `Lagu: <b>${escHtml(song)}</b>\n` +
+      `Link: ${escHtml(link)}\n` +
+      (message ? `Pesan: <i>"${escHtml(message)}"</i>\n` : '') +
+      `\nTotal antrean OS: <b>${waitingCount} lagu</b>`,
+    buttonText: 'REQUEST LAGU',
     startParam: 'radio',
-    feedText: `${req.dbUser.name} request lagu "${song}" di Radio Gang.`
+    feedText: `${req.dbUser.name} request lagu "${song}" (Antrean #${reqId}).`
   });
 
-  res.json({ ok: true, played: false });
+  res.json({ ok: true, id: reqId, queueCount: waitingCount });
 });
 
-// POST /api/events/rsvp -> Ikut Rusuh
+// POST /api/events/rsvp -> Ikut Rusuh (RSVP Event)
 socialRouter.post('/events/rsvp', requireUser, (req, res) => {
   const eventId = String(req.body?.eventId || '');
   const ev = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
@@ -231,7 +264,7 @@ socialRouter.post('/capsule', requireUser, (req, res) => {
 socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'Pilih file gambar meme dulu bro!' });
+      return res.status(400).json({ error: 'Pilih file gambar meme dulu.' });
     }
 
     const publicPath = await processAndSaveImage(req.file, 'memes', { width: 1080, height: 1080, fit: 'inside' });
@@ -241,9 +274,9 @@ socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, re
     if (bot && ENV.GROUP_ID) {
       try {
         const localFile = path.join(ENV.UPLOAD_DIR, 'memes', path.basename(publicPath));
-        const kb = new InlineKeyboard().url('Kirim Meme di Web', `${ENV.MINIAPP_LINK}?startapp=meme`);
+        const kb = new InlineKeyboard().url('KIRIM MEME DI WEB', `${ENV.MINIAPP_LINK}?startapp=meme`);
         await bot.api.sendPhoto(ENV.GROUP_ID, new InputFile(localFile), {
-          caption: `<b>NEW MEME JUST DROPPED</b>\nOleh: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n<i>${escHtml(caption)}</i>` : ''),
+          caption: `<b>MEME BARU</b>\nOleh: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n<i>${escHtml(caption)}</i>` : ''),
           parse_mode: 'HTML',
           reply_markup: kb
         });
