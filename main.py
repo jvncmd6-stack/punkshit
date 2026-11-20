@@ -1,5 +1,6 @@
 import os
 import asyncio
+import logging
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +9,9 @@ from aiogram import Bot, Dispatcher
 from spark_db import init_spark_db
 from spark_module import spark_api, spark_bot_router
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+logging.basicConfig(level=logging.INFO)
+
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 RAW_CORS = os.getenv("CORS_ORIGINS", "*").strip()
 ALLOW_ORIGINS = ["*"] if RAW_CORS == "*" else [o.strip() for o in RAW_CORS.split(",") if o.strip()]
 
@@ -33,6 +36,16 @@ app.include_router(spark_api)
 dp.include_router(spark_bot_router)
 
 
+async def start_bot():
+    if not BOT_TOKEN:
+        logging.error("BOT_TOKEN kosong! Bot tidak dijalankan.")
+        return
+    await bot.delete_webhook(drop_pending_updates=False)
+    me = await bot.get_me()
+    logging.info(f"Bot aktif: @{me.username} (ID: {me.id})")
+    await dp.start_polling(bot, allowed_updates=["message", "callback_query"])
+
+
 async def main():
     init_spark_db()
     port = int(os.getenv("PORT", "8000"))
@@ -41,7 +54,7 @@ async def main():
 
     await asyncio.gather(
         server.serve(),
-        dp.start_polling(bot)
+        start_bot(),
     )
 
 
