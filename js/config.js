@@ -2,6 +2,8 @@
   var params = new URLSearchParams(window.location.search);
   var apiFromUrl = params.get('api') || '';
   var routeParam = params.get('startapp') || '';
+  var grpFromUrl = params.get('group') || '';
+  var chFromUrl = params.get('channel') || '';
 
   // Tangkap parameter dinamis dari tombol bot Telegram (tgWebAppStartParam)
   var tgStart = '';
@@ -27,12 +29,23 @@
       localStorage.setItem('psk_api_url', apiFromUrl.replace(/\/$/, ''));
     } catch (e) {}
   }
+  if (grpFromUrl) {
+    try { localStorage.setItem('psk_group_url', grpFromUrl); } catch (e) {}
+  }
+  if (chFromUrl) {
+    try { localStorage.setItem('psk_channel_url', chFromUrl); } catch (e) {}
+  }
 
   var savedApi = '';
+  var savedGrp = '';
+  var savedCh = '';
   try {
     savedApi = localStorage.getItem('psk_api_url') || '';
+    savedGrp = localStorage.getItem('psk_group_url') || '';
+    savedCh = localStorage.getItem('psk_channel_url') || '';
   } catch (e) {}
 
+  // Ambil dari window.__ENV__ (jika di-inject saat build/runtime) atau dari session/URL parameter
   var env = window.__ENV__ || {};
   var envApi = env.API_URL || '';
   var finalApi = (savedApi || envApi).replace(/\/$/, '');
@@ -40,8 +53,8 @@
   window.PUNK_CONFIG = {
     API_URL: finalApi,
     INITIAL_ROUTE: routeParam,
-    GROUP_URL: env.GROUP_URL || '',
-    CHANNEL_URL: env.CHANNEL_URL || '',
+    GROUP_URL: savedGrp || env.GROUP_URL || '',
+    CHANNEL_URL: savedCh || env.CHANNEL_URL || '',
 
     ICONS: {
       markas:     ['Markas',        '#8FC7FF', '#176BFF', 'M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z'],
@@ -107,4 +120,22 @@
       '🌙 Penghuni Jam Rawan'
     ]
   };
+
+  // Sinkronkan URL Grup & Channel dari backend Railway jika belum ada
+  if (finalApi && (!window.PUNK_CONFIG.GROUP_URL || !window.PUNK_CONFIG.CHANNEL_URL)) {
+    fetch(finalApi + '/api/spark/config')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (cfg) {
+        if (!cfg) return;
+        if (cfg.group_url) {
+          window.PUNK_CONFIG.GROUP_URL = cfg.group_url;
+          try { localStorage.setItem('psk_group_url', cfg.group_url); } catch (e) {}
+        }
+        if (cfg.channel_url) {
+          window.PUNK_CONFIG.CHANNEL_URL = cfg.channel_url;
+          try { localStorage.setItem('psk_channel_url', cfg.channel_url); } catch (e) {}
+        }
+      })
+      .catch(function () {});
+  }
 })();
