@@ -1,14 +1,15 @@
 import os
 import json
 import hmac
+import base64
 import hashlib
 from urllib.parse import parse_qsl
 from fastapi import APIRouter, Request
 from aiogram import Router, F, Bot
+from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 from spark_db import (
-    init_spark_db,
     upsert_warga,
     list_warga,
     get_spark_state,
@@ -18,11 +19,28 @@ from spark_db import (
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 GROUP_ID = int(os.getenv("GROUP_ID", "0") or "0")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "")
-MINIAPP_LINK = os.getenv("MINIAPP_LINK", "")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID", "0") or "0")
+WAREHOUSE_CHANNEL_ID = int(os.getenv("WAREHOUSE_CHANNEL_ID", "0") or "0")
+OWNER_IDS = [int(x.strip()) for x in os.getenv("OWNER_IDS", "").split(",") if x.strip().isdigit()]
+
+WEBAPP_URL = os.getenv("WEBAPP_URL", "").rstrip("/")
+MINIAPP_LINK = os.getenv("MINIAPP_LINK", "").rstrip("/")
+GROUP_URL = os.getenv("GROUP_URL", "")
+CHANNEL_URL = os.getenv("CHANNEL_URL", "")
+
+RAILWAY_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+PUBLIC_API_URL = f"https://{RAILWAY_DOMAIN}" if RAILWAY_DOMAIN else ""
 
 spark_api = APIRouter()
 spark_bot_router = Router()
+
+
+def encode_api_param(route: str = "spark") -> str:
+    if not PUBLIC_API_URL:
+        return route
+    b64 = base64.urlsafe_b64encode(PUBLIC_API_URL.encode()).decode().rstrip("=")
+    return f"{route}__{b64}"
+
 
 def verify_tg_user(init_data: str) -> dict | None:
     if not init_data or not BOT_TOKEN:
@@ -38,15 +56,21 @@ def verify_tg_user(init_data: str) -> dict | None:
         return None
     return json.loads(parsed.get("user", "{}"))
 
-def build_open_button(is_private_chat: bool) -> InlineKeyboardMarkup | None:
-    # Di DM bisa pakai WebAppInfo langsung; di grup pakai MINIAPP_LINK (t.me/bot/app)
+
+def build_open_button(is_private_chat: bool, route: str = "spark") -> InlineKeyboardMarkup | None:
+    start_val = encode_api_param(route)
     if is_private_chat and WEBAPP_URL:
+        sep = "&" if "?" in WEBAPP_URL else "?"
+        api_q = f"&api={PUBLIC_API_URL}" if PUBLIC_API_URL else ""
+        target_url = f"{WEBAPP_URL}{sep}startapp={start_val}{api_q}"
         return InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", web_app=WebAppInfo(url=WEBAPP_URL))
+            InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", web_app=WebAppInfo(url=target_url))
         ]])
     if MINIAPP_LINK:
+        sep = "&" if "?" in MINIAPP_LINK else "?"
+        target_link = f"{MINIAPP_LINK}{sep}startapp={start_val}"
         return InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", url=MINIAPP_LINK)
+            InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", url=target_link)
         ]])
     if WEBAPP_URL:
         return InlineKeyboardMarkup(inline_keyboard=[[
@@ -54,15 +78,29 @@ def build_open_button(is_private_chat: bool) -> InlineKeyboardMarkup | None:
         ]])
     return None
 
+
+@spark_api.get("/api/spark/config")
+async def api_spark_config():
+    return {
+        "api_url": PUBLIC_API_URL,
+        "group_url": GROUP_URL,
+        "channel_url": CHANNEL_URL,
+        "webapp_url": WEBAPP_URL,
+        "miniapp_link": MINIAPP_LINK,
+    }
+
+
 @spark_api.get("/api/warga")
 async def api_get_warga():
     return {"members": list_warga()}
+
 
 @spark_api.get("/api/spark/status")
 async def api_spark_status(username: str = ""):
     if not username:
         return {"sparkBuddy": None}
     return {"sparkBuddy": get_spark_state(username)}
+
 
 @spark_api.post("/api/spark/action")
 async def api_spark_action(req: Request):
@@ -93,7 +131,7 @@ async def api_spark_action(req: Request):
                         target_tg_id,
                         notif,
                         parse_mode="HTML",
-                        reply_markup=build_open_button(is_private_chat=True)
+                        reply_markup=build_open_button(is_private_chat=True, route="spark")
                     )
                     sent_dm = True
                 except Exception:
@@ -104,7 +142,7 @@ async def api_spark_action(req: Request):
                     GROUP_ID,
                     notif,
                     parse_mode="HTML",
-                    reply_markup=build_open_button(is_private_chat=False)
+                    reply_markup=build_open_button(is_private_chat=False, route="spark")
                 )
         except Exception:
             pass
@@ -116,6 +154,18 @@ async def api_spark_action(req: Request):
         "message": msg,
         "sparkBuddy": get_spark_state(actor) if actor else None
     }
+
+
+@spark_bot_router.message(Command("spark"))
+async def cmd_spark(message: Message):
+    is_private = message.chat.type == "private"
+    kb = build_open_button(is_private_chat=is_private, route="spark")
+    await message.reply(
+        "🔥 <b>Spark Buddies</b>\nNyalain api bareng partner markas kamu!",
+        parse_mode="HTML",
+        reply_markup=kb
+    )
+
 
 @spark_bot_router.message(F.chat.type.in_({"group", "supergroup"}))
 async def on_group_spark_tracker(message: Message):
@@ -142,7 +192,7 @@ async def on_group_spark_tracker(message: Message):
     if qualified_info:
         await message.reply(
             f"🔥 <b>SPARK SECURED!</b>\n"
-            f"@{qualified_info['user1']} × @{qualified_info['user2']} sudah aktif bareng hari ini!\n"
+            f"@{qualified_info['user1']} x @{qualified_info['user2']} sudah aktif bareng hari ini!\n"
             f"Streak: <b>{qualified_info['streak']} Hari</b> · Total XP: <b>{qualified_info['xp']}</b>",
             parse_mode="HTML"
         )
