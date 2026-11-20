@@ -29,10 +29,37 @@ db.exec(`
     detail TEXT NOT NULL,
     created_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS spark_pairs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user1 TEXT NOT NULL,
+    user2 TEXT NOT NULL,
+    status TEXT NOT NULL,
+    streak INTEGER DEFAULT 0,
+    xp INTEGER DEFAULT 0,
+    last_qualified_date TEXT DEFAULT '',
+    created_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS spark_daily (
+    date TEXT NOT NULL,
+    username TEXT NOT NULL,
+    gap INTEGER DEFAULT 0,
+    msg INTEGER DEFAULT 0,
+    last_msg_ts INTEGER DEFAULT 0,
+    PRIMARY KEY (date, username)
+  );
 `);
 
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN source_type TEXT DEFAULT 'spotify'"); } catch (e) {}
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN file_id TEXT DEFAULT ''"); } catch (e) {}
+
+const SPARK_MIN_GAP = Number(process.env.SPARK_MIN_GAP || 5);
+const SPARK_MIN_MSG = Number(process.env.SPARK_MIN_MSG || 2);
+const SPARK_GAP_COOLDOWN = Number(process.env.SPARK_GAP_COOLDOWN || 30);
+
+function todayWib() {
+  const now = new Date(Date.now() + 7 * 3600 * 1000);
+  return now.toISOString().slice(0, 10);
+}
 
 function getWarehouseId() {
   return (process.env.WAREHOUSE_CHANNEL_ID || '').trim();
@@ -203,8 +230,10 @@ function renderRadioQueueText() {
 function renderKamusText() {
   return (
     '📖 <b>KAMUS COMMAND MAS RAKA</b>\n\n' +
-    '<b>1. Perintah Warga & Radio:</b>\n' +
+    '<b>1. Perintah Warga, Spark & Radio:</b>\n' +
     '• <code>/start</code> — Buka menu utama markas\n' +
+    '• <code>/spark</code> — Buka Spark Buddies\n' +
+    '• <code>/acc</code> — Terima ajakan Spark Buddies yang masuk\n' +
     '• <code>/antrean</code> — Cek daftar titipan lagu OS\n' +
     '• <code>/req Judul | Link</code> — Nitip lagu Spotify\n' +
     '• <code>/pasal</code> — Baca pasal & aturan tongkrongan\n' +
@@ -266,6 +295,8 @@ export function startBot() {
 
   bot.api.setMyCommands([
     { command: 'start', description: 'Menu Utama Markas PUNKSHIT.OS' },
+    { command: 'spark', description: 'Buka Spark Buddies' },
+    { command: 'acc', description: 'Terima Ajakan Spark Buddies' },
     { command: 'givepsc', description: 'Give / Top Up Koin PSC Warga (Admin)' },
     { command: 'cekpsc', description: 'Cek Saldo PSC Warga' },
     { command: 'antrean', description: 'Cek Antrean Lagu Radio Gang' },
@@ -275,6 +306,118 @@ export function startBot() {
     { command: 'kamus', description: 'Kamus Command Lengkap' },
     { command: 'myid', description: 'Cek Telegram ID Kamu' }
   ]).catch(() => {});
+
+  // === TRACKER SPARK BUDDIES DI GRUP (5 GAP + 2 PESAN) ===
+  bot.on('message', async (ctx, next) => {
+    try {
+      const chatType = ctx.chat?.type;
+      const user = ctx.from;
+      const isTargetGroup = !ENV.GROUP_ID || String(ctx.chat?.id) === String(ENV.GROUP_ID);
+
+      if ((chatType === 'group' || chatType === 'supergroup') && isTargetGroup && user && !user.is_bot && user.username) {
+        const usn = user.username.toLowerCase();
+        const textLen = (ctx.message?.text || ctx.message?.caption || '').trim().length;
+
+        if (textLen >= 3) {
+          const today = todayWib();
+          const nowSec = Math.floor(Date.now() / 1000);
+          const act = db.prepare('SELECT gap, msg, last_msg_ts FROM spark_daily WHERE date = ? AND username = ?').get(today, usn);
+
+          const gapAdd = (!act || (nowSec - act.last_msg_ts) >= SPARK_GAP_COOLDOWN) ? 1 : 0;
+          const newGap = (act ? act.gap : 0) + gapAdd;
+          const newMsg = (act ? act.msg : 0) + 1;
+
+          db.prepare(`
+            INSERT INTO spark_daily (date, username, gap, msg, last_msg_ts)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(date, username) DO UPDATE SET
+              gap = excluded.gap,
+              msg = excluded.msg,
+              last_msg_ts = excluded.last_msg_ts
+          `).run(today, usn, newGap, newMsg, nowSec);
+
+          const pair = db.prepare(`
+            SELECT * FROM spark_pairs
+            WHERE (user1 = ? OR user2 = ?) AND status = 'paired'
+            LIMIT 1
+          `).get(usn, usn);
+
+          if (pair) {
+            const partner = pair.user1 === usn ? pair.user2 : pair.user1;
+            const repliedUsn = (ctx.message?.reply_to_message?.from?.username || '').toLowerCase();
+            if (repliedUsn && repliedUsn === partner) {
+              db.prepare('UPDATE spark_pairs SET xp = xp + 5 WHERE id = ?').run(pair.id);
+            }
+
+            const pAct = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, partner);
+            if (
+              pAct &&
+              newGap >= SPARK_MIN_GAP &&
+              newMsg >= SPARK_MIN_MSG &&
+              pAct.gap >= SPARK_MIN_GAP &&
+              pAct.msg >= SPARK_MIN_MSG &&
+              pair.last_qualified_date !== today
+            ) {
+              const newStreak = (pair.streak || 0) + 1;
+              const newXp = (pair.xp || 0) + 10;
+              db.prepare(`
+                UPDATE spark_pairs
+                SET streak = ?, xp = ?, last_qualified_date = ?
+                WHERE id = ?
+              `).run(newStreak, newXp, today, pair.id);
+
+              await ctx.reply(
+                `🔥 <b>SPARK SECURED!</b>\n` +
+                `@${escHtml(usn)} x @${escHtml(partner)} sudah aktif bareng hari ini!\n` +
+                `Streak: <b>${newStreak} Hari</b> · Total XP: <b>${newXp}</b>`,
+                { parse_mode: 'HTML' }
+              ).catch(() => {});
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[Spark Tracker Error]:', e.message);
+    }
+    return next();
+  });
+
+  // === COMMAND /spark & /acc ===
+  bot.command('spark', async (ctx) => {
+    const kb = new InlineKeyboard();
+    if (ENV.MINIAPP_LINK) {
+      kb.url('🔥 Buka Spark Buddies', `${ENV.MINIAPP_LINK}?startapp=spark`);
+    }
+    await ctx.reply(
+      '🔥 <b>SPARK BUDDIES</b>\n' +
+      'Nyalain api bareng partner markas kamu! Tap tombol di bawah:',
+      { parse_mode: 'HTML', reply_markup: kb }
+    );
+  });
+
+  bot.command('acc', async (ctx) => {
+    const usn = (ctx.from?.username || '').toLowerCase();
+    if (!usn) {
+      return ctx.reply('Pasang @username Telegram dulu sebelum pakai Spark Buddies.');
+    }
+
+    const row = db.prepare(`
+      SELECT id, user1 FROM spark_pairs
+      WHERE user2 = ? AND status = 'pending'
+      ORDER BY id DESC LIMIT 1
+    `).get(usn);
+
+    if (!row) {
+      return ctx.reply('Nggak ada ajakan Spark yang masuk buat kamu saat ini.');
+    }
+
+    db.prepare("UPDATE spark_pairs SET status = 'paired' WHERE id = ?").run(row.id);
+    await ctx.reply(
+      `🔥 <b>SPARK RESMI MENYALA!</b>\n` +
+      `@${escHtml(row.user1)} x @${escHtml(usn)} sekarang resmi jadi Spark Buddies!`,
+      { parse_mode: 'HTML' }
+    );
+  });
 
   bot.command('start', async (ctx) => {
     if (ctx.chat.type === 'private') {
@@ -297,7 +440,6 @@ export function startBot() {
     await ctx.reply(`🆔 Telegram ID kamu: <code>${ctx.from.id}</code>`, { parse_mode: 'HTML' });
   });
 
-  // /givepsc @username 500  ATAU  reply chat warga lalu ketik /givepsc 500
   bot.command('givepsc', async (ctx) => {
     if (!isBotOwnerOrAdmin(ctx.from.id)) {
       return ctx.reply('⛔ Khusus Owner & Admin doang yang bisa suntik koin PSC cuy.');
@@ -353,7 +495,6 @@ export function startBot() {
     );
   });
 
-  // /cekpsc @username atau reply pesan warga
   bot.command('cekpsc', async (ctx) => {
     const rawTarget = String(ctx.match || '').trim().replace(/^@/, '');
     const replyUser = ctx.message?.reply_to_message?.from;
@@ -381,7 +522,6 @@ export function startBot() {
     );
   });
 
-  // /setrole @username admin|moderator|member
   bot.command('setrole', async (ctx) => {
     const senderId = String(ctx.from.id);
     const isOwner = (ENV.OWNER_IDS || []).map(String).includes(senderId);
@@ -658,6 +798,50 @@ export function startBot() {
   bot.on('callback_query:data', async (ctx) => {
     const data = ctx.callbackQuery.data;
     const admin = isBotAdmin(ctx.from.id);
+
+    // === TOMBOL ACC / TOLAK SPARK BUDDIES ===
+    if (data.startsWith('spark_acc:') || data.startsWith('spark_dec:')) {
+      const parts = data.split(':');
+      const mode = parts[0];
+      const sender = (parts[1] || '').toLowerCase();
+      const target = (parts[2] || '').toLowerCase();
+      const clicker = (ctx.from?.username || '').toLowerCase();
+
+      if (!clicker || clicker !== target) {
+        return ctx.answerCallbackQuery({
+          text: `Cuma @${target} yang bisa pencet tombol ini!`,
+          show_alert: true
+        });
+      }
+
+      if (mode === 'spark_acc') {
+        const row = db.prepare(`
+          SELECT id FROM spark_pairs WHERE user1 = ? AND user2 = ? AND status = 'pending'
+        `).get(sender, clicker);
+
+        if (!row) {
+          return ctx.answerCallbackQuery({ text: 'Ajakan sudah kadaluarsa atau dibatalkan.', show_alert: true });
+        }
+
+        db.prepare("UPDATE spark_pairs SET status = 'paired' WHERE id = ?").run(row.id);
+        await ctx.editMessageText(
+          `🔥 <b>SPARK RESMI MENYALA!</b>\n` +
+          `@${escHtml(sender)} x @${escHtml(clicker)} sekarang resmi jadi Spark Buddies!`,
+          { parse_mode: 'HTML' }
+        ).catch(() => {});
+        return ctx.answerCallbackQuery({ text: 'Spark resmi menyala! 🔥' });
+      } else {
+        db.prepare(`
+          DELETE FROM spark_pairs
+          WHERE (user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)
+        `).run(sender, clicker, clicker, sender);
+        await ctx.editMessageText(
+          `💨 Ajakan Spark dari @${escHtml(sender)} ke @${escHtml(clicker)} ditolak.`,
+          { parse_mode: 'HTML' }
+        ).catch(() => {});
+        return ctx.answerCallbackQuery({ text: 'Ajakan ditolak.' });
+      }
+    }
 
     if (data === 'pc_home') {
       await ctx.editMessageText(renderPrivateHomeText(ctx.from.id), {
