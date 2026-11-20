@@ -46,6 +46,7 @@
     ICONS: {
       markas:     ['Markas',        '#8FC7FF', '#176BFF', 'M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z'],
       absen:      ['Absen Nyawa',   '#FFE666', '#D97706', 'M12 2c1 4-2 6-2 9a4 4 0 008 0c0-2-1-4-1-6 3 2 5 5 5 9a10 10 0 11-20 0c0-5 4-9 10-12z'],
+      spark:      ['Spark Buddies', '#FFD24A', '#EA580C', 'M13 2L4 14h7l-1 8 9-12h-7l1-8z'],
       kas:        ['Kas Rusuh',     '#93C5FD', '#1D4ED8', 'M3 7a3 3 0 013-3h12a3 3 0 013 3v10a3 3 0 01-3 3H6a3 3 0 01-3-3V7zm13 5a2 2 0 100 .01V12z'],
       lapak:      ['Lapak Rongsok', '#67E8F9', '#0E7490', 'M4 9l1.5-5h13L20 9v2a3 3 0 01-2 2.8V20H6v-6.2A3 3 0 014 11V9zm6 6v3h4v-3h-4z'],
       lapakwarga: ['Lapak Warga',   '#FDE047', '#CA8A04', 'M3 9l2-5h14l2 5v2a3 3 0 01-2 2.8V20H5v-6.2A3 3 0 013 11V9zm5 5v4h8v-4H8z'],
@@ -68,10 +69,11 @@
     },
 
     BASE_GRID: [
-      'absen', 'kas', 'lapak', 'lapakwarga',
-      'arena', 'warga', 'fame', 'kotak',
-      'sidang', 'wanted', 'radio', 'event',
-      'meme', 'misi', 'kapsul', 'rules'
+      'absen', 'spark', 'kas', 'lapak',
+      'lapakwarga', 'arena', 'warga', 'fame',
+      'kotak', 'sidang', 'wanted', 'radio',
+      'event', 'meme', 'misi', 'kapsul',
+      'rules'
     ],
 
     DOCK: ['markas', 'gue', 'group', 'channel'],
@@ -91,18 +93,18 @@
     ],
 
     PRESENCE_LIST: [
-  '⚡ Lagi Banyak Energi',
-  '🎧 Lost in Playlist',
-  '🎮 Butuh Party',
-  '☕ Ngopi & Nyimak',
-  '💸 Financially AFK',
-  '👻 Menghilang dari Radar',
-  '💬 Open Buat Ngobrol',
-  '🫠 Social Battery 1%',
-  '💤 AFK Sebentar',
-  '👀 Cuma Jadi CCTV',
-  '💌 Open Mutualan',
-  '🌙 Penghuni Jam Rawan'
-]
+      '⚡ Lagi Banyak Energi',
+      '🎧 Lost in Playlist',
+      '🎮 Butuh Party',
+      '☕ Ngopi & Nyimak',
+      '💸 Financially AFK',
+      '👻 Menghilang dari Radar',
+      '💬 Open Buat Ngobrol',
+      '🫠 Social Battery 1%',
+      '💤 AFK Sebentar',
+      '👀 Cuma Jadi CCTV',
+      '💌 Open Mutualan',
+      '🌙 Penghuni Jam Rawan'
+    ]
   };
 })();
