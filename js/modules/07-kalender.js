@@ -8,7 +8,6 @@
     var events = S.events || [];
 
     return (
-      // Birthday Club Card
       '<div class="grp" style="margin-bottom:16px;background:linear-gradient(135deg,#5AC8FA26,#101827)">' +
         '<div class="rw">' +
           '<div>' +
@@ -19,7 +18,6 @@
         '</div>' +
       '</div>' +
 
-      // Daftar Event Komunitas
       '<h3 class="gh">KALENDER KEKACAUAN (EVENT & AWARDS)</h3>' +
       '<div class="grp">' +
         (events.length
@@ -45,6 +43,19 @@
     );
   }
 
+  function renderKapsul() {
+    return (
+      '<div class="grp" style="margin-bottom:14px">' +
+        '<div class="rw"><div><b>📦 Time Capsule</b><small>Tulis pesan buat diri sendiri atau warga masa depan. Mas Raka bakal buka pas waktunya tiba.</small></div></div>' +
+      '</div>' +
+      '<label>BUKA PADA TANGGAL</label>' +
+      '<input id="kl-tc-date" type="date">' +
+      '<label>PESAN UNTUK MASA DEPAN</label>' +
+      '<textarea id="kl-tc-msg" maxlength="300" placeholder="Semoga pas pesan ini kebuka, saldo udah nggak sekarat..."></textarea>' +
+      '<button class="btn" data-act="kl-capsule-save">KUNCI TIME CAPSULE</button>'
+    );
+  }
+
   function openBirthdaySheet() {
     C.sheet(
       '<h2>🎂 Birthday Club</h2>' +
@@ -56,6 +67,7 @@
   }
 
   C.Views.event = renderKalender;
+  C.Views.kapsul = renderKapsul;
 
   document.addEventListener('click', async function (e) {
     var t = e.target.closest('[data-act]');
@@ -92,6 +104,23 @@
       } catch (err) {
         t.disabled = false;
         C.notify('Mas Raka', 'Gagal RSVP', err.message);
+      }
+    } else if (act === 'kl-capsule-save') {
+      var dt = (document.getElementById('kl-tc-date').value || '').trim();
+      var msg = (document.getElementById('kl-tc-msg').value || '').trim();
+      if (!dt || msg.length < 5) {
+        C.notify('Mas Raka', 'Validasi', 'Isi tanggal buka dan pesan minimal 5 karakter.');
+        return;
+      }
+      t.disabled = true;
+      try {
+        await API.post('/api/capsule', { unlockDate: dt, message: msg });
+        document.getElementById('kl-tc-msg').value = '';
+        C.notify('Mas Raka', 'Time Capsule', 'Pesan dikunci rapat sampai ' + dt + '!');
+      } catch (err) {
+        C.notify('Mas Raka', 'Gagal', err.message);
+      } finally {
+        t.disabled = false;
       }
     }
   });
