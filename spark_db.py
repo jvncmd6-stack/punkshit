@@ -10,8 +10,10 @@ MIN_GAP = int(os.getenv("SPARK_MIN_GAP", "5") or "5")
 MIN_MSG = int(os.getenv("SPARK_MIN_MSG", "2") or "2")
 GAP_COOLDOWN = int(os.getenv("SPARK_GAP_COOLDOWN", "30") or "30")
 
+
 def today_wib() -> str:
     return datetime.now(WIB).strftime("%Y-%m-%d")
+
 
 def get_conn():
     db_dir = os.path.dirname(DB_PATH)
@@ -20,6 +22,7 @@ def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_spark_db():
     with get_conn() as c:
@@ -52,6 +55,7 @@ def init_spark_db():
         );
         """)
 
+
 def upsert_warga(telegram_id: int, username: str | None, name: str):
     if not username:
         return
@@ -66,12 +70,14 @@ def upsert_warga(telegram_id: int, username: str | None, name: str):
             updated_at = excluded.updated_at
         """, (telegram_id, usn, name, datetime.now(WIB).isoformat()))
 
-def list_warga():
+
+def list_warga() -> list[dict]:
     with get_conn() as c:
         rows = c.execute(
             "SELECT telegram_id as id, username, name, rank FROM warga WHERE username IS NOT NULL ORDER BY updated_at DESC"
         ).fetchall()
         return [dict(r) for r in rows]
+
 
 def get_spark_state(username: str) -> dict | None:
     usn = username.lstrip("@").lower()
@@ -104,6 +110,7 @@ def get_spark_state(username: str) -> dict | None:
             "g2": {"gap": a2["gap"] if a2 else 0, "msg": a2["msg"] if a2 else 0},
         }
 
+
 def handle_pair_action(action: str, actor: str, target: str) -> tuple[bool, str, int | None]:
     actor = actor.lstrip("@").lower()
     target = target.lstrip("@").lower()
@@ -117,7 +124,7 @@ def handle_pair_action(action: str, actor: str, target: str) -> tuple[bool, str,
                 WHERE (user1 IN (?, ?) OR user2 IN (?, ?)) AND status IN ('pending', 'paired')
             """, (actor, target, actor, target)).fetchone()
             if existing:
-                return False, "Salah satu sudah punya koneksi/ajakan aktif", None
+                return False, "Salah satu sudah punya koneksi atau ajakan aktif", None
 
             t_row = c.execute("SELECT telegram_id FROM warga WHERE username = ?", (target,)).fetchone()
             c.execute("INSERT INTO spark_pairs (user1, user2, status) VALUES (?, ?, 'pending')", (actor, target))
@@ -140,6 +147,7 @@ def handle_pair_action(action: str, actor: str, target: str) -> tuple[bool, str,
             return True, "Koneksi dihapus", None
 
     return False, "Aksi tidak dikenal", None
+
 
 def record_group_message(username: str, text_len: int, is_reply_to_partner: bool = False) -> dict | None:
     if not username or text_len < 3:
