@@ -81,7 +81,7 @@
   </div>
 
   <!-- Core & Config -->
-  <script src="./js/config.js?v=8"></script>
+  <script src="./js/config.js?v=9"></script>
   <script>
     window.PUNK_CONFIG = window.PUNK_CONFIG || { API_URL: '', ICONS: {}, BASE_GRID: [], DOCK: [] };
   </script>
@@ -108,7 +108,8 @@
 
       function resolveCurrentUser() {
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
-        const stateUser = window.STATE?.user || window.PUNK?.user || window.CURRENT_USER || {};
+        const coreS = window.PunkCore?.S || {};
+        const stateUser = coreS.user || window.STATE?.user || window.PUNK?.user || window.CURRENT_USER || {};
         let storedUser = {};
         try {
           for (let i = 0; i < localStorage.length; i++) {
@@ -137,7 +138,10 @@
       }
 
       async function resolveMembers() {
+        const coreS = window.PunkCore?.S || {};
         const rawList =
+          coreS.members ||
+          coreS.warga ||
           window.STATE?.members ||
           window.STATE?.warga ||
           window.WARGA ||
@@ -174,6 +178,7 @@
 
         return list
           .map((m) => ({
+            id: m.id || m.telegram_id || null,
             username: cleanUsn(m.username || m.usn || m.tg_username),
             name: m.name || m.first_name || m.display_name || "",
             rank: m.rank || m.role || m.title || "Warga Punk"
@@ -184,6 +189,21 @@
       async function pushSyncToSpark(targetWin) {
         const user = resolveCurrentUser();
         const members = await resolveMembers();
+
+        // Sinkronkan status Spark terkini dari server Railway
+        if (user.username && window.PUNK_CONFIG?.API_URL) {
+          try {
+            const base = window.PUNK_CONFIG.API_URL.replace(/\/$/, "");
+            const stRes = await fetch(base + "/api/spark/status?username=" + encodeURIComponent(user.username)).catch(() => null);
+            if (stRes && stRes.ok) {
+              const stData = await stRes.json();
+              if (stData && stData.sparkBuddy) {
+                user.sparkBuddy = stData.sparkBuddy;
+              }
+            }
+          } catch (_) {}
+        }
+
         const payload = { type: "PUNK_SYNC", user, members };
 
         if (targetWin && typeof targetWin.postMessage === "function") {
@@ -202,8 +222,8 @@
           await pushSyncToSpark(ev.source);
         }
 
-        // Teruskan aksi persetujuan 2 pihak ke backend API PUNKSHIT.OS jika ada
-        if (["SPARK_INVITE_SEND", "SPARK_INVITE_ACCEPT", "SPARK_INVITE_DECLINE", "SPARK_UNPAIR"].includes(d.type)) {
+        // Teruskan aksi persetujuan 2 pihak ke backend API PUNKSHIT.OS
+        if (["SPARK_INVITE_SEND", "SPARK_INVITE_ACCEPT", "SPARK_INVITE_DECLINE", "SPARK_INVITE_CANCEL", "SPARK_UNPAIR"].includes(d.type)) {
           if (window.PUNK_CONFIG?.API_URL) {
             const base = window.PUNK_CONFIG.API_URL.replace(/\/$/, "");
             fetch(base + "/api/spark/action", {
@@ -213,7 +233,10 @@
                 ...d,
                 initData: window.Telegram?.WebApp?.initData || ""
               })
-            }).catch(() => {});
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .then(() => pushSyncToSpark(ev.source))
+              .catch(() => {});
           }
         }
       });
