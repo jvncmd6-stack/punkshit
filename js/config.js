@@ -33,15 +33,15 @@
     savedApi = localStorage.getItem('psk_api_url') || '';
   } catch (e) {}
 
-  // Ambil dari window.__ENV__ (jika di-inject saat build) atau dari session/URL parameter
-  var envApi = (window.__ENV__ && window.__ENV__.API_URL) || '';
+  var env = window.__ENV__ || {};
+  var envApi = env.API_URL || '';
   var finalApi = (savedApi || envApi).replace(/\/$/, '');
 
   window.PUNK_CONFIG = {
     API_URL: finalApi,
     INITIAL_ROUTE: routeParam,
-    GROUP_URL: '',
-    CHANNEL_URL: '',
+    GROUP_URL: env.GROUP_URL || '',
+    CHANNEL_URL: env.CHANNEL_URL || '',
 
     ICONS: {
       markas:     ['Markas',        '#8FC7FF', '#176BFF', 'M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z'],
