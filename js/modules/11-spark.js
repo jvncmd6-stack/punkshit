@@ -3,7 +3,6 @@
   var S = C.S;
 
   function renderSparkApp() {
-    // Sembunyikan judul besar bawaan agar tampilan Spark Card penuh ke atas
     setTimeout(function () {
       var lt = document.getElementById('lt');
       var sc = document.getElementById('sc');
@@ -30,7 +29,6 @@
     );
   }
 
-  // Kembalikan padding & judul saat keluar dari Spark Buddies ke aplikasi lain
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-act="close"], [data-act="app"]');
     if (!btn) return;
