@@ -108,30 +108,44 @@ function formatTemplate(tpl, member, totalCount) {
     .replace(/\{count\}/gi, String(totalCount || '-'));
 }
 
-function renderPrivateHomeText() {
+// Tampilan Utama PC Bot yang Rapi & Terstruktur
+function renderPrivateHomeText(userId) {
+  const roleTag = isBotAdmin(userId) ? 'PENGURUS MARKAS' : 'WARGA MARKAS';
   return (
     '🪪 <b>PUNKSHIT.OS — MARKAS ONLINE</b>\n' +
+    `Status Akses: <code>${roleTag}</code>\n\n` +
     'Wih, nongol juga. Markas masih berdiri kok, belum dialihfungsikan jadi minimarket.\n\n' +
-    '• <b>Nitip Lagu OS:</b> Lempar file musik (MP3/M4A) langsung ke sini biar gua masukin ke Gudang, atau kirim link Spotify lewat Mini App.\n' +
-    '• <b>Tap tombol di bawah buat buka Mini App atau cek antrean:</b>'
+    '<blockquote>' +
+    '<b>Cara Nitip Lagu OS:</b>\n' +
+    '• Kirim file musik (<b>MP3 / M4A</b>) langsung ke chat ini buat masuk Gudang.\n' +
+    '• Atau kirim link <b>Spotify</b> lewat menu Radio Gang di Mini App.' +
+    '</blockquote>\n' +
+    'Pilih menu navigasi di bawah:'
   );
 }
 
-function buildPrivateMenuKeyboard(isAdmin) {
+// Susunan Button Rapi: Row 1 Full Width, Row 2 & Row 3 Grid 2 Kolom Sejajar
+function buildPrivateMenuKeyboard() {
   const kb = new InlineKeyboard();
+
+  // Baris 1: Tombol Utama Full-Width
   if (ENV.MINIAPP_LINK) {
-    kb.url('Buka PUNKSHIT.OS', ENV.MINIAPP_LINK);
+    kb.url('🪪 Buka Mini App PUNKSHIT.OS', ENV.MINIAPP_LINK);
   }
+
+  // Baris 2: Navigasi Warga
   const groupUrl = (process.env.GROUP_URL || '').trim();
+  kb.row();
   if (groupUrl) {
-    kb.url('Grup Markas', groupUrl);
+    kb.url('💬 Grup Markas', groupUrl);
   }
-  kb.row().text('Antrean Request Radio', 'pc_radio_queue');
-  if (isAdmin) {
-    kb.row()
-      .text('Kamus Command Admin', 'pc_kamus')
-      .text('Status Greet & Bye', 'pc_greet_info');
-  }
+  kb.text('📻 Antrean Radio', 'pc_radio_queue');
+
+  // Baris 3: Menu Pengurus (Kamus & Command Admin)
+  kb.row()
+    .text('📖 Kamus Command', 'pc_kamus')
+    .text('⚙️ Command Admin', 'pc_admin_cmd');
+
   return kb;
 }
 
@@ -146,67 +160,83 @@ function renderRadioQueueText() {
 
   if (!list.length) {
     return (
-      '<b>ANTREAN RADIO GANG (OS)</b>\n\n' +
+      '📻 <b>ANTREAN RADIO GANG (OS)</b>\n\n' +
       'Masih sepi nih, belum ada yang nitip lagu buat OS.\n\n' +
-      '<b>Cara Nitip Lagu ke Raka:</b>\n' +
-      '• <b>Link Spotify:</b> Kirim lewat menu <i>Radio Gang</i> di Mini App atau ketik <code>/req Judul - Artis | https://open.spotify.com/...</code>\n' +
-      '• <b>File Musik (MP3/M4A):</b> Kirim langsung file audionya ke PC gua pake caption judul lagu.'
+      '<blockquote>' +
+      '<b>Cara Nitip Lagu:</b>\n' +
+      '• <b>Spotify:</b> Ketik <code>/req Judul - Artis | https://open.spotify.com/...</code>\n' +
+      '• <b>File Audio:</b> Kirim langsung file MP3/M4A ke PC ini.' +
+      '</blockquote>'
     );
   }
 
   const lines = list.map((item, idx) => {
-    const badge = item.source_type === 'audio' ? '[FILE GUDANG]' : '[SPOTIFY]';
-    const linkPart = item.link ? `\n   Link: ${escHtml(item.link)}` : '';
-    const msgPart = item.message ? `\n   Titip salam: <i>"${escHtml(item.message)}"</i>` : '';
-    return `<b>${idx + 1}. #${item.id} ${badge} ${escHtml(item.song)}</b>\n   Dari: ${escHtml(item.user_name)}${linkPart}${msgPart}`;
+    const badge = item.source_type === 'audio' ? '[GUDANG]' : '[SPOTIFY]';
+    const linkPart = item.link ? `\n   🔗 ${escHtml(item.link)}` : '';
+    const msgPart = item.message ? `\n   💬 <i>"${escHtml(item.message)}"</i>` : '';
+    return `<b>${idx + 1}. #${item.id} ${badge} ${escHtml(item.song)}</b>\n   👤 ${escHtml(item.user_name)}${linkPart}${msgPart}`;
   });
 
   return (
-    `<b>ANTREAN RADIO GANG (${list.length} Lagu)</b>\n\n` +
+    `📻 <b>ANTREAN RADIO GANG (${list.length} Lagu)</b>\n\n` +
     lines.join('\n\n') +
-    '\n\n<i>Admin: ketik /done <ID> kalau lagunya udah kelar diputer di OS, atau pencet Kosongkan Semua.</i>'
+    '\n\n<i>Admin: ketik /done <ID> kalau lagunya udah kelar diputer.</i>'
   );
 }
 
+// Halaman 1: Kamus Command Lengkap
 function renderKamusText() {
-  const wh = getWarehouseId();
   return (
-    '<b>KAMUS COMMAND MAS RAKA (PC ADMIN)</b>\n\n' +
-    `Status Channel Gudang: <b>${wh ? 'Nyambung' : 'Belum Diset (Isi WAREHOUSE_CHANNEL_ID)'}</b>\n\n` +
-    '<b>1. Urusan Request Radio & Gudang Musik:</b>\n' +
-    '• <code>/antrean</code> — Liat semua daftar titipan lagu (Spotify & File Gudang)\n' +
-    '• <code>/req Judul | Link Spotify</code> — Titip lagu via chat\n' +
-    '• <i>Kirim File Audio (MP3/M4A) ke PC bot</i> — Otomatis masuk Gudang & antrean\n' +
-    '• <code>/done 12</code> — Coret request ID #12 setelah diputer di OS\n' +
-    '• <code>/clearradio</code> — Bersihin semua antrean lagu\n\n' +
-    '<b>2. Setting Greet & Bye (Warga Masuk/Keluar):</b>\n' +
-    '• <code>/setgreet teks baru</code> — Ganti kata-kata sambutan\n' +
-    '• <code>/setgreetmedia</code> — Reply GIF/Stiker di PC ini buat pelengkap greet\n' +
-    '• <code>/delgreetmedia</code> — Copot GIF/Stiker greet\n' +
-    '• <code>/setbye teks baru</code> — Ganti kata-kata perpisahan\n' +
-    '• <code>/setbyemedia</code> — Reply GIF/Stiker di PC ini buat pelengkap bye\n' +
-    '• <code>/delbyemedia</code> — Copot GIF/Stiker bye\n' +
-    '• <code>/greetinfo</code> — Intip teks & media Greet/Bye yang lagi kepasang\n\n' +
-    '<b>3. Setting Pasal & Help:</b>\n' +
-    '• <code>/setpasal teks aturan baru</code> — Ganti isi Pasal & Aturan\n' +
-    '• <code>/sethelp teks bantuan baru</code> — Ganti isi Pusat Bantuan\n\n' +
-    '<b>Variabel Greet & Bye:</b>\n' +
-    '<code>{name}</code>, <code>{mention}</code>, <code>{username}</code>, <code>{count}</code>'
+    '📖 <b>KAMUS COMMAND MAS RAKA</b>\n\n' +
+    '<b>1. Perintah Warga & Radio:</b>\n' +
+    '• <code>/start</code> — Buka menu utama markas\n' +
+    '• <code>/antrean</code> — Cek daftar titipan lagu OS\n' +
+    '• <code>/req Judul | Link</code> — Nitip lagu Spotify\n' +
+    '• <code>/pasal</code> — Baca pasal & aturan tongkrongan\n' +
+    '• <code>/help</code> — Pusat bantuan warga\n\n' +
+    '<b>2. Perintah Pengurus (Admin & Owner):</b>\n' +
+    '• <code>/done 12</code> — Tandai lagu ID #12 sudah diputar\n' +
+    '• <code>/clearradio</code> — Kosongkan semua antrean lagu\n' +
+    '• <code>/setpasal teks</code> — Ubah isi Pasal & Aturan\n' +
+    '• <code>/sethelp teks</code> — Ubah isi Pusat Bantuan\n' +
+    '• <code>/myid</code> — Cek Telegram ID akun kamu'
+  );
+}
+
+// Halaman 2: Command Admin (Greet, Bye & Status Channel)
+function renderAdminCmdText() {
+  const wh = getWarehouseId();
+  const greetMedia = getSetting('greet_media', '');
+  const byeMedia = getSetting('bye_media', '');
+
+  return (
+    '⚙️ <b>COMMAND ADMIN — GREET, BYE & SYSTEM</b>\n\n' +
+    '<blockquote>' +
+    `• Grup ID: <code>${escHtml(ENV.GROUP_ID || 'Kosong')}</code>\n` +
+    `• Channel ID: <code>${escHtml(ENV.CHANNEL_ID || 'Kosong')}</code>\n` +
+    `• Gudang Musik: <b>${wh ? 'Terhubung' : 'Belum Diset'}</b>\n` +
+    `• Media Greet: <b>${greetMedia ? greetMedia.split(':')[0].toUpperCase() : 'Kosong'}</b> | Bye: <b>${byeMedia ? byeMedia.split(':')[0].toUpperCase() : 'Kosong'}</b>` +
+    '</blockquote>\n\n' +
+    '<b>Atur Sambutan Masuk (Greet):</b>\n' +
+    '• <code>/setgreet teks baru</code>\n' +
+    '• <code>/setgreetmedia</code> (reply GIF/Stiker)\n' +
+    '• <code>/delgreetmedia</code>\n\n' +
+    '<b>Atur Pesan Keluar (Bye):</b>\n' +
+    '• <code>/setbye teks baru</code>\n' +
+    '• <code>/setbyemedia</code> (reply GIF/Stiker)\n' +
+    '• <code>/delbyemedia</code>\n\n' +
+    '<b>Variabel Otomatis:</b>\n' +
+    '<code>{name}</code> <code>{mention}</code> <code>{username}</code> <code>{count}</code>'
   );
 }
 
 function renderGreetInfoText() {
   const greetText = getSetting('greet_text', DEFAULT_GREET);
   const byeText = getSetting('bye_text', DEFAULT_BYE);
-  const greetMedia = getSetting('greet_media', '');
-  const byeMedia = getSetting('bye_media', '');
-
   return (
-    '<b>STATUS GREET & BYE MARKAS</b>\n\n' +
-    `• Media Greet: <b>${greetMedia ? greetMedia.split(':')[0].toUpperCase() + ' Kepasang' : 'Kosong'}</b>\n` +
-    `• Media Bye: <b>${byeMedia ? byeMedia.split(':')[0].toUpperCase() + ' Kepasang' : 'Kosong'}</b>\n\n` +
-    `<b>Teks Greet Sekarang:</b>\n<i>${escHtml(greetText)}</i>\n\n` +
-    `<b>Teks Bye Sekarang:</b>\n<i>${escHtml(byeText)}</i>`
+    '📝 <b>TEKS GREET & BYE AKTIF</b>\n\n' +
+    `<b>Teks Greet:</b>\n<blockquote>${escHtml(greetText)}</blockquote>\n\n` +
+    `<b>Teks Bye:</b>\n<blockquote>${escHtml(byeText)}</blockquote>`
   );
 }
 
@@ -218,39 +248,47 @@ export function startBot() {
 
   const bot = new Bot(ENV.BOT_TOKEN);
   botInstance = bot;
-  bindBotInstance(bot); // Wajib di-bind agar broadcastToTelegram & getBot() aktif!
+  bindBotInstance(bot);
+
+  // Daftarkan daftar command resmi ke menu "/" Telegram
+  bot.api.setMyCommands([
+    { command: 'start', description: 'Menu Utama Markas PUNKSHIT.OS' },
+    { command: 'antrean', description: 'Cek Antrean Lagu Radio Gang' },
+    { command: 'req', description: 'Titip Lagu Spotify (/req Judul | Link)' },
+    { command: 'pasal', description: 'Pasal & Aturan Tongkrongan' },
+    { command: 'help', description: 'Pusat Bantuan Warga' },
+    { command: 'kamus', description: 'Kamus Command Lengkap' },
+    { command: 'myid', description: 'Cek Telegram ID Kamu' }
+  ]).catch(() => {});
 
   bot.command('start', async (ctx) => {
-    const isPrivate = ctx.chat.type === 'private';
-    const admin = isBotAdmin(ctx.from.id);
-
-    if (isPrivate) {
-      await ctx.reply(renderPrivateHomeText(), {
+    if (ctx.chat.type === 'private') {
+      await ctx.reply(renderPrivateHomeText(ctx.from.id), {
         parse_mode: 'HTML',
-        reply_markup: buildPrivateMenuKeyboard(admin)
+        reply_markup: buildPrivateMenuKeyboard()
       });
     } else {
       const kb = new InlineKeyboard();
-      if (ENV.MINIAPP_LINK) kb.url('Buka PUNKSHIT.OS', ENV.MINIAPP_LINK);
+      if (ENV.MINIAPP_LINK) kb.url('🪪 Buka PUNKSHIT.OS', ENV.MINIAPP_LINK);
       await ctx.reply(
         '🪪 <b>PUNKSHIT.OS — MARKAS ONLINE</b>\n' +
-        'Wih, nongol juga. Markas masih berdiri kok, belum dialihfungsikan jadi minimarket.\n\n' +
-        'Tap tombol di bawah buat buka Mini App:',
+        'Wih, nongol juga. Tap tombol di bawah buat buka Mini App:',
         { parse_mode: 'HTML', reply_markup: kb }
       );
     }
   });
 
+  bot.command('myid', async (ctx) => {
+    await ctx.reply(`🆔 Telegram ID kamu: <code>${ctx.from.id}</code>`, { parse_mode: 'HTML' });
+  });
+
   bot.command('kamus', async (ctx) => {
     if (ctx.chat.type !== 'private') return;
-    if (!isBotAdmin(ctx.from.id)) return ctx.reply('Khusus Owner & Admin doang cuy.');
-
     const kb = new InlineKeyboard()
-      .text('Status Greet & Bye', 'pc_greet_info')
-      .text('Antrean Radio', 'pc_radio_queue')
+      .text('⚙️ Command Admin', 'pc_admin_cmd')
+      .text('📻 Antrean Radio', 'pc_radio_queue')
       .row()
-      .text('« Kembali', 'pc_home');
-
+      .text('« Kembali ke Menu', 'pc_home');
     await ctx.reply(renderKamusText(), { parse_mode: 'HTML', reply_markup: kb });
   });
 
@@ -267,7 +305,7 @@ export function startBot() {
     const text = String(ctx.match || '').trim();
     if (text.length < 5) return ctx.reply('Format: /setpasal 1. Dilarang rusuh... (minimal 5 karakter)');
     setSetting('pasal_text', text);
-    await ctx.reply('Sip, teks Pasal & Aturan tongkrongan berhasil di-update.');
+    await ctx.reply('✅ Sip, teks Pasal & Aturan tongkrongan berhasil di-update.');
   });
 
   bot.command('sethelp', async (ctx) => {
@@ -275,7 +313,7 @@ export function startBot() {
     const text = String(ctx.match || '').trim();
     if (text.length < 5) return ctx.reply('Format: /sethelp • Cara pakai bot... (minimal 5 karakter)');
     setSetting('help_text', text);
-    await ctx.reply('Sip, teks Pusat Bantuan (Help) berhasil di-update.');
+    await ctx.reply('✅ Sip, teks Pusat Bantuan (Help) berhasil di-update.');
   });
 
   bot.command('req', async (ctx) => {
@@ -317,7 +355,7 @@ export function startBot() {
       }
     }
 
-    await ctx.reply(`Sip, request #${reqId} (<b>${escHtml(song)}</b>) udah masuk antrean & Gudang.`, { parse_mode: 'HTML' });
+    await ctx.reply(`✅ Sip, request #${reqId} (<b>${escHtml(song)}</b>) udah masuk antrean & Gudang.`, { parse_mode: 'HTML' });
   });
 
   bot.on(['message:audio', 'message:document'], async (ctx, next) => {
@@ -370,7 +408,7 @@ export function startBot() {
         ).catch(() => {});
       }
 
-      await ctx.reply(`Mantap, file <b>${escHtml(song)}</b> udah masuk Gudang Musik di antrean <b>#${reqId}</b>.`, { parse_mode: 'HTML' });
+      await ctx.reply(`✅ Mantap, file <b>${escHtml(song)}</b> udah masuk Gudang Musik di antrean <b>#${reqId}</b>.`, { parse_mode: 'HTML' });
     } catch (err) {
       console.error('[Warehouse Audio Error]:', err.message);
       await ctx.reply(`Gagal kirim file ke Gudang: ${err.message}`);
@@ -383,10 +421,10 @@ export function startBot() {
       kb.url('Nitip Lagu di Mini App', `${ENV.MINIAPP_LINK}?startapp=radio`);
     }
     if (isBotAdmin(ctx.from.id)) {
-      kb.row().text('Refresh Antrean', 'pc_radio_queue').text('Kosongkan Semua', 'pc_radio_clear');
+      kb.row().text('🔄 Refresh', 'pc_radio_queue').text('🗑️ Kosongkan', 'pc_radio_clear');
     }
     if (ctx.chat.type === 'private') {
-      kb.row().text('« Kembali', 'pc_home');
+      kb.row().text('« Kembali ke Menu', 'pc_home');
     }
     await ctx.reply(renderRadioQueueText(), {
       parse_mode: 'HTML',
@@ -404,13 +442,13 @@ export function startBot() {
     if (!info.changes) {
       return ctx.reply(`Request ID #${id} kaga ketemu atau emang udah kelar.`);
     }
-    await ctx.reply(`Sip, request ID #${id} udah dicoret dari antrean.`);
+    await ctx.reply(`✅ Sip, request ID #${id} udah dicoret dari antrean.`);
   });
 
   bot.command('clearradio', async (ctx) => {
     if (!isBotAdmin(ctx.from.id)) return;
     db.prepare("UPDATE radio_queue SET status = 'played' WHERE status = 'waiting'").run();
-    await ctx.reply('Beres, semua antrean Radio Gang udah dikosongin.');
+    await ctx.reply('✅ Beres, semua antrean Radio Gang udah dikosongin.');
   });
 
   bot.command('greetinfo', async (ctx) => {
@@ -418,9 +456,9 @@ export function startBot() {
     if (!isBotAdmin(ctx.from.id)) return ctx.reply('Khusus Owner & Admin doang cuy.');
 
     const kb = new InlineKeyboard()
-      .text('Kamus Command', 'pc_kamus')
+      .text('⚙️ Command Admin', 'pc_admin_cmd')
       .row()
-      .text('« Kembali', 'pc_home');
+      .text('« Kembali ke Menu', 'pc_home');
     await ctx.reply(renderGreetInfoText(), { parse_mode: 'HTML', reply_markup: kb });
   });
 
@@ -431,7 +469,7 @@ export function startBot() {
       return ctx.reply('Format: /setgreet Wih ada warga baru, selamat datang {mention} di markas.');
     }
     setSetting('greet_text', text);
-    await ctx.reply('Sip, teks Greet buat warga masuk udah diganti.');
+    await ctx.reply('✅ Sip, teks Greet buat warga masuk udah diganti.');
   });
 
   bot.command('setbye', async (ctx) => {
@@ -441,7 +479,7 @@ export function startBot() {
       return ctx.reply('Format: /setbye Yah {name} cabut dari markas.');
     }
     setSetting('bye_text', text);
-    await ctx.reply('Sip, teks Bye buat warga keluar udah diganti.');
+    await ctx.reply('✅ Sip, teks Bye buat warga keluar udah diganti.');
   });
 
   bot.command('setgreetmedia', async (ctx) => {
@@ -452,11 +490,11 @@ export function startBot() {
     }
     if (reply.animation) {
       setSetting('greet_media', `animation:${reply.animation.file_id}`);
-      return ctx.reply('Mantap, GIF udah dipasang buat greet warga masuk.');
+      return ctx.reply('✅ Mantap, GIF udah dipasang buat greet warga masuk.');
     }
     if (reply.sticker) {
       setSetting('greet_media', `sticker:${reply.sticker.file_id}`);
-      return ctx.reply('Mantap, Stiker udah dipasang buat greet warga masuk.');
+      return ctx.reply('✅ Mantap, Stiker udah dipasang buat greet warga masuk.');
     }
     await ctx.reply('Cuma bisa reply GIF atau Stiker doang cuy.');
   });
@@ -469,11 +507,11 @@ export function startBot() {
     }
     if (reply.animation) {
       setSetting('bye_media', `animation:${reply.animation.file_id}`);
-      return ctx.reply('Mantap, GIF udah dipasang buat pesan warga keluar.');
+      return ctx.reply('✅ Mantap, GIF udah dipasang buat pesan warga keluar.');
     }
     if (reply.sticker) {
       setSetting('bye_media', `sticker:${reply.sticker.file_id}`);
-      return ctx.reply('Mantap, Stiker udah dipasang buat pesan warga keluar.');
+      return ctx.reply('✅ Mantap, Stiker udah dipasang buat pesan warga keluar.');
     }
     await ctx.reply('Cuma bisa reply GIF atau Stiker doang cuy.');
   });
@@ -481,13 +519,13 @@ export function startBot() {
   bot.command('delgreetmedia', async (ctx) => {
     if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
     setSetting('greet_media', '');
-    await ctx.reply('GIF/Stiker Greet udah dicopot.');
+    await ctx.reply('✅ GIF/Stiker Greet udah dicopot.');
   });
 
   bot.command('delbyemedia', async (ctx) => {
     if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
     setSetting('bye_media', '');
-    await ctx.reply('GIF/Stiker Bye udah dicopot.');
+    await ctx.reply('✅ GIF/Stiker Bye udah dicopot.');
   });
 
   bot.on('callback_query:data', async (ctx) => {
@@ -495,42 +533,58 @@ export function startBot() {
     const admin = isBotAdmin(ctx.from.id);
 
     if (data === 'pc_home') {
-      await ctx.editMessageText(renderPrivateHomeText(), {
+      await ctx.editMessageText(renderPrivateHomeText(ctx.from.id), {
         parse_mode: 'HTML',
-        reply_markup: buildPrivateMenuKeyboard(admin)
+        reply_markup: buildPrivateMenuKeyboard()
       }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
 
     if (data === 'pc_kamus') {
-      if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin doang cuy.', show_alert: true });
       const kb = new InlineKeyboard()
-        .text('Status Greet & Bye', 'pc_greet_info')
-        .text('Antrean Radio', 'pc_radio_queue')
+        .text('⚙️ Command Admin', 'pc_admin_cmd')
+        .text('📻 Antrean Radio', 'pc_radio_queue')
         .row()
-        .text('« Kembali', 'pc_home');
+        .text('« Kembali ke Menu', 'pc_home');
       await ctx.editMessageText(renderKamusText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
+      return ctx.answerCallbackQuery();
+    }
+
+    if (data === 'pc_admin_cmd') {
+      if (!admin) {
+        return ctx.answerCallbackQuery({
+          text: `Khusus Owner/Admin! ID kamu (${ctx.from.id}) belum masuk OWNER_IDS.`,
+          show_alert: true
+        });
+      }
+      const kb = new InlineKeyboard()
+        .text('📝 Teks Greet & Bye', 'pc_greet_info')
+        .text('📖 Kamus Command', 'pc_kamus')
+        .row()
+        .text('« Kembali ke Menu', 'pc_home');
+      await ctx.editMessageText(renderAdminCmdText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
 
     if (data === 'pc_greet_info') {
       if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin doang cuy.', show_alert: true });
       const kb = new InlineKeyboard()
-        .text('Kamus Command', 'pc_kamus')
-        .text('Antrean Radio', 'pc_radio_queue')
+        .text('⚙️ Command Admin', 'pc_admin_cmd')
+        .text('📖 Kamus Command', 'pc_kamus')
         .row()
-        .text('« Kembali', 'pc_home');
+        .text('« Kembali ke Menu', 'pc_home');
       await ctx.editMessageText(renderGreetInfoText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
 
     if (data === 'pc_radio_queue') {
-      const kb = new InlineKeyboard().text('Refresh Antrean', 'pc_radio_queue');
+      const kb = new InlineKeyboard().text('🔄 Refresh', 'pc_radio_queue');
       if (admin) {
-        kb.text('Kosongkan Semua', 'pc_radio_clear');
-        kb.row().text('Kamus Command', 'pc_kamus');
+        kb.text('🗑️ Kosongkan', 'pc_radio_clear');
       }
-      kb.row().text('« Kembali', 'pc_home');
+      kb.row()
+        .text('📖 Kamus Command', 'pc_kamus')
+        .text('« Kembali', 'pc_home');
       await ctx.editMessageText(renderRadioQueueText(), {
         parse_mode: 'HTML',
         disable_web_page_preview: true,
@@ -543,10 +597,10 @@ export function startBot() {
       if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin doang cuy.', show_alert: true });
       db.prepare("UPDATE radio_queue SET status = 'played' WHERE status = 'waiting'").run();
       const kb = new InlineKeyboard()
-        .text('Refresh Antrean', 'pc_radio_queue')
-        .text('Kamus Command', 'pc_kamus')
+        .text('🔄 Refresh', 'pc_radio_queue')
+        .text('📖 Kamus Command', 'pc_kamus')
         .row()
-        .text('« Kembali', 'pc_home');
+        .text('« Kembali ke Menu', 'pc_home');
       await ctx.editMessageText(renderRadioQueueText(), {
         parse_mode: 'HTML',
         reply_markup: kb
