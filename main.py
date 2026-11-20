@@ -14,7 +14,7 @@ ALLOW_ORIGINS = ["*"] if RAW_CORS == "*" else [o.strip() for o in RAW_CORS.split
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-app = FastAPI(title="PUNKSHIT.OS API")
+app = FastAPI(title="PUNKSHIT.OS Spark API")
 
 app.add_middleware(
     CORSMiddleware,
