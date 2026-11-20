@@ -6,6 +6,14 @@
     return String(v || '').trim().replace(/^@+/, '').toLowerCase();
   }
 
+  function getApiBase() {
+    var url = (window.PUNK_CONFIG && window.PUNK_CONFIG.API_URL) || '';
+    if (!url) {
+      try { url = localStorage.getItem('psk_api_url') || ''; } catch (e) {}
+    }
+    return url.replace(/\/$/, '');
+  }
+
   function buildUserPayload() {
     var tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) || {};
     var u = S.user || {};
@@ -21,9 +29,9 @@
 
   async function resolveMembersList() {
     var raw = S.members || S.warga || S.users || [];
-    if ((!raw || !raw.length) && window.PUNK_CONFIG && window.PUNK_CONFIG.API_URL) {
+    var base = getApiBase();
+    if ((!raw || !raw.length) && base) {
       try {
-        var base = window.PUNK_CONFIG.API_URL.replace(/\/$/, '');
         var res = await fetch(base + '/api/warga');
         if (res.ok) {
           var data = await res.json();
@@ -52,6 +60,21 @@
     try {
       var userPayload = buildUserPayload();
       var list = await resolveMembersList();
+      var base = getApiBase();
+
+      if (userPayload.username && base) {
+        try {
+          var stRes = await fetch(base + '/api/spark/status?username=' + encodeURIComponent(userPayload.username));
+          if (stRes.ok) {
+            var stData = await stRes.json();
+            if (stData && stData.sparkBuddy) {
+              userPayload.sparkBuddy = stData.sparkBuddy;
+              if (S.user) S.user.sparkBuddy = stData.sparkBuddy;
+            }
+          }
+        } catch (e) {}
+      }
+
       frame.contentWindow.postMessage({
         type: 'PUNK_SYNC',
         user: userPayload,
@@ -61,7 +84,6 @@
   }
 
   function forwardSparkAction(data) {
-    // Sinkronkan state lokal PunkCore.S sementara
     if (S.user) {
       if (data.type === 'SPARK_INVITE_SEND') {
         S.user.sparkBuddy = { status: 'outgoing', targetUsername: cleanUsn(data.targetUsername) };
@@ -72,9 +94,8 @@
       }
     }
 
-    // Kirim ke Backend API PUNKSHIT.OS
-    if (window.PUNK_CONFIG && window.PUNK_CONFIG.API_URL) {
-      var base = window.PUNK_CONFIG.API_URL.replace(/\/$/, '');
+    var base = getApiBase();
+    if (base) {
       var initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
       fetch(base + '/api/spark/action', {
         method: 'POST',
@@ -83,8 +104,8 @@
       })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (resp) {
-          if (resp && resp.sparkBuddy && S.user) {
-            S.user.sparkBuddy = resp.sparkBuddy;
+          if (resp && S.user) {
+            S.user.sparkBuddy = resp.sparkBuddy || null;
             syncSparkData();
           }
         })
@@ -127,7 +148,7 @@
     });
 
     var me = buildUserPayload();
-    var qs = '?v=4' + (me.username ? '&usn=' + encodeURIComponent(me.username) : '');
+    var qs = '?v=5' + (me.username ? '&usn=' + encodeURIComponent(me.username) : '');
 
     return (
       '<iframe id="spark-frame" src="./spark.html' + qs + '" ' +
