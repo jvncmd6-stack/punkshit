@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#07070b">
 <title>PUNKSHIT Spark Buddies</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{--ac:#ff8a1f;--gl:#ffd24a;--t2:rgba(235,235,245,.6);--fill:rgba(120,120,128,.24);--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",system-ui,sans-serif;--rnd:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
@@ -30,7 +31,6 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .tilt{position:absolute;inset:4px 0 0 22%;transform-origin:50% 85%;will-change:transform;backface-visibility:hidden;transition:inset .35s cubic-bezier(.2,.9,.3,1)}
 .tilt svg{width:100%;height:100%;display:block;overflow:visible}
 
-/* Saat sheet ditarik turun atau mode clear screen aktif, pet maju ke tengah & lebih dekat */
 .card.sheet-low .tilt,.card.clear-mode .tilt{inset:4px 0 6px 0}
 .card.clear-mode .top,.card.clear-mode .streak,.card.clear-mode .plate,.card.clear-mode .xp,.card.clear-mode .sheet{opacity:0;pointer-events:none;transform:translateY(12px)}
 .card.clear-mode .sheet{flex-basis:0!important;padding:0;overflow:hidden}
@@ -93,10 +93,11 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 
 /* Layar Awal: Konek Partner (Persetujuan 2 Pihak & Deteksi @username) */
 .pair-gate{position:absolute;inset:0;z-index:20;background:linear-gradient(180deg,#0b0b12 0%,#12121c 100%);display:flex;flex-direction:column;padding:18px 20px max(var(--sab),20px);overflow-y:auto}
-.pg-hero{text-align:center;margin-top:6px}
-.pg-fire{font-size:44px;line-height:1;filter:drop-shadow(0 0 20px rgba(255,138,31,.6))}
+.pg-hero{text-align:center;margin-top:4px}
+.pg-fire{font-size:40px;line-height:1;filter:drop-shadow(0 0 20px rgba(255,138,31,.6))}
 .pg-hero h2{margin:8px 0 4px;font:800 21px/1.2 var(--rnd)}
 .pg-hero p{margin:0;font-size:12.5px;color:var(--t2);line-height:1.4}
+.pg-my-usn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 12px;border-radius:99px;background:rgba(255,138,31,.14);border:1px solid rgba(255,138,31,.35);font:700 12px var(--sans);color:var(--ac)}
 .pg-rules{margin:12px 0;padding:11px 13px;border-radius:15px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:12px;color:var(--t2);display:flex;flex-direction:column;gap:5px}
 .pg-rules b{color:#fff}
 .pg-label{font:700 11px var(--sans);color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 6px}
@@ -114,7 +115,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .pg-user-info b{display:block;font-size:13.5px;color:#fff}.pg-user-info small{color:var(--ac);font-size:12px;font-weight:600}
 .pg-invite{padding:6px 12px;border-radius:99px;background:var(--ac);color:#111;font:700 12px var(--sans)}
 
-/* Modal Preview Screenshot agar bisa masuk Galeri di Telegram WebView */
+/* Modal Preview Screenshot */
 .shot-modal{position:absolute;inset:0;z-index:25;background:rgba(7,7,11,.92);backdrop-filter:blur(16px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
 .shot-modal img{max-width:78%;max-height:62vh;border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.15);-webkit-touch-callout:default!important;-webkit-user-select:auto!important;user-select:auto!important}
 .shot-tip{margin:12px 0 14px;font-size:12.5px;color:var(--t2);text-align:center;line-height:1.4}
@@ -129,6 +130,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
     <div class="pg-fire">🔥</div>
     <h2>Konek Spark Buddy</h2>
     <p>Two Members • One Group • One Spark.<br>Wajib pakai <b>@username</b> dan persetujuan kedua belah pihak.</p>
+    <div class="pg-my-usn" id="myUsnBadge">🆔 Mendeteksi @username...</div>
   </div>
   <div class="pg-rules">
     <div>🆔 <b>Deteksi Akurat (@username):</b> Sistem melacak berdasarkan <b>@username</b> unik, bukan nama tampilan yang bisa kembar.</div>
@@ -234,16 +236,72 @@ const DUO_MISSIONS=[
 const LV=["Baby Spark","Tiny Trouble","Little Spark","Happy Chaos","Growing Spark","Bright Buddy","Super Spark","Neon Buddy","Royal Spark","Legendary Spark"],XP=[0,100,300,600,1000,1500,2200,3000,4000,5500,99999],SC=[.74,.84,.92,.97,1],LG=[0,8,16,22,28],RN=["Common","Common","Rare","Rare","Epic"];
 const DN={Polos:"Tanpa"};
 
-// Normalisasi @username (wajib lowercase tanpa spasi, diawali @ saat tampil)
 const normUsn = raw => String(raw||"").trim().replace(/^@+/,"").replace(/\s+/g,"").toLowerCase();
 const fmtUsn = u => u ? "@"+normUsn(u) : "";
 
-// State awal (pairStatus: "none" | "outgoing" | "incoming" | "paired")
+// AUTO-DETEKSI @USERNAME MULTI-SUMBER (Telegram WebApp, Parent Window, URL, LocalStorage)
+function autoDetectIdentity(){
+ let detectedUsn="";
+ let detectedMembers=[];
+
+ // 1. Cek URL Query Params (?usn=...&members=...)
+ try{
+  const qp=new URLSearchParams(location.search);
+  if(qp.get("usn")) detectedUsn=normUsn(qp.get("usn"));
+  if(qp.get("members")){
+   const m=JSON.parse(qp.get("members"));
+   if(Array.isArray(m)) detectedMembers=m;
+  }
+ }catch(_){}
+
+ // 2. Cek Telegram WebApp di iframe & parent window
+ try{
+  const tgSelf=window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const tgParent=window.parent?.Telegram?.WebApp?.initDataUnsafe?.user;
+  const u=tgSelf||tgParent;
+  if(u&&u.username) detectedUsn=normUsn(u.username);
+ }catch(_){}
+
+ // 3. Cek State Global Parent (Same-Origin PUNKSHIT.OS)
+ try{
+  const p=window.parent;
+  if(p&&p!==window){
+   const pu=p.STATE?.user||p.PUNK?.user||p.CURRENT_USER;
+   if(pu&&(pu.username||pu.usn)) detectedUsn=normUsn(pu.username||pu.usn);
+   const pm=p.STATE?.members||p.STATE?.warga||p.WARGA||p.PUNK?.members;
+   if(Array.isArray(pm)&&pm.length) detectedMembers=pm;
+  }
+ }catch(_){}
+
+ // 4. Cek LocalStorage milik PUNKSHIT.OS
+ if(!detectedUsn||!detectedMembers.length){
+  try{
+   for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k==="punkshit.spark.v3") continue;
+    const raw=localStorage.getItem(k);
+    if(!raw||raw[0]!=="{"&&raw[0]!=="[") continue;
+    const obj=JSON.parse(raw);
+    if(!detectedUsn){
+     const u=obj?.username||obj?.usn||obj?.user?.username||obj?.user?.usn;
+     if(u) detectedUsn=normUsn(u);
+    }
+    if(!detectedMembers.length){
+     const arr=Array.isArray(obj)?obj:(obj?.members||obj?.warga);
+     if(Array.isArray(arr)&&arr.length&&arr[0]&&(arr[0].username||arr[0].usn)) detectedMembers=arr;
+    }
+   }
+  }catch(_){}
+ }
+
+ return {usn:detectedUsn,members:detectedMembers};
+}
+
 let S={
   paired:false,
   pairStatus:"none",
   pendingUser:"",
-  p1:"gue",
+  p1:"",
   p2:"",
   g1:{gap:0,msg:0},
   g2:{gap:0,msg:0},
@@ -495,11 +553,9 @@ function toast(m){const e=$("toast");e.textContent=m;e.classList.add("on");clear
 function bump(){if(y===0&&cr<=0){vy=Math.sqrt(2*G*22);qv-=.6}burst()}
 function burst(){if(RM)return;for(let i=0;i<8;i++){const e=document.createElement("i"),a=i/8*6.283+Math.random()*.5,r=70+Math.random()*50;e.className="spk";e.style.setProperty("--x",Math.cos(a)*r+"px");e.style.setProperty("--y",Math.sin(a)*r*.8-20+"px");if(i%2)e.style.background="var(--ac)";stg.appendChild(e);setTimeout(()=>e.remove(),700)}}
 
-// Clear Screen Toggle
 $("clearBtn").onclick=()=>{ $("card").classList.add("clear-mode"); hap(); };
 $("exitClear").onclick=()=>{ $("card").classList.remove("clear-mode"); hap(); };
 
-// Screenshot -> Render PNG + Preview Modal (agar beneran bisa masuk Galeri di WebView Telegram / HP)
 let lastShotBlob=null,lastShotName="spark-buddy.png";
 async function shot(){try{
  const cs=getComputedStyle(document.documentElement),ac=cs.getPropertyValue("--ac").trim()||"#ff8a1f",gl=cs.getPropertyValue("--gl").trim()||ac;
@@ -529,7 +585,6 @@ $("shotShareBtn").onclick=async()=>{
  if(navigator.canShare&&navigator.canShare({files:[fl]})){
   try{await navigator.share({files:[fl],title:"Spark Buddies"});toast("Tersimpan / Dibagikan ✓");return}catch(e){if(e.name=="AbortError")return}
  }
- // Fallback download jika di browser desktop/Android Chrome
  const a=document.createElement("a");a.href=URL.createObjectURL(lastShotBlob);a.download=lastShotName;a.click();
  toast("Jika belum masuk galeri, tahan gambar lalu Simpan Foto");
 };
@@ -569,7 +624,6 @@ function undoUpd(){$("undo").disabled=!HS.length}
 function snapPush(){HS.push(snap());if(HS.length>30)HS.shift();undoUpd()}
 function undo(){const d=HS.pop();if(!d)return;const o=JSON.parse(d);["theme","outfit","head","face","emo"].forEach((k,i)=>S[k]=o.a[i]);S.extra=new Set(o.x);EB=null;draw();mark();undoUpd();hap();toast("Dibatalkan")}
 
-// Drag Bottom Sheet: Bisa ditarik turun sampai rapat (54px) biar pet kelihatan dekat
 (()=>{const g=$("grab"),sh=$("sheet"),cd=$("card");let y0=0,h0=0,dr=0;
  function syncSheetState(h){
   const H=cd.offsetHeight;
@@ -594,13 +648,18 @@ function undo(){const d=HS.pop();if(!d)return;const o=JSON.parse(d);["theme","ou
  g.addEventListener("pointerup",end);g.addEventListener("pointercancel",end);
 })();
 
-// Sistem Konek Partner: Deteksi wajib @username & Persetujuan 2 Pihak
 let WARGA_MEMBERS=[];
+function updateMyUsnBadge(){
+ const badge=$("myUsnBadge");
+ if(!badge)return;
+ badge.textContent=S.p1?`🆔 Akunmu terdeteksi: @${S.p1}`:"⚠️ @username belum terdeteksi (ketik manual partner di bawah)";
+}
+
 function renderWargaList(){
+ updateMyUsnBadge();
  const wrap=$("wargaList"),lbl=$("wargaListLabel");
- // Filter hanya anggota yang punya @username valid & bukan diri sendiri
  const others=WARGA_MEMBERS.filter(m=>{
-  const usn=normUsn(m.username);
+  const usn=normUsn(m.username||m.usn);
   return usn && usn !== normUsn(S.p1);
  });
  if(!others.length){
@@ -610,7 +669,7 @@ function renderWargaList(){
  }
  lbl.textContent=`Pilih @Username Warga Markas (${others.length})`;
  wrap.innerHTML=others.slice(0,25).map(m=>{
-  const usn=normUsn(m.username);
+  const usn=normUsn(m.username||m.usn);
   const dispName=m.name?` (${m.name})`:"";
   const rank=m.rank||m.title||"Warga Punk";
   return `<div class="pg-user"><div class="pg-user-info"><b>@${usn}${dispName}</b><small>${rank}</small></div><button class="pg-invite" data-usn="${usn}">Ajak @${usn}</button></div>`;
@@ -624,11 +683,10 @@ function sendInvite(rawUsn){
  const usn=normUsn(rawUsn);
  if(!usn || usn.length<3)return toast("Masukkan @username valid (min 3 karakter)!");
  if(!/^[a-z0-9_]{3,32}$/.test(usn))return toast("Format @username hanya huruf, angka, atau _");
- if(usn===normUsn(S.p1))return toast("Nggak bisa konek sama @username sendiri!");
+ if(S.p1 && usn===normUsn(S.p1))return toast("Nggak bisa konek sama @username sendiri!");
 
- // Jika ada daftar member dari grup, cek apakah @username terdaftar di grup
  if(WARGA_MEMBERS.length){
-  const found=WARGA_MEMBERS.find(m=>normUsn(m.username)===usn);
+  const found=WARGA_MEMBERS.find(m=>normUsn(m.username||m.usn)===usn);
   if(!found)return toast(`@${usn} tidak ditemukan di daftar @username grup!`);
  }
 
@@ -692,17 +750,25 @@ $("declineInviteBtn").onclick=()=>{
 };
 
 $("shot").onclick=shot;$("ci").onclick=checkin;$("undo").onclick=undo;
-load();seedSeen();tabsInit();
+load();
+
+// Jalankan auto-deteksi @username langsung saat boot
+const auto=autoDetectIdentity();
+if(auto.usn) S.p1=auto.usn;
+if(auto.members.length) WARGA_MEMBERS=auto.members;
+
+seedSeen();tabsInit();
 if(!S.paired||!S.p2){showPairGate()}else{$("pairGate").hidden=true}
 draw();ui();requestAnimationFrame(step);
 
-// Sinkronisasi dari PUNKSHIT.OS (@username user, daftar @username warga, & status persetujuan 2 pihak)
+// Sinkronisasi dari PUNKSHIT.OS + Retry Polling jika parent telat merespons
+let syncDone=false;
 window.addEventListener("message", (ev) => {
  if(!ev.data || ev.data.type !== "PUNK_SYNC") return;
+ syncDone=true;
  const u = ev.data.user;
  if(u){
-  // Prioritaskan u.username dibanding u.name
-  const myUsn = normUsn(u.username || u.name);
+  const myUsn = normUsn(u.username || u.usn);
   if(myUsn) S.p1 = myUsn;
  }
  if(Array.isArray(ev.data.members)){
@@ -727,7 +793,15 @@ window.addEventListener("message", (ev) => {
   if(sb.g1) S.g1=sb.g1;
   if(sb.g2) S.g2=sb.g2;
  }
+ updateMyUsnBadge();
  draw();
 });
+
+let syncTries=0;
+const syncTimer=setInterval(()=>{
+ if(syncDone || syncTries>=10){ clearInterval(syncTimer); return; }
+ syncTries++;
+ window.parent && window.parent.postMessage({type:"SPARK_REQUEST_SYNC"},"*");
+}, 600);
 window.parent && window.parent.postMessage({type:"SPARK_REQUEST_SYNC"},"*");
 </script></body></html>
