@@ -17,8 +17,9 @@ from spark_db import (
 )
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-MINIAPP_URL = os.getenv("MINIAPP_URL", "")
-GROUP_CHAT_ID = int(os.getenv("GROUP_CHAT_ID", "0") or "0")
+GROUP_ID = int(os.getenv("GROUP_ID", "0") or "0")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "")
+MINIAPP_LINK = os.getenv("MINIAPP_LINK", "")
 
 spark_api = APIRouter()
 spark_bot_router = Router()
@@ -36,6 +37,22 @@ def verify_tg_user(init_data: str) -> dict | None:
     if not hmac.compare_digest(calc_hash, received_hash):
         return None
     return json.loads(parsed.get("user", "{}"))
+
+def build_open_button(is_private_chat: bool) -> InlineKeyboardMarkup | None:
+    # Di DM bisa pakai WebAppInfo langsung; di grup pakai MINIAPP_LINK (t.me/bot/app)
+    if is_private_chat and WEBAPP_URL:
+        return InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", web_app=WebAppInfo(url=WEBAPP_URL))
+        ]])
+    if MINIAPP_LINK:
+        return InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", url=MINIAPP_LINK)
+        ]])
+    if WEBAPP_URL:
+        return InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", url=WEBAPP_URL)
+        ]])
+    return None
 
 @spark_api.get("/api/warga")
 async def api_get_warga():
@@ -64,19 +81,31 @@ async def api_spark_action(req: Request):
     if ok and action == "SPARK_INVITE_SEND" and BOT_TOKEN:
         bot = Bot(token=BOT_TOKEN)
         try:
-            markup = None
-            if MINIAPP_URL:
-                markup = InlineKeyboardMarkup(inline_keyboard=[[
-                    InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", web_app=WebAppInfo(url=MINIAPP_URL))
-                ]])
             notif = (
                 f"🔥 <b>Spark Buddies Invite!</b>\n"
-                f"@{actor.lstrip('@')} ngajak kamu nyalain api bareng di markas.\n"
+                f"@{actor.lstrip('@')} ngajak @{target.lstrip('@')} nyalain api bareng di markas.\n"
                 f"Buka PUNKSHIT.OS buat ACC!"
             )
-            dest = target_tg_id or GROUP_CHAT_ID
-            if dest:
-                await bot.send_message(dest, notif, parse_mode="HTML", reply_markup=markup)
+            sent_dm = False
+            if target_tg_id:
+                try:
+                    await bot.send_message(
+                        target_tg_id,
+                        notif,
+                        parse_mode="HTML",
+                        reply_markup=build_open_button(is_private_chat=True)
+                    )
+                    sent_dm = True
+                except Exception:
+                    sent_dm = False
+
+            if not sent_dm and GROUP_ID:
+                await bot.send_message(
+                    GROUP_ID,
+                    notif,
+                    parse_mode="HTML",
+                    reply_markup=build_open_button(is_private_chat=False)
+                )
         except Exception:
             pass
         finally:
@@ -90,7 +119,7 @@ async def api_spark_action(req: Request):
 
 @spark_bot_router.message(F.chat.type.in_({"group", "supergroup"}))
 async def on_group_spark_tracker(message: Message):
-    if GROUP_CHAT_ID and message.chat.id != GROUP_CHAT_ID:
+    if GROUP_ID and message.chat.id != GROUP_ID:
         return
     user = message.from_user
     if not user or user.is_bot:
