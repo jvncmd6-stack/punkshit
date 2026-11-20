@@ -1,23 +1,9 @@
 (function () {
   var C = window.PunkCore;
+  var API = window.PunkAPI;
   var S = C.S;
 
   var pollTimer = null;
-
-  function getApiBase() {
-    var url = '';
-    try {
-      url =
-        (window.PUNK_CONFIG && (window.PUNK_CONFIG.API_URL || window.PUNK_CONFIG.SPARK_API_URL)) ||
-        localStorage.getItem('psk_api_url') ||
-        '';
-    } catch (e) {}
-    return String(url || '').replace(/\/+$/, '');
-  }
-
-  function getInitData() {
-    return (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
-  }
 
   function cleanUsn(v) {
     return String(v || '').trim().replace(/^@+/, '').toLowerCase();
@@ -41,7 +27,7 @@
     };
   }
 
-  async function resolveMembersList() {
+  function resolveMembersList() {
     var raw = S.members || S.warga || S.users || [];
     return (Array.isArray(raw) ? raw : Object.values(raw || []))
       .map(function (m) {
@@ -62,21 +48,14 @@
     if (!frame || !frame.contentWindow) return;
     try {
       var userPayload = buildUserPayload();
-      var list = await resolveMembersList();
-      var base = getApiBase();
+      var list = resolveMembersList();
 
-      if (userPayload.username && base) {
+      if (userPayload.username && API && typeof API.get === 'function') {
         try {
-          var stRes = await fetch(
-            base + '/api/spark/status?username=' + encodeURIComponent(userPayload.username) + '&_t=' + Date.now(),
-            {
-              headers: {
-                Authorization: 'tma ' + getInitData()
-              }
-            }
+          var stData = await API.get(
+            '/api/spark/status?username=' + encodeURIComponent(userPayload.username) + '&_t=' + Date.now()
           );
-          if (stRes.ok) {
-            var stData = await stRes.json();
+          if (stData && typeof stData === 'object') {
             userPayload.sparkBuddy = stData.sparkBuddy || null;
             if (S.user) S.user.sparkBuddy = stData.sparkBuddy || null;
           }
@@ -94,24 +73,9 @@
     } catch (e) {}
   }
 
-  function forwardSparkAction(data) {
+  async function forwardSparkAction(data) {
     var me = buildUserPayload();
-    if (S.user) {
-      if (data.type === 'SPARK_INVITE_SEND') {
-        S.user.sparkBuddy = { status: 'outgoing', targetUsername: cleanUsn(data.targetUsername) };
-      } else if (data.type === 'SPARK_INVITE_ACCEPT') {
-        S.user.sparkBuddy = { status: 'paired', partnerUsername: cleanUsn(data.fromUsername), streak: 0, xp: 0 };
-      } else if (
-        data.type === 'SPARK_INVITE_DECLINE' ||
-        data.type === 'SPARK_INVITE_CANCEL' ||
-        data.type === 'SPARK_UNPAIR'
-      ) {
-        S.user.sparkBuddy = null;
-      }
-    }
-
-    var base = getApiBase();
-    if (!base) return;
+    if (!API || typeof API.post !== 'function') return;
 
     var payload = Object.assign({}, data, {
       fromUsername: data.fromUsername || me.username,
@@ -120,27 +84,23 @@
       actorName: me.name
     });
 
-    fetch(base + '/api/spark/action', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'tma ' + getInitData()
-      },
-      body: JSON.stringify(payload)
-    })
-      .then(function (r) {
-        return r.ok ? r.json() : null;
-      })
-      .then(function (resp) {
-        if (resp) {
-          if (!resp.ok && resp.message && C.notify) {
-            C.notify('Spark Buddies', 'Info', resp.message);
-          }
-          if (S.user) S.user.sparkBuddy = resp.sparkBuddy || null;
-          syncSparkData();
+    try {
+      var resp = await API.post('/api/spark/action', payload);
+      if (resp) {
+        if (!resp.ok && resp.message && C.notify) {
+          C.notify('Spark Buddies', 'Gagal', resp.message);
+        } else if (resp.ok && data.type === 'SPARK_INVITE_SEND' && C.notify) {
+          C.notify('Spark Buddies', 'Ajakan Terkirim', 'Notifikasi sudah dikirim ke @' + cleanUsn(data.targetUsername));
         }
-      })
-      .catch(function () {});
+        if (S.user) S.user.sparkBuddy = resp.sparkBuddy || null;
+        syncSparkData();
+      }
+    } catch (err) {
+      if (C.notify) {
+        C.notify('Spark Buddies', 'Error Server', err.message || 'Gagal menghubungi server.');
+      }
+      syncSparkData();
+    }
   }
 
   function startPolling() {
@@ -152,7 +112,7 @@
         return;
       }
       syncSparkData();
-    }, 5000);
+    }, 4000);
   }
 
   function stopPolling() {
@@ -198,7 +158,7 @@
     });
 
     var me = buildUserPayload();
-    var qs = '?v=8' + (me.username ? '&usn=' + encodeURIComponent(me.username) : '');
+    var qs = '?v=9' + (me.username ? '&usn=' + encodeURIComponent(me.username) : '');
 
     return (
       '<iframe id="spark-frame" src="./spark.html' + qs + '" ' +
