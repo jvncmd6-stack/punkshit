@@ -100,5 +100,136 @@
   <script src="./js/modules/09-museum.js?v=8"></script>
   <script src="./js/modules/10-dalang.js?v=8"></script>
   <script src="./js/modules/11-spark.js?v=8"></script>
+
+  <!-- JEMBATAN OTOMATIS PUNKSHIT.OS <-> SPARK BUDDIES -->
+  <script>
+    (function initSparkBridge() {
+      const cleanUsn = (v) => String(v || "").trim().replace(/^@+/, "").toLowerCase();
+
+      function resolveCurrentUser() {
+        const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
+        const stateUser = window.STATE?.user || window.PUNK?.user || window.CURRENT_USER || {};
+        let storedUser = {};
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (/punk|user|warga|auth/i.test(k)) {
+              const parsed = JSON.parse(localStorage.getItem(k));
+              if (parsed && typeof parsed === "object") {
+                if (parsed.username || parsed.usn) storedUser = parsed;
+                else if (parsed.user && (parsed.user.username || parsed.user.usn)) storedUser = parsed.user;
+              }
+            }
+          }
+        } catch (_) {}
+
+        const username = cleanUsn(
+          tgUser.username || stateUser.username || stateUser.usn || storedUser.username || storedUser.usn
+        );
+        const name = tgUser.first_name || stateUser.name || storedUser.name || username || "Warga";
+        return {
+          id: tgUser.id || stateUser.id || storedUser.id || null,
+          username,
+          name,
+          rank: stateUser.rank || storedUser.rank || "Warga Markas",
+          sparkBuddy: stateUser.sparkBuddy || storedUser.sparkBuddy || null
+        };
+      }
+
+      async function resolveMembers() {
+        const rawList =
+          window.STATE?.members ||
+          window.STATE?.warga ||
+          window.WARGA ||
+          window.PUNK?.members ||
+          [];
+
+        let list = Array.isArray(rawList) ? rawList : Object.values(rawList || {});
+
+        // Coba ambil dari localStorage jika memori global kosong
+        if (!list.length) {
+          try {
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (/warga|member|cache/i.test(k)) {
+                const parsed = JSON.parse(localStorage.getItem(k));
+                const arr = Array.isArray(parsed) ? parsed : (parsed?.members || parsed?.warga || []);
+                if (Array.isArray(arr) && arr.length) { list = arr; break; }
+              }
+            }
+          } catch (_) {}
+        }
+
+        // Coba fetch ke API_URL PUNKSHIT.OS jika tersedia
+        if (!list.length && window.PUNK_CONFIG?.API_URL) {
+          try {
+            const base = window.PUNK_CONFIG.API_URL.replace(/\/$/, "");
+            const res = await fetch(base + "/api/warga").catch(() => null);
+            if (res && res.ok) {
+              const data = await res.json();
+              list = Array.isArray(data) ? data : (data.members || data.warga || []);
+            }
+          } catch (_) {}
+        }
+
+        return list
+          .map((m) => ({
+            username: cleanUsn(m.username || m.usn || m.tg_username),
+            name: m.name || m.first_name || m.display_name || "",
+            rank: m.rank || m.role || m.title || "Warga Punk"
+          }))
+          .filter((m) => m.username);
+      }
+
+      async function pushSyncToSpark(targetWin) {
+        const user = resolveCurrentUser();
+        const members = await resolveMembers();
+        const payload = { type: "PUNK_SYNC", user, members };
+
+        if (targetWin && typeof targetWin.postMessage === "function") {
+          targetWin.postMessage(payload, "*");
+        }
+        document.querySelectorAll("iframe").forEach((ifr) => {
+          try { ifr.contentWindow && ifr.contentWindow.postMessage(payload, "*"); } catch (_) {}
+        });
+      }
+
+      window.addEventListener("message", async (ev) => {
+        const d = ev.data;
+        if (!d || typeof d !== "object") return;
+
+        if (d.type === "SPARK_REQUEST_SYNC") {
+          await pushSyncToSpark(ev.source);
+        }
+
+        // Teruskan aksi persetujuan 2 pihak ke backend API PUNKSHIT.OS jika ada
+        if (["SPARK_INVITE_SEND", "SPARK_INVITE_ACCEPT", "SPARK_INVITE_DECLINE", "SPARK_UNPAIR"].includes(d.type)) {
+          if (window.PUNK_CONFIG?.API_URL) {
+            const base = window.PUNK_CONFIG.API_URL.replace(/\/$/, "");
+            fetch(base + "/api/spark/action", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...d,
+                initData: window.Telegram?.WebApp?.initData || ""
+              })
+            }).catch(() => {});
+          }
+        }
+      });
+
+      // Pantau saat iframe Spark dimuat ke dalam #bd
+      const bd = document.getElementById("bd");
+      if (bd) {
+        new MutationObserver(() => {
+          const ifr = bd.querySelector("iframe");
+          if (ifr) {
+            ifr.addEventListener("load", () => pushSyncToSpark(ifr.contentWindow));
+            setTimeout(() => pushSyncToSpark(ifr.contentWindow), 300);
+          }
+        }).observe(bd, { childList: true, subtree: true });
+      }
+    })();
+  </script>
 </body>
 </html>
