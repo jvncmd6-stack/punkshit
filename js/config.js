@@ -1,10 +1,8 @@
 (function () {
   var params = new URLSearchParams(window.location.search);
   var apiFromUrl = params.get('api') || '';
-  var sparkApiFromUrl = params.get('spark_api') || '';
   var routeParam = params.get('startapp') || '';
 
-  // Tangkap parameter dinamis dari tombol bot Telegram (tgWebAppStartParam)
   var tgStart = '';
   try {
     tgStart = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.start_param) || '';
@@ -18,11 +16,7 @@
       var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
       var decodedUrl = atob(b64);
       if (decodedUrl && decodedUrl.indexOf('http') === 0) {
-        if (routeParam === 'spark') {
-          sparkApiFromUrl = decodedUrl;
-        } else {
-          apiFromUrl = decodedUrl;
-        }
+        apiFromUrl = decodedUrl;
       }
     } catch (e) {}
   }
@@ -32,31 +26,19 @@
       localStorage.setItem('psk_api_url', apiFromUrl.replace(/\/$/, ''));
     } catch (e) {}
   }
-  if (sparkApiFromUrl && sparkApiFromUrl.indexOf('http') === 0) {
-    try {
-      localStorage.setItem('psk_spark_api', sparkApiFromUrl.replace(/\/$/, ''));
-    } catch (e) {}
-  }
 
   var savedApi = '';
-  var savedSparkApi = '';
   try {
+    localStorage.removeItem('psk_spark_api');
     savedApi = localStorage.getItem('psk_api_url') || '';
-    savedSparkApi = localStorage.getItem('psk_spark_api') || '';
-    // Bersihkan psk_api_url jika sebelumnya sempat ketimpa URL server khusus Spark
-    if (savedApi && savedSparkApi && savedApi === savedSparkApi) {
-      localStorage.removeItem('psk_api_url');
-      savedApi = '';
-    }
   } catch (e) {}
 
   var env = window.__ENV__ || {};
   var finalApi = (savedApi || env.API_URL || '').replace(/\/$/, '');
-  var finalSparkApi = (savedSparkApi || env.SPARK_API_URL || '').replace(/\/$/, '');
 
   window.PUNK_CONFIG = {
     API_URL: finalApi,
-    SPARK_API_URL: finalSparkApi,
+    SPARK_API_URL: finalApi,
     INITIAL_ROUTE: routeParam,
     GROUP_URL: env.GROUP_URL || '',
     CHANNEL_URL: env.CHANNEL_URL || '',
