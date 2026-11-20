@@ -154,7 +154,6 @@ const DUO_MISSIONS=[
 const LV=["Baby Spark","Tiny Trouble","Little Spark","Happy Chaos","Growing Spark","Bright Buddy","Super Spark","Neon Buddy","Royal Spark","Legendary Spark"],XP=[0,100,300,600,1000,1500,2200,3000,4000,5500,99999],SC=[.74,.84,.92,.97,1],LG=[0,8,16,22,28],RN=["Common","Common","Rare","Rare","Epic"];
 const DN={Polos:"Tanpa"};
 
-// State awal (belum konek partner = paired: false)
 let S={
   paired:false,
   p1:"GUE",
@@ -399,7 +398,7 @@ document.querySelectorAll("[contenteditable]").forEach(el=>el.addEventListener("
 document.querySelectorAll("[contenteditable]").forEach(el=>el.addEventListener("input",save));
 
 const K="punkshit.spark.v2";let svT,tt;
-function doSave(){try{localStorage.setItem(K,JSON.stringify({S:{...S,emo:EB||S.emo,extra:[...S.extra]},seen:[...SEEN],nm:$("nm").textContent,tab,gf}))}catch(_){}}
+function doSave(){try{localStorage.setItem(K,JSON.stringify({S:{...S,emo:EB||S.emo,extra:[...S.extra]},seen:[...SEEN],nm:$("nm").textContent,tab,gf}))}catch(_}{}}
 function save(){clearTimeout(svT);svT=setTimeout(doSave,250)}
 function load(){try{const d=JSON.parse(localStorage.getItem(K));if(!d||!d.S)return;Object.assign(S,d.S,{extra:new Set(d.S.extra||[])});if(!TH[S.theme])S.theme="Api";if(!E[S.emo])S.emo="Happy";if(d.nm)$("nm").textContent=String(d.nm).slice(0,14);tab=Math.min(TABS.length-1,+d.tab||0);gf=d.gf||"Semua";if(d.seen){SEEN=new Set(d.seen);SEED=0}}catch(_){}}
 addEventListener("pagehide",doSave);document.addEventListener("visibilitychange",()=>document.hidden&&doSave());
@@ -439,7 +438,6 @@ function checkin(){
  const t=day();
  if(S.last!==t){S.g1={gap:0,msg:0};S.g2={gap:0,msg:0};S.last=t;}
  S.g1.gap+=5;S.g1.msg+=2;
- // Simulasi status partner jika partner juga sudah memenuhi syarat
  const bothQualified=(S.g1.gap>=5&&S.g1.msg>=2)&&(S.g2.gap>=5&&S.g2.msg>=2);
  if(bothQualified){
   S.days+=1;S.xp=Math.min(5500,S.xp+10);S.emo="Happy";
@@ -466,7 +464,6 @@ function undo(){const d=HS.pop();if(!d)return;const o=JSON.parse(d);["theme","ou
   sh.style.setProperty("--sh",(tap?(c<H*.5?H*.68:H*.40):sn.reduce((a,b)=>Math.abs(b-c)<Math.abs(a-c)?b:a))+"px")};
  g.addEventListener("pointerup",end);g.addEventListener("pointercancel",end)})();
 
-// Sistem Konek Partner Awal
 let WARGA_MEMBERS=[];
 function renderWargaList(){
  const wrap=$("wargaList"),lbl=$("wargaListLabel");
@@ -514,7 +511,6 @@ load();seedSeen();tabsInit();
 if(!S.paired||!S.p2){showPairGate()}else{$("pairGate").hidden=true}
 draw();ui();requestAnimationFrame(step);
 
-// Sinkronisasi dari PUNKSHIT.OS (Nama user, Daftar Warga, & Data Spark dari Backend jika ada)
 window.addEventListener("message", (ev) => {
  if(!ev.data || ev.data.type !== "PUNK_SYNC") return;
  const u = ev.data.user;
