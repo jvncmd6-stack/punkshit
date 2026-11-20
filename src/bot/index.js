@@ -1,7 +1,7 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
-import { escHtml } from '../services/syncEngine.js';
+import { escHtml, bindBotInstance } from '../services/syncEngine.js';
 
 let botInstance = null;
 
@@ -218,8 +218,8 @@ export function startBot() {
 
   const bot = new Bot(ENV.BOT_TOKEN);
   botInstance = bot;
+  bindBotInstance(bot); // Wajib di-bind agar broadcastToTelegram & getBot() aktif!
 
-  // /start -> Menu Utama & Tombol Kamus di PC
   bot.command('start', async (ctx) => {
     const isPrivate = ctx.chat.type === 'private';
     const admin = isBotAdmin(ctx.from.id);
@@ -241,7 +241,6 @@ export function startBot() {
     }
   });
 
-  // /kamus -> Buka Kamus Command lengkap di PC
   bot.command('kamus', async (ctx) => {
     if (ctx.chat.type !== 'private') return;
     if (!isBotAdmin(ctx.from.id)) return ctx.reply('Khusus Owner & Admin doang cuy.');
@@ -279,7 +278,6 @@ export function startBot() {
     await ctx.reply('Sip, teks Pusat Bantuan (Help) berhasil di-update.');
   });
 
-  // /req Judul Lagu | https://open.spotify.com/...
   bot.command('req', async (ctx) => {
     const raw = String(ctx.match || '').trim();
     const parts = raw.split('|').map((s) => s.trim());
@@ -322,7 +320,6 @@ export function startBot() {
     await ctx.reply(`Sip, request #${reqId} (<b>${escHtml(song)}</b>) udah masuk antrean & Gudang.`, { parse_mode: 'HTML' });
   });
 
-  // Warga kirim file audio/musik ke PC Bot -> Otomatis kirim ke Channel Gudang & masuk antrean
   bot.on(['message:audio', 'message:document'], async (ctx, next) => {
     if (ctx.chat.type !== 'private') return next();
 
@@ -560,7 +557,6 @@ export function startBot() {
     await ctx.answerCallbackQuery();
   });
 
-  // Event Member Baru Masuk Grup
   bot.on('message:new_chat_members', async (ctx) => {
     const members = ctx.message.new_chat_members || [];
     let count = 0;
@@ -588,7 +584,6 @@ export function startBot() {
     }
   });
 
-  // Event Member Keluar dari Grup
   bot.on('message:left_chat_member', async (ctx) => {
     const m = ctx.message.left_chat_member;
     if (!m || m.is_bot) return;
