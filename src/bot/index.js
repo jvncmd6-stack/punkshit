@@ -22,6 +22,13 @@ db.exec(`
     status TEXT DEFAULT 'waiting',
     created_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    detail TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
 `);
 
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN source_type TEXT DEFAULT 'spotify'"); } catch (e) {}
@@ -41,6 +48,13 @@ function setSetting(key, value) {
     INSERT INTO bot_settings (key, value) VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value
   `).run(key, String(value));
+}
+
+function logAudit(actorId, action, detail) {
+  try {
+    db.prepare('INSERT INTO audit_logs (actor_id, action, detail, created_at) VALUES (?, ?, ?, ?)')
+      .run(String(actorId), action, detail, Date.now());
+  } catch (e) {}
 }
 
 const DEFAULT_GREET =
@@ -69,6 +83,13 @@ function isBotAdmin(userId) {
   if ((ENV.OWNER_IDS || []).map(String).includes(uid)) return true;
   const u = db.prepare('SELECT role FROM users WHERE id = ?').get(uid);
   return Boolean(u && (u.role === 'owner' || u.role === 'admin' || u.role === 'moderator'));
+}
+
+function isBotOwnerOrAdmin(userId) {
+  const uid = String(userId);
+  if ((ENV.OWNER_IDS || []).map(String).includes(uid)) return true;
+  const u = db.prepare('SELECT role FROM users WHERE id = ?').get(uid);
+  return Boolean(u && (u.role === 'owner' || u.role === 'admin'));
 }
 
 function buildGreetKeyboard() {
@@ -108,7 +129,6 @@ function formatTemplate(tpl, member, totalCount) {
     .replace(/\{count\}/gi, String(totalCount || '-'));
 }
 
-// Tampilan Utama PC Bot yang Rapi & Terstruktur
 function renderPrivateHomeText(userId) {
   const roleTag = isBotAdmin(userId) ? 'PENGURUS MARKAS' : 'WARGA MARKAS';
   return (
@@ -124,16 +144,13 @@ function renderPrivateHomeText(userId) {
   );
 }
 
-// Susunan Button Rapi: Row 1 Full Width, Row 2 & Row 3 Grid 2 Kolom Sejajar
 function buildPrivateMenuKeyboard() {
   const kb = new InlineKeyboard();
 
-  // Baris 1: Tombol Utama Full-Width
   if (ENV.MINIAPP_LINK) {
     kb.url('🪪 Buka Mini App PUNKSHIT.OS', ENV.MINIAPP_LINK);
   }
 
-  // Baris 2: Navigasi Warga
   const groupUrl = (process.env.GROUP_URL || '').trim();
   kb.row();
   if (groupUrl) {
@@ -141,7 +158,6 @@ function buildPrivateMenuKeyboard() {
   }
   kb.text('📻 Antrean Radio', 'pc_radio_queue');
 
-  // Baris 3: Menu Pengurus (Kamus & Command Admin)
   kb.row()
     .text('📖 Kamus Command', 'pc_kamus')
     .text('⚙️ Command Admin', 'pc_admin_cmd');
@@ -184,7 +200,6 @@ function renderRadioQueueText() {
   );
 }
 
-// Halaman 1: Kamus Command Lengkap
 function renderKamusText() {
   return (
     '📖 <b>KAMUS COMMAND MAS RAKA</b>\n\n' +
@@ -193,40 +208,39 @@ function renderKamusText() {
     '• <code>/antrean</code> — Cek daftar titipan lagu OS\n' +
     '• <code>/req Judul | Link</code> — Nitip lagu Spotify\n' +
     '• <code>/pasal</code> — Baca pasal & aturan tongkrongan\n' +
-    '• <code>/help</code> — Pusat bantuan warga\n\n' +
-    '<b>2. Perintah Pengurus (Admin & Owner):</b>\n' +
-    '• <code>/done 12</code> — Tandai lagu ID #12 sudah diputar\n' +
-    '• <code>/clearradio</code> — Kosongkan semua antrean lagu\n' +
-    '• <code>/setpasal teks</code> — Ubah isi Pasal & Aturan\n' +
-    '• <code>/sethelp teks</code> — Ubah isi Pusat Bantuan\n' +
-    '• <code>/myid</code> — Cek Telegram ID akun kamu'
+    '• <code>/help</code> — Pusat bantuan warga\n' +
+    '• <code>/myid</code> — Cek Telegram ID akun kamu\n\n' +
+    '<b>2. Top Up / Give Koin PSC & Role (Admin/Owner):</b>\n' +
+    '• <code>/givepsc @username 500</code> — Kirim/top up koin PSC\n' +
+    '• <code>/givepsc 500</code> — Reply pesan warga di grup untuk give koin\n' +
+    '• <code>/givepsc @username -200</code> — Potong koin PSC warga\n' +
+    '• <code>/cekpsc @username</code> — Cek saldo & role warga\n' +
+    '• <code>/setrole @username admin</code> — Atur role (admin/moderator/member)'
   );
 }
 
-// Halaman 2: Command Admin (Greet, Bye & Status Channel)
 function renderAdminCmdText() {
   const wh = getWarehouseId();
   const greetMedia = getSetting('greet_media', '');
   const byeMedia = getSetting('bye_media', '');
 
   return (
-    '⚙️ <b>COMMAND ADMIN — GREET, BYE & SYSTEM</b>\n\n' +
+    '⚙️ <b>COMMAND ADMIN — EKONOMI, GREET & SYSTEM</b>\n\n' +
     '<blockquote>' +
     `• Grup ID: <code>${escHtml(ENV.GROUP_ID || 'Kosong')}</code>\n` +
     `• Channel ID: <code>${escHtml(ENV.CHANNEL_ID || 'Kosong')}</code>\n` +
     `• Gudang Musik: <b>${wh ? 'Terhubung' : 'Belum Diset'}</b>\n` +
     `• Media Greet: <b>${greetMedia ? greetMedia.split(':')[0].toUpperCase() : 'Kosong'}</b> | Bye: <b>${byeMedia ? byeMedia.split(':')[0].toUpperCase() : 'Kosong'}</b>` +
     '</blockquote>\n\n' +
-    '<b>Atur Sambutan Masuk (Greet):</b>\n' +
-    '• <code>/setgreet teks baru</code>\n' +
-    '• <code>/setgreetmedia</code> (reply GIF/Stiker)\n' +
-    '• <code>/delgreetmedia</code>\n\n' +
-    '<b>Atur Pesan Keluar (Bye):</b>\n' +
-    '• <code>/setbye teks baru</code>\n' +
-    '• <code>/setbyemedia</code> (reply GIF/Stiker)\n' +
-    '• <code>/delbyemedia</code>\n\n' +
-    '<b>Variabel Otomatis:</b>\n' +
-    '<code>{name}</code> <code>{mention}</code> <code>{username}</code> <code>{count}</code>'
+    '<b>Top Up / Give Koin & Radio:</b>\n' +
+    '• <code>/givepsc @user 500</code> (atau reply chat + nominal)\n' +
+    '• <code>/cekpsc @user</code> — Cek saldo warga\n' +
+    '• <code>/done 12</code> | <code>/clearradio</code> — Kelola antrean lagu\n\n' +
+    '<b>Atur Sambutan Masuk (Greet) & Keluar (Bye):</b>\n' +
+    '• <code>/setgreet teks baru</code> | <code>/setbye teks baru</code>\n' +
+    '• <code>/setgreetmedia</code> | <code>/setbyemedia</code> (reply GIF/Stiker)\n' +
+    '• <code>/delgreetmedia</code> | <code>/delbyemedia</code>\n' +
+    '• <code>/setpasal teks</code> | <code>/sethelp teks</code>'
   );
 }
 
@@ -250,9 +264,10 @@ export function startBot() {
   botInstance = bot;
   bindBotInstance(bot);
 
-  // Daftarkan daftar command resmi ke menu "/" Telegram
   bot.api.setMyCommands([
     { command: 'start', description: 'Menu Utama Markas PUNKSHIT.OS' },
+    { command: 'givepsc', description: 'Give / Top Up Koin PSC Warga (Admin)' },
+    { command: 'cekpsc', description: 'Cek Saldo PSC Warga' },
     { command: 'antrean', description: 'Cek Antrean Lagu Radio Gang' },
     { command: 'req', description: 'Titip Lagu Spotify (/req Judul | Link)' },
     { command: 'pasal', description: 'Pasal & Aturan Tongkrongan' },
@@ -280,6 +295,118 @@ export function startBot() {
 
   bot.command('myid', async (ctx) => {
     await ctx.reply(`🆔 Telegram ID kamu: <code>${ctx.from.id}</code>`, { parse_mode: 'HTML' });
+  });
+
+  // /givepsc @username 500  ATAU  reply chat warga lalu ketik /givepsc 500
+  bot.command('givepsc', async (ctx) => {
+    if (!isBotOwnerOrAdmin(ctx.from.id)) {
+      return ctx.reply('⛔ Khusus Owner & Admin doang yang bisa suntik koin PSC cuy.');
+    }
+
+    const args = String(ctx.match || '').trim().split(/\s+/).filter(Boolean);
+    const replyUser = ctx.message?.reply_to_message?.from;
+    let targetUser = null;
+    let amount = 0;
+    let reason = 'Top Up / Give Admin';
+
+    if (replyUser && !replyUser.is_bot && args.length >= 1 && /^-?\d+$/.test(args[0])) {
+      amount = Number(args[0]);
+      if (args.length > 1) reason = args.slice(1).join(' ');
+      targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(String(replyUser.id));
+    } else if (args.length >= 2) {
+      const rawTarget = args[0].replace(/^@/, '');
+      amount = Number(args[1]);
+      if (args.length > 2) reason = args.slice(2).join(' ');
+      targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
+    } else {
+      return ctx.reply(
+        'Format Give / Top Up PSC:\n' +
+        '• <code>/givepsc @username 500</code>\n' +
+        '• <code>/givepsc 123456789 500</code>\n' +
+        '• Atau <b>reply pesan warga</b> di grup lalu ketik <code>/givepsc 500</code>\n' +
+        '<i>(Gunakan angka minus seperti -200 untuk memotong saldo)</i>',
+        { parse_mode: 'HTML' }
+      );
+    }
+
+    if (!amount || Number.isNaN(amount)) {
+      return ctx.reply('Nominal koin PSC harus berupa angka valid (tidak boleh 0).');
+    }
+
+    if (!targetUser) {
+      return ctx.reply('Warga belum terdaftar di database PunkID. Suruh cetak PunkID dulu di Mini App!');
+    }
+
+    db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(amount, targetUser.id);
+    const updated = db.prepare('SELECT psc FROM users WHERE id = ?').get(targetUser.id);
+
+    logAudit(ctx.from.id, 'GIVE PSC (BOT)', `${amount > 0 ? '+' : ''}${amount} PSC ke ${targetUser.name} (${reason})`);
+
+    const sign = amount > 0 ? `+${amount}` : `${amount}`;
+    await ctx.reply(
+      `💰 <b>TRANSAKSI PSC BERHASIL</b>\n\n` +
+      `• Penerima: <b>${escHtml(targetUser.name)}</b> ${targetUser.username ? `(@${escHtml(targetUser.username)})` : ''}\n` +
+      `• Nominal: <b>${sign} PSC</b>\n` +
+      `• Saldo Sekarang: <b>${updated.psc} PSC</b>\n` +
+      `• Keterangan: <i>${escHtml(reason)}</i>`,
+      { parse_mode: 'HTML' }
+    );
+  });
+
+  // /cekpsc @username atau reply pesan warga
+  bot.command('cekpsc', async (ctx) => {
+    const rawTarget = String(ctx.match || '').trim().replace(/^@/, '');
+    const replyUser = ctx.message?.reply_to_message?.from;
+    let targetUser = null;
+
+    if (rawTarget) {
+      targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
+    } else if (replyUser && !replyUser.is_bot) {
+      targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(String(replyUser.id));
+    } else {
+      targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(String(ctx.from.id));
+    }
+
+    if (!targetUser) {
+      return ctx.reply('Data warga belum ditemukan di PunkID.');
+    }
+
+    await ctx.reply(
+      `💳 <b>DOMPET WARGA — ${escHtml(targetUser.name)}</b>\n` +
+      `• ID Warga: <code>${escHtml(targetUser.member_no || targetUser.id)}</code>\n` +
+      `• Role: <code>${escHtml((targetUser.role || 'member').toUpperCase())}</code>\n` +
+      `• Saldo PSC: <b>${targetUser.psc || 0} PSC</b>\n` +
+      `• Street Cred: <b>${targetUser.cred || 0}</b>`,
+      { parse_mode: 'HTML' }
+    );
+  });
+
+  // /setrole @username admin|moderator|member
+  bot.command('setrole', async (ctx) => {
+    const senderId = String(ctx.from.id);
+    const isOwner = (ENV.OWNER_IDS || []).map(String).includes(senderId);
+    if (!isOwner) {
+      return ctx.reply('⛔ Khusus Owner utama (OWNER_IDS) yang bisa ubah role pengurus.');
+    }
+
+    const args = String(ctx.match || '').trim().split(/\s+/).filter(Boolean);
+    if (args.length < 2) {
+      return ctx.reply('Format: <code>/setrole @username admin</code>\nPilihan role: <code>admin</code>, <code>moderator</code>, <code>member</code>', { parse_mode: 'HTML' });
+    }
+
+    const rawTarget = args[0].replace(/^@/, '');
+    const role = args[1].toLowerCase();
+    if (!['admin', 'moderator', 'member'].includes(role)) {
+      return ctx.reply('Role cuma boleh: admin, moderator, atau member.');
+    }
+
+    const targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
+    if (!targetUser) return ctx.reply('Warga kaga ketemu di database PunkID.');
+
+    db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, targetUser.id);
+    logAudit(senderId, 'SET ROLE (BOT)', `${targetUser.name} -> ${role}`);
+
+    await ctx.reply(`✅ Role <b>${escHtml(targetUser.name)}</b> resmi diubah menjadi <b>${role.toUpperCase()}</b>.`, { parse_mode: 'HTML' });
   });
 
   bot.command('kamus', async (ctx) => {
