@@ -4,7 +4,7 @@ import { db } from '../database/db.js';
 import { ENV } from '../config/env.js';
 import { requireUser } from '../middlewares/authTma.js';
 import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
-import { broadcastToTelegram, escHtml } from '../services/syncEngine.js';
+import { broadcastToTelegram, getCatalog, escHtml } from '../services/syncEngine.js';
 
 export const adminRouter = Router();
 
@@ -17,10 +17,6 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 `);
-
-const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-const photoCol = userCols.includes('photo_url') ? 'photo_url' : (userCols.includes('avatar') ? 'avatar' : "''");
-const coinCol = userCols.includes('psc') ? 'psc' : 'cred';
 
 function isAdminUser(user) {
   if (!user) return false;
@@ -36,7 +32,7 @@ function logAudit(actorId, action, detail) {
   } catch (e) {}
 }
 
-// GET /api/admin/overview -> Data lengkap Ruang Dalang (10-dalang.js)
+// GET /api/admin/overview -> Data lengkap Ruang Dalang
 adminRouter.get('/admin/overview', requireUser, (req, res) => {
   if (!isAdminUser(req.dbUser)) {
     return res.status(403).json({ error: 'Khusus pengurus Ruang Dalang.' });
@@ -48,7 +44,7 @@ adminRouter.get('/admin/overview', requireUser, (req, res) => {
   } catch (e) {}
 
   const users = db.prepare(
-    `SELECT id, name, username, role, ${coinCol} AS psc, ${photoCol} AS photoUrl FROM users ORDER BY ${coinCol} DESC LIMIT 100`
+    'SELECT id, name, username, role, psc, cred, photo_url AS photoUrl FROM users ORDER BY psc DESC LIMIT 100'
   ).all();
 
   const logs = db.prepare('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 20').all();
@@ -56,7 +52,7 @@ adminRouter.get('/admin/overview', requireUser, (req, res) => {
   res.json({ pendingMenfess, users, logs });
 });
 
-// POST /api/admin/items -> Tambah item ke Lapak Rongsok (Gift / Avatar Border / Skin)
+// POST /api/admin/items -> Tambah item ke Lapak Rongsok (tabel items)
 adminRouter.post('/admin/items', requireUser, uploadMem.single('asset'), async (req, res) => {
   if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
 
@@ -77,7 +73,7 @@ adminRouter.post('/admin/items', requireUser, uploadMem.single('asset'), async (
 
     const id = 'itm_' + crypto.randomBytes(4).toString('hex');
     db.prepare(`
-      INSERT INTO catalog (id, type, name, price, rarity, stock, desc, image_url, created_at)
+      INSERT INTO items (id, type, name, price, rarity, stock, desc, image_url, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, type, name, price, rarity, stock, desc, imageUrl, Date.now());
 
@@ -91,19 +87,17 @@ adminRouter.post('/admin/items', requireUser, uploadMem.single('asset'), async (
       feedText: `Item baru "${name}" rilis di Lapak Rongsok!`
     });
 
-    const catalog = db.prepare('SELECT id, type, name, price, rarity, stock, desc, image_url AS imageUrl FROM catalog ORDER BY created_at DESC').all();
-    res.json({ ok: true, catalog });
+    res.json({ ok: true, catalog: getCatalog() });
   } catch (err) {
     res.status(400).json({ error: err.message || 'Gagal menambah item.' });
   }
 });
 
-// DELETE /api/admin/items/:id -> Hapus item katalog
+// DELETE /api/admin/items/:id -> Hapus item dari tabel items
 adminRouter.delete('/admin/items/:id', requireUser, (req, res) => {
   if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
-  db.prepare('DELETE FROM catalog WHERE id = ?').run(String(req.params.id));
-  const catalog = db.prepare('SELECT id, type, name, price, rarity, stock, desc, image_url AS imageUrl FROM catalog ORDER BY created_at DESC').all();
-  res.json({ ok: true, catalog });
+  db.prepare('DELETE FROM items WHERE id = ?').run(String(req.params.id));
+  res.json({ ok: true, catalog: getCatalog() });
 });
 
 // POST /api/admin/broadcast -> Pengumuman resmi ke Grup & Channel
@@ -219,7 +213,7 @@ adminRouter.post('/admin/menfess/review', requireUser, async (req, res) => {
   res.json({ ok: true, pendingMenfess });
 });
 
-// POST /api/admin/economy/adjust -> Suntik / Tarik PSC warga (dari Ruang Dalang)
+// POST /api/admin/economy/adjust -> Suntik / Tarik PSC warga
 adminRouter.post('/admin/economy/adjust', requireUser, (req, res) => {
   if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
 
@@ -234,7 +228,7 @@ adminRouter.post('/admin/economy/adjust', requireUser, (req, res) => {
   const targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
   if (!targetUser) return res.status(404).json({ error: 'Warga kaga ketemu di database.' });
 
-  db.prepare(`UPDATE users SET ${coinCol} = MAX(0, ${coinCol} + ?) WHERE id = ?`).run(amount, targetUser.id);
+  db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(amount, targetUser.id);
   logAudit(req.dbUser.id, 'EKONOMI PSC', `${amount > 0 ? '+' : ''}${amount} PSC ke ${targetUser.name} (${reason})`);
 
   res.json({ ok: true });
