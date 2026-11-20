@@ -10,7 +10,7 @@
 html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:#07070b}
 body{display:flex;justify-content:center;align-items:center;color:#fff;font:400 16px/1.3 var(--sans);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
 button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-action:manipulation;cursor:pointer}
-.card{position:relative;display:flex;flex-direction:column;width:100%;height:100vh;height:100dvh;padding-top:6px;background:#07070b;overflow:hidden}
+.card{position:relative;display:flex;flex-direction:column;width:100%;height:100vh;height:100dvh;padding-top:max(var(--sat),8px);background:#07070b;overflow:hidden}
 .top{display:flex;justify-content:space-between;align-items:center;padding:2px 18px 0}
 .top h1{margin:0;font:700 18px/1.15 var(--rnd);letter-spacing:-.2px}.top p{margin:1px 0 0;font-size:12px;color:var(--t2)}
 .rare{background:var(--ac);color:#111;font:700 11px var(--sans);padding:4px 10px;border-radius:99px}
@@ -72,7 +72,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .shot:disabled{opacity:.35}
 
 /* Layar Awal: Konek Partner (Two Members • One Group) */
-.pair-gate{position:absolute;inset:0;z-index:20;background:linear-gradient(180deg,#0b0b12 0%,#12121c 100%);display:flex;flex-direction:column;padding:18px 20px max(var(--sab),20px);overflow-y:auto}
+.pair-gate{position:absolute;inset:0;z-index:20;background:linear-gradient(180deg,#0b0b12 0%,#12121c 100%);display:flex;flex-direction:column;padding:max(var(--sat),18px) 20px max(var(--sab),20px);overflow-y:auto}
 .pg-hero{text-align:center;margin-top:8px}
 .pg-fire{font-size:48px;line-height:1;filter:drop-shadow(0 0 20px rgba(255,138,31,.6))}
 .pg-hero h2{margin:10px 0 4px;font:800 22px/1.2 var(--rnd)}
@@ -114,23 +114,26 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 <header class="top"><div><h1>Spark Buddies</h1><p>Two Members • One Group</p></div><span class="rare" id="rare"></span></header>
 <section class="stage" id="stage">
 <div class="streak">
-  <div class="num" id="num"></div>
+  <div class="num" id="num">0</div>
   <div class="lab">Hari nyala 🔥</div>
-  <span class="badge" id="sb"></span>
+  <span class="badge" id="sb">🔒 Belum Nyala</span>
   <div class="pair"><span id="p1Name">GUE</span><i>×</i><span id="p2Name">PARTNER</span></div>
   <div class="gap-box">
     <div class="gap-row"><span id="g1Lbl">Gue</span><b id="g1Val">0/5 GAP · 0/2</b></div>
     <div class="gap-row"><span id="g2Lbl">Partner</span><b id="g2Val">0/5 GAP · 0/2</b></div>
   </div>
-  <button class="ci" id="ci"></button>
+  <button class="ci" id="ci">Setor Aktivitas Gue</button>
 </div>
 <div class="tilt" id="tilt"><svg id="svg" viewBox="0 0 300 372"></svg></div>
 </section>
-<section class="plate"><div class="nm" id="nm" contenteditable="true" spellcheck="false">BARA</div><span class="chip" id="lvc"></span></section>
-<section class="xp"><div class="bar"><i id="fill"></i></div><div class="xpl"><span id="bt"></span><span id="bh"></span></div></section>
+<section class="plate"><div class="nm" id="nm" contenteditable="true" spellcheck="false">BARA</div><span class="chip" id="lvc">Lv 1 · Baby Spark</span></section>
+<section class="xp"><div class="bar"><i id="fill" style="width:0%"></i></div><div class="xpl"><span id="bt">0 / 100 XP</span><span id="bh">100 XP lagi naik level</span></div></section>
 <section class="sheet"><div class="grab" id="grab" role="button" aria-label="Ubah tinggi panel"></div><nav class="tabs" id="tabs"></nav><div class="seg" id="gf"></div><div class="sc" id="sc"><div id="body"></div></div><div class="foot"><button class="rand" id="rnd">🎲 Acak penampilan</button><button class="shot" id="shot" aria-label="Simpan atau bagikan gambar">📸</button><button class="shot" id="undo" aria-label="Urungkan" disabled>↩︎</button></div></section>
 <div class="toast" id="toast"></div></main>
 <script>
+const $=id=>document.getElementById(id),hap=()=>{try{navigator.vibrate&&navigator.vibrate(6)}catch(_){}};
+const SV=$("svg"),stg=$("stage"),tl=$("tilt"),RM=matchMedia("(prefers-reduced-motion:reduce)").matches;
+
 const OL="#26101c";
 const TH={Api:["#ffd24a","#ff8a1f","#e0360f","#fff35c"],Biru:["#9be8ff","#2f8cff","#1c47e0","#fff35c"],Toxic:["#eaff7a","#7dea2b","#18a83a","#e65cff"],Pink:["#ffd6ec","#ff7ac0","#ff2f8e","#59f0ff"],Ungu:["#e6d0ff","#a66bff","#6a2cff","#ffe94d"],Merah:["#ffb3a0","#ff4a3a","#a8100f","#ffe14d"],Emas:["#fff6b0","#ffc81f","#c97a00","#ff4fd8"],Tosca:["#b8fff0","#18d6b8","#087c86","#ffef5c"],Putih:["#ffffff","#cfd6ea","#7c86b0","#ff6a3d"]};
 const GN={"Dress Tartan":"Cewek","Pita Besar":"Cewek","Jepit Petir":"Cewek","Bulu Mata":"Cewek","Choker":"Cewek","Kaos Petir":"Cowok","Rompi Jeans":"Cowok","Jambul Petir":"Cowok","Kumis":"Cowok","Kalung Spike":"Cowok",Tengkorak:"Cowok","Telinga Kucing":"Cewek",Mohawk:"Cowok","Pipi Merah":"Cewek","Parut Petir":"Cowok"},gen=v=>GN[v]||"Unisex";
@@ -154,6 +157,20 @@ const DUO_MISSIONS=[
 const LV=["Baby Spark","Tiny Trouble","Little Spark","Happy Chaos","Growing Spark","Bright Buddy","Super Spark","Neon Buddy","Royal Spark","Legendary Spark"],XP=[0,100,300,600,1000,1500,2200,3000,4000,5500,99999],SC=[.74,.84,.92,.97,1],LG=[0,8,16,22,28],RN=["Common","Common","Rare","Rare","Epic"];
 const DN={Polos:"Tanpa"};
 
+const E={
+Happy:{br:.022,bf:1.7,h:26,hi:5.2,sw:1.6,sf:.8,sh:0,dy:0,ln:0,up:0,wv:0,sp:1},
+Excited:{br:.02,bf:4,h:15,hi:.55,sw:3,sf:1.8,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.2},
+Waiting:{br:.012,bf:1.3,h:0,hi:0,sw:3.5,sf:.3,sh:0,dy:0,ln:0,up:0,wv:0,sp:.9},
+Worried:{br:.012,bf:5,h:0,hi:0,sw:0,sf:1,sh:1.5,dy:2,ln:0,up:.08,wv:3,sp:3},
+Dancing:{br:.02,bf:2,h:12,hi:.67,sw:6,sf:.75,sh:0,dy:0,ln:0,up:1,wv:10,sp:1.8},
+Crying:{br:.02,bf:1.8,h:0,hi:0,sw:1,sf:.9,sh:0,dy:4,ln:0,up:0,wv:0,sp:.8},
+Celebrating:{br:.02,bf:3,h:38,hi:.85,sw:5,sf:1.2,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.5},
+Sleepy:{br:.03,bf:.8,h:0,hi:0,sw:0,sf:1,sh:0,dy:6,ln:6,up:0,wv:0,sp:.45},
+Love:{br:.025,bf:2,h:10,hi:1.8,sw:4,sf:.6,sh:0,dy:0,ln:0,up:.5,wv:3,sp:1.2},
+Angry:{br:.015,bf:5,h:0,hi:0,sw:0,sf:1,sh:1.1,dy:5,ln:0,up:0,wv:0,sp:2.6},
+Surprised:{br:.01,bf:2,h:30,hi:4,sw:0,sf:1,sh:0,dy:0,ln:0,up:.45,wv:2,sp:1.4},
+Wink:{br:.022,bf:1.7,h:18,hi:3.2,sw:3,sf:.8,sh:0,dy:0,ln:0,up:0,wv:0,sp:1.1}};
+
 let S={
   paired:false,
   p1:"GUE",
@@ -172,6 +189,10 @@ let S={
   last:""
 },tab=0,gf="Semua";
 
+const C={...E.Happy},P={x:0,y:0,on:0},G=3200;
+let R={},curSt=0,ph=0,pb=0,ps=0,pw=0,y=0,vy=0,q=0,qv=0,nx=1.5,cr=0,last=0,bk=0,nb=2,ex=0,ey=0,wx=0,wy=0,nw=1,pxs=0,pys=0,PT="",TT="";
+let LL=0,EB=null,SEEN=new Set(),SEED=1,pvn=0;
+
 const lvl=()=>XP.filter(x=>S.xp>=x).length;
 const mix=(h,m,t)=>{const p=c=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)),A=p(h),B=p(m);return "#"+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,"0")).join("")};
 let CR=1,CRt=1,SPD=1;const Y=v=>v<150?150-(150-v)*CR:v;
@@ -186,8 +207,52 @@ function mouth(e,st=2){const R="#7a1622",T="#ff7a8a",fg=(x,y,s=1)=>st<1?"":`<pat
  if(e=="Sleepy")return `<path d="M124 268Q150 288 178 264" fill="none" ${st3(5)}/>`;
  return `<path d="M122 260Q150 254 178 258Q172 290 148 290Q126 288 122 260Z" fill="${R}" ${st3(3.5)}/><ellipse cx="150" cy="282" rx="12" ry="6" fill="${T}"/>${fg(128,260)}${fg(160,259,.7)}`}
 
+function bind(){const f=s=>[...SV.querySelectorAll(s)];R={pet:SV.querySelector(".pet"),bp:f(".bp"),pp:f(".pp"),eye:f(".eye"),arm:f(".arm")}}
+function apply(){
+ if(!R.bp)return;
+ const d=bodyD(ph);R.bp.forEach(p=>p.setAttribute("d",d));
+ R.pet&&R.pet.setAttribute("transform",PT);
+ const pt=`translate(${ex.toFixed(2)} ${ey.toFixed(2)})`;R.pp.forEach(p=>p.setAttribute("transform",pt));
+ const sy=bk>0?1-.92*Math.sin((1-bk/.14)*Math.PI):1;
+ R.eye.forEach(e=>{const x=e.dataset.x;e.setAttribute("transform",sy<.999?`translate(${x} 218) scale(1 ${sy.toFixed(3)}) translate(-${x} -218)`:"")});
+ R.arm.forEach(a=>{const m=+a.dataset.m,s=m?-1:1,ang=(m&&+a.dataset.g)?Math.sin(pw)*2:C.up*136*s+C.wv*Math.sin(pw*1.1+m*1.9)+(1-C.up)*Math.sin(ps*1.3+m*2.1)*4*s-s*q*60;
+  a.setAttribute("transform",`rotate(${ang.toFixed(2)} ${m?238:62} 262)`)});
+ tl.style.transform=TT}
+
+const dk=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(),day=()=>dk(new Date());
+function ciUpd(){
+ const b=$("ci");if(!b)return;
+ const done=S.last==day()&&S.g1.gap>=5&&S.g1.msg>=2;
+ b.textContent=done?"Target Gue Aman ✓":"Setor Aktivitas Gue";
+ b.classList.toggle("done",done);
+}
+
+function hud(lv,st){
+ const [L,M,D,bo]=TH[S.theme]||TH.Api,a=XP[lv-1],b=XP[lv],mx=lv>=10;
+ document.documentElement.style.setProperty("--ac",M);document.documentElement.style.setProperty("--gl",bo);
+ $("num").textContent=S.days;
+ const q1=S.g1.gap>=5&&S.g1.msg>=2, q2=S.g2.gap>=5&&S.g2.msg>=2;
+ let stLabel="🔒 Belum Nyala";
+ if(q1&&q2) stLabel=S.days>=3?"🔥 Api Aman":"🔥 Qualified Hari Ini";
+ else if(q1||q2) stLabel="⏳ Nunggu Partner";
+ else if(S.days>=3) stLabel="🚨 Critical Spark";
+ $("sb").textContent=stLabel;
+ $("p1Name").textContent=S.p1||"GUE";
+ $("p2Name").textContent=S.p2||"PARTNER";
+ $("g1Lbl").textContent=(S.p1||"Gue").slice(0,8);
+ $("g2Lbl").textContent=(S.p2||"Partner").slice(0,8);
+ $("g1Val").textContent=`${S.g1.gap}/5 GAP · ${S.g1.msg}/2 ${q1?"✅":"⏳"}`;
+ $("g2Val").textContent=`${S.g2.gap}/5 GAP · ${S.g2.msg}/2 ${q2?"✅":"⏳"}`;
+ $("rare").textContent=RN[st];
+ $("lvc").textContent="Lv "+lv+" · "+LV[lv-1];
+ $("fill").style.width=(mx?100:(S.xp-a)/(b-a)*100)+"%";
+ $("bt").textContent=mx?"MAX":`${S.xp-a} / ${b-a} XP`;
+ $("bh").textContent=mx?"Level tertinggi":`${b-S.xp} XP lagi naik level`;
+ ciUpd();
+}
+
 function draw(pv){
- const [L,M,D,bo]=TH[S.theme],e=S.emo,lv=lvl(),st=Math.ceil(lv/2)-1,s=SC[st],Ls=LG[st],O=S.outfit,H=S.head,X=S.extra,G=X.has("Gitar");
+ const [L,M,D,bo]=TH[S.theme]||TH.Api,e=S.emo,lv=lvl(),st=Math.ceil(lv/2)-1,s=SC[st],Ls=LG[st],O=S.outfit,H=S.head,X=S.extra,G=X.has("Gitar");
  let h=`<defs>
  <linearGradient id="bd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L}"/><stop offset=".5" stop-color="${M}"/><stop offset="1" stop-color="${D}"/></linearGradient>
  <radialGradient id="sh" cx=".5" cy=".5" r=".62"><stop offset=".68" stop-color="${D}" stop-opacity="0"/><stop offset="1" stop-color="${mix(D,"#000000",.5)}" stop-opacity=".45"/></radialGradient>
@@ -275,33 +340,8 @@ function draw(pv){
  h+=`</g></g>`;
  if(st>=3||e=="Excited"||e=="Wink")h+=[[30,60],[266,130],[44,280],[250,24]].map(([x,y],i)=>`<path class="sp" style="animation-delay:${i*.4}s" d="M${x} ${y-11}Q${x} ${y} ${x+11} ${y}Q${x} ${y} ${x} ${y+11}Q${x} ${y} ${x-11} ${y}Q${x} ${y} ${x} ${y-11}Z" fill="#fff" ${st3(1.5)}/>`).join("");
  h+=`</g>`;
- if(pv)return h;SV.innerHTML=h;curSt=st;bind();apply();hud(lv,st);lvCheck();save();
-}
-
-const $=id=>document.getElementById(id),hap=()=>{try{navigator.vibrate&&navigator.vibrate(6)}catch(_){}};
-
-function hud(lv,st){
- const [L,M,D,bo]=TH[S.theme],a=XP[lv-1],b=XP[lv],mx=lv>=10;
- document.documentElement.style.setProperty("--ac",M);document.documentElement.style.setProperty("--gl",bo);
- $("num").textContent=S.days;
- const q1=S.g1.gap>=5&&S.g1.msg>=2, q2=S.g2.gap>=5&&S.g2.msg>=2;
- let stLabel="🔒 Belum Nyala";
- if(q1&&q2) stLabel=S.days>=3?"🔥 Api Aman":"🔥 Qualified Hari Ini";
- else if(q1||q2) stLabel="⏳ Nunggu Partner";
- else if(S.days>=3) stLabel="🚨 Critical Spark";
- $("sb").textContent=stLabel;
- $("p1Name").textContent=S.p1||"GUE";
- $("p2Name").textContent=S.p2||"PARTNER";
- $("g1Lbl").textContent=(S.p1||"Gue").slice(0,8);
- $("g2Lbl").textContent=(S.p2||"Partner").slice(0,8);
- $("g1Val").textContent=`${S.g1.gap}/5 GAP · ${S.g1.msg}/2 ${q1?"✅":"⏳"}`;
- $("g2Val").textContent=`${S.g2.gap}/5 GAP · ${S.g2.msg}/2 ${q2?"✅":"⏳"}`;
- $("rare").textContent=RN[st];
- $("lvc").textContent="Lv "+lv+" · "+LV[lv-1];
- $("fill").style.width=(mx?100:(S.xp-a)/(b-a)*100)+"%";
- $("bt").textContent=mx?"MAX":`${S.xp-a} / ${b-a} XP`;
- $("bh").textContent=mx?"Level tertinggi":`${b-S.xp} XP lagi naik level`;
- ciUpd();
+ if(pv)return h;
+ SV.innerHTML=h;curSt=st;bind();apply();hud(lv,st);lvCheck();save();
 }
 
 const GFL=[["Semua","Semua"],["Cewek","♀ Cewek"],["Cowok","♂ Cowok"],["Unisex","⚥ Unisex"]];
@@ -309,15 +349,16 @@ const U={Singlet:2,"Kaos Petir":2,"Kaos Garis":3,"Rompi Jeans":3,Flanel:4,"Dress
 const unl=v=>lvl()>=(U[v]||1)&&S.days>=(UD[v]||0),need=v=>[(U[v]||1)>1?"Lv "+U[v]:"",UD[v]?UD[v]+" hari":""].filter(Boolean).join(" & ");
 function tog(v){if(S.extra.has(v))return S.extra.delete(v);if(NECK.includes(v))NECK.forEach(n=>S.extra.delete(n));S.extra.add(v)}
 function lock(v,b){toast("Terbuka di "+need(v));b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake");hap()}
-const VB={outfit:"30 240 240 150",head:"40 0 220 190",face:"60 160 180 170",extra:"20 200 260 180",emo:"20 60 260 300"};let pvn=0;
+const VB={outfit:"30 240 240 150",head:"40 0 220 190",face:"60 160 180 170",extra:"20 200 260 180",emo:"20 60 260 300"};
 function pv(k,v){const o=S,c=CRt,sp=SPD;S={...o,extra:new Set(o.extra)};if(k=="extra")S.extra.add(v);else S[k]=v;if(k!="emo")S.emo="Happy";let h;try{h=draw(1)}finally{S=o;CRt=c;SPD=sp}const p="t"+(pvn++)+"_";return h.replace(/(id="|url\(#)(\w+)/g,`$1${p}$2`)}
 
-function tabsInit(){TABS.forEach(([n],i)=>{const b=document.createElement("button");b.textContent=n;b.onclick=()=>{if(tab!=i){tab=i;ui();hap()}};$("tabs").appendChild(b)})}
+function tabsUpd(){[...$("tabs").children].forEach((b,i)=>b.classList.toggle("nw",TABS[i][2].some(v=>unl(v)&&!SEEN.has(v))))}
+function tabsInit(){$("tabs").innerHTML="";TABS.forEach(([n],i)=>{const b=document.createElement("button");b.textContent=n;b.onclick=()=>{if(tab!=i){tab=i;ui();hap()}};$("tabs").appendChild(b)})}
 function mark(){const k=TABS[tab][1];$("body").querySelectorAll(".it").forEach(b=>{const on=k=="extra"?S.extra.has(b.dataset.v):S[k]==b.dataset.v;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)})}
 function ui(){
  const tb=$("tabs"),bd=$("body"),gfe=$("gf"),[,k,list]=TABS[tab];
  [...tb.children].forEach((b,i)=>b.classList.toggle("on",i==tab));
- const on=tb.children[tab];tb.scrollTo({left:on.offsetLeft-(tb.clientWidth-on.offsetWidth)/2,behavior:"smooth"});
+ const on=tb.children[tab];if(on)tb.scrollTo({left:on.offsetLeft-(tb.clientWidth-on.offsetWidth)/2,behavior:"smooth"});
  bd.innerHTML="";gfe.innerHTML="";$("sc").scrollTop=0;gfe.hidden=["theme","emo","missions"].includes(k);
  GFL.forEach(([g,t])=>{const b=document.createElement("button");b.textContent=t;b.className=gf==g?"on":"";b.onclick=()=>{gf=g;ui();hap()};gfe.appendChild(b)});
 
@@ -344,31 +385,6 @@ function ui(){
 
 document.getElementById("rnd").onclick=()=>{snapPush();const pk=a=>a[Math.floor(Math.random()*a.length)];TABS.forEach(([,k,l])=>{if(l.length&&k!="extra")S[k]=pk(l.filter(unl))});S.extra=new Set();TABS[3][2].filter(unl).sort(()=>Math.random()-.5).slice(0,1+Math.floor(Math.random()*3)).forEach(tog);draw();ui();bump()};
 
-const E={
-Happy:{br:.022,bf:1.7,h:26,hi:5.2,sw:1.6,sf:.8,sh:0,dy:0,ln:0,up:0,wv:0,sp:1},
-Excited:{br:.02,bf:4,h:15,hi:.55,sw:3,sf:1.8,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.2},
-Waiting:{br:.012,bf:1.3,h:0,hi:0,sw:3.5,sf:.3,sh:0,dy:0,ln:0,up:0,wv:0,sp:.9},
-Worried:{br:.012,bf:5,h:0,hi:0,sw:0,sf:1,sh:1.5,dy:2,ln:0,up:.08,wv:3,sp:3},
-Dancing:{br:.02,bf:2,h:12,hi:.67,sw:6,sf:.75,sh:0,dy:0,ln:0,up:1,wv:10,sp:1.8},
-Crying:{br:.02,bf:1.8,h:0,hi:0,sw:1,sf:.9,sh:0,dy:4,ln:0,up:0,wv:0,sp:.8},
-Celebrating:{br:.02,bf:3,h:38,hi:.85,sw:5,sf:1.2,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.5},
-Sleepy:{br:.03,bf:.8,h:0,hi:0,sw:0,sf:1,sh:0,dy:6,ln:6,up:0,wv:0,sp:.45},
-Love:{br:.025,bf:2,h:10,hi:1.8,sw:4,sf:.6,sh:0,dy:0,ln:0,up:.5,wv:3,sp:1.2},
-Angry:{br:.015,bf:5,h:0,hi:0,sw:0,sf:1,sh:1.1,dy:5,ln:0,up:0,wv:0,sp:2.6},
-Surprised:{br:.01,bf:2,h:30,hi:4,sw:0,sf:1,sh:0,dy:0,ln:0,up:.45,wv:2,sp:1.4},
-Wink:{br:.022,bf:1.7,h:18,hi:3.2,sw:3,sf:.8,sh:0,dy:0,ln:0,up:0,wv:0,sp:1.1}};
-const SV=$("svg"),stg=$("stage"),tl=$("tilt"),RM=matchMedia("(prefers-reduced-motion:reduce)").matches,C={...E.Happy},P={x:0,y:0,on:0},G=3200;
-let R={},curSt=0,ph=0,pb=0,ps=0,pw=0,y=0,vy=0,q=0,qv=0,nx=1.5,cr=0,last=0,bk=0,nb=2,ex=0,ey=0,wx=0,wy=0,nw=1,pxs=0,pys=0,PT="",TT=0;
-function bind(){const f=s=>[...SV.querySelectorAll(s)];R={pet:SV.querySelector(".pet"),bp:f(".bp"),pp:f(".pp"),eye:f(".eye"),arm:f(".arm")}}
-function apply(){
- const d=bodyD(ph);R.bp.forEach(p=>p.setAttribute("d",d));
- R.pet&&R.pet.setAttribute("transform",PT);
- const pt=`translate(${ex.toFixed(2)} ${ey.toFixed(2)})`;R.pp.forEach(p=>p.setAttribute("transform",pt));
- const sy=bk>0?1-.92*Math.sin((1-bk/.14)*Math.PI):1;
- R.eye.forEach(e=>{const x=e.dataset.x;e.setAttribute("transform",sy<.999?`translate(${x} 218) scale(1 ${sy.toFixed(3)}) translate(-${x} -218)`:"")});
- R.arm.forEach(a=>{const m=+a.dataset.m,s=m?-1:1,ang=(m&&+a.dataset.g)?Math.sin(pw)*2:C.up*136*s+C.wv*Math.sin(pw*1.1+m*1.9)+(1-C.up)*Math.sin(ps*1.3+m*2.1)*4*s-s*q*60;
-  a.setAttribute("transform",`rotate(${ang.toFixed(2)} ${m?238:62} 262)`)});
- tl.style.transform=TT}
 function step(ms){
  const dt=Math.min((ms-last)/1000||.016,.05);last=ms;
  const T=E[S.emo]||E.Happy,a=1-Math.exp(-dt*6);
@@ -390,6 +406,7 @@ function step(ms){
  const ke=1-Math.exp(-dt*(P.on?14:9));ex+=(wx-ex)*ke;ey+=(wy-ey)*ke;
  nb-=dt;if(bk>0)bk=Math.max(0,bk-dt);else if(nb<=0){bk=.14;nb=2+Math.random()*3.5}
  apply();requestAnimationFrame(step)}
+
 const pm=e=>{const r=stg.getBoundingClientRect();P.x=(e.clientX-r.left)/r.width-.5;P.y=(e.clientY-r.top)/r.height-.5;P.on=1},off=()=>{P.on=0};
 stg.addEventListener("pointermove",pm);stg.addEventListener("pointerleave",off);stg.addEventListener("pointercancel",off);
 stg.addEventListener("pointerup",e=>{if(e.pointerType!=="mouse")off()});
@@ -398,7 +415,7 @@ document.querySelectorAll("[contenteditable]").forEach(el=>el.addEventListener("
 document.querySelectorAll("[contenteditable]").forEach(el=>el.addEventListener("input",save));
 
 const K="punkshit.spark.v2";let svT,tt;
-function doSave(){try{localStorage.setItem(K,JSON.stringify({S:{...S,emo:EB||S.emo,extra:[...S.extra]},seen:[...SEEN],nm:$("nm").textContent,tab,gf}))}catch(_}{}}
+function doSave(){try{localStorage.setItem(K,JSON.stringify({S:{...S,emo:EB||S.emo,extra:[...S.extra]},seen:[...SEEN],nm:$("nm").textContent,tab,gf}))}catch(_){}}
 function save(){clearTimeout(svT);svT=setTimeout(doSave,250)}
 function load(){try{const d=JSON.parse(localStorage.getItem(K));if(!d||!d.S)return;Object.assign(S,d.S,{extra:new Set(d.S.extra||[])});if(!TH[S.theme])S.theme="Api";if(!E[S.emo])S.emo="Happy";if(d.nm)$("nm").textContent=String(d.nm).slice(0,14);tab=Math.min(TABS.length-1,+d.tab||0);gf=d.gf||"Semua";if(d.seen){SEEN=new Set(d.seen);SEED=0}}catch(_){}}
 addEventListener("pagehide",doSave);document.addEventListener("visibilitychange",()=>document.hidden&&doSave());
@@ -422,18 +439,10 @@ async function shot(){try{
  if(navigator.canShare&&navigator.canShare({files:[fl]})){try{await navigator.share({files:[fl]});return}catch(e){if(e.name=="AbortError")return}}
  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fl.name;a.click();toast("Gambar tersimpan")}catch(_){toast("Gagal bikin gambar")}}
 
-let LL=0,EB=null;
 function lvCheck(){const l=lvl(),p=LL;LL=l;tabsUpd();if(p&&l>p){if(TABS[tab][1]!="missions")ui();levelUp(l,Object.keys(U).filter(k=>U[k]>p&&U[k]<=l).length)}}
 function levelUp(l,n){toast(`Naik ke Lv ${l}: ${LV[l-1]}${n?` · ${n} item baru`:""}`);burst();setTimeout(burst,220);if(y===0){vy=Math.sqrt(2*G*40);qv-=.8}
  if(S.emo!="Celebrating"){EB=S.emo;S.emo="Celebrating";draw();setTimeout(()=>{if(S.emo=="Celebrating"&&EB){S.emo=EB;EB=null;draw()}},2800)}}
 
-const dk=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(),day=()=>dk(new Date());
-function ciUpd(){
- const b=$("ci");if(!b)return;
- const done=S.last==day()&&S.g1.gap>=5&&S.g1.msg>=2;
- b.textContent=done?"Target Gue Aman ✓":"Setor Aktivitas Gue";
- b.classList.toggle("done",done);
-}
 function checkin(){
  const t=day();
  if(S.last!==t){S.g1={gap:0,msg:0};S.g2={gap:0,msg:0};S.last=t;}
@@ -444,14 +453,12 @@ function checkin(){
   toast(`🔥 SPARK SECURED! Day ${S.days} · +10 XP`);
  }else{
   S.emo="Waiting";
-  toast(`✅ Aktivitasmu tercatat! Menunggu ${S.p2} (min 5 GAP)`);
+  toast(`✅ Aktivitasmu tercatat! Menunggu ${S.p2||"Partner"} (min 5 GAP)`);
  }
  draw();bump();
 }
 
-let SEEN=new Set(),SEED=1;
 function seedSeen(){if(SEED)TABS.forEach(t=>t[2].filter(unl).forEach(v=>SEEN.add(v)))}
-function tabsUpd(){[...$("tabs").children].forEach((b,i)=>b.classList.toggle("nw",TABS[i][2].some(v=>unl(v)&&!SEEN.has(v))))}
 const HS=[],snap=()=>JSON.stringify({a:["theme","outfit","head","face","emo"].map(k=>S[k]),x:[...S.extra]});
 function undoUpd(){$("undo").disabled=!HS.length}
 function snapPush(){HS.push(snap());if(HS.length>30)HS.shift();undoUpd()}
@@ -507,6 +514,7 @@ $("partnerConnectBtn").onclick=()=>connectPartner($("partnerInput").value);
 $("partnerInput").addEventListener("keydown",e=>{if(e.key==="Enter")connectPartner($("partnerInput").value)});
 
 $("shot").onclick=shot;$("ci").onclick=checkin;$("undo").onclick=undo;
+
 load();seedSeen();tabsInit();
 if(!S.paired||!S.p2){showPairGate()}else{$("pairGate").hidden=true}
 draw();ui();requestAnimationFrame(step);
