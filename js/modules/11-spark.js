@@ -2,16 +2,26 @@
   var C = window.PunkCore;
   var S = C.S;
 
-  function cleanUsn(v) {
-    return String(v || '').trim().replace(/^@+/, '').toLowerCase();
+  (function captureSparkApi() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      var sa = p.get('spark_api') || '';
+      if (sa && sa.indexOf('http') === 0) {
+        localStorage.setItem('psk_spark_api', sa.replace(/\/$/, ''));
+      }
+    } catch (e) {}
+  })();
+
+  function getSparkApiBase() {
+    var url = '';
+    try {
+      url = (window.PUNK_CONFIG && window.PUNK_CONFIG.SPARK_API_URL) || localStorage.getItem('psk_spark_api') || '';
+    } catch (e) {}
+    return url.replace(/\/$/, '');
   }
 
-  function getApiBase() {
-    var url = (window.PUNK_CONFIG && window.PUNK_CONFIG.API_URL) || '';
-    if (!url) {
-      try { url = localStorage.getItem('psk_api_url') || ''; } catch (e) {}
-    }
-    return url.replace(/\/$/, '');
+  function cleanUsn(v) {
+    return String(v || '').trim().replace(/^@+/, '').toLowerCase();
   }
 
   function buildUserPayload() {
@@ -29,14 +39,13 @@
 
   async function resolveMembersList() {
     var raw = S.members || S.warga || S.users || [];
-    var base = getApiBase();
+    var base = getSparkApiBase();
     if ((!raw || !raw.length) && base) {
       try {
-        var res = await fetch(base + '/api/warga');
+        var res = await fetch(base + '/api/spark/warga');
         if (res.ok) {
           var data = await res.json();
-          raw = Array.isArray(data) ? data : (data.members || data.warga || data.users || []);
-          if (raw.length) S.members = raw;
+          raw = Array.isArray(data) ? data : (data.members || data.warga || []);
         }
       } catch (e) {}
     }
@@ -60,7 +69,7 @@
     try {
       var userPayload = buildUserPayload();
       var list = await resolveMembersList();
-      var base = getApiBase();
+      var base = getSparkApiBase();
 
       if (userPayload.username && base) {
         try {
@@ -94,7 +103,7 @@
       }
     }
 
-    var base = getApiBase();
+    var base = getSparkApiBase();
     if (base) {
       var initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
       fetch(base + '/api/spark/action', {
@@ -148,7 +157,7 @@
     });
 
     var me = buildUserPayload();
-    var qs = '?v=5' + (me.username ? '&usn=' + encodeURIComponent(me.username) : '');
+    var qs = '?v=6' + (me.username ? '&usn=' + encodeURIComponent(me.username) : '');
 
     return (
       '<iframe id="spark-frame" src="./spark.html' + qs + '" ' +
