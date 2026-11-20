@@ -5,6 +5,135 @@
   var S = C.S;
 
   var pendingBannerFile = null;
+  var spotifyMetaCache = {};
+
+  var SPOTIFY_SVG =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954" style="flex-shrink:0;vertical-align:middle">' +
+      '<path d="M12 1.5C6.2 1.5 1.5 6.2 1.5 12S6.2 22.5 12 22.5 22.5 17.8 22.5 12 17.8 1.5 12 1.5zm4.8 15.1c-.2.3-.6.4-.9.2-2.5-1.5-5.6-1.9-9.3-1-.4.1-.7-.1-.8-.5-.1-.4.1-.7.5-.8 4-.9 7.5-.5 10.3 1.2.3.2.4.6.2.9zm1.3-2.9c-.2.4-.7.5-1.1.3-2.8-1.7-7.1-2.2-10.4-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.8-1.1 8.5-.6 11.7 1.4.4.2.5.7.3 1zm.1-3c-3.4-2-9-2.2-12.2-1.2-.5.2-1.1-.1-1.2-.6-.2-.5.1-1.1.6-1.2 3.7-1.1 9.9-.9 13.8 1.4.5.3.6.9.4 1.4-.3.4-.9.5-1.4.2z"/>' +
+    '</svg>';
+
+  function normalizeSpotifyUrl(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return '';
+    // Bersihkan /intl-id/, /intl-en/, dsb agar oEmbed Spotify selalu terbaca
+    return s.replace(/open\.spotify\.com\/intl-[a-zA-Z-]+\//i, 'open.spotify.com/');
+  }
+
+  function hydrateSpotifyBadge(rawUrl) {
+    var cleanUrl = normalizeSpotifyUrl(rawUrl);
+    if (!cleanUrl) return;
+
+    var cacheKey = 'psk_sp_' + cleanUrl;
+    if (!spotifyMetaCache[cleanUrl]) {
+      try {
+        var saved = localStorage.getItem(cacheKey);
+        if (saved) spotifyMetaCache[cleanUrl] = JSON.parse(saved);
+      } catch (e) {}
+    }
+
+    function applyToDom(meta) {
+      var el = document.getElementById('pid-sp-title');
+      if (!el || !meta || !meta.title) return;
+      var label = meta.author ? (meta.title + ' — ' + meta.author) : meta.title;
+      el.textContent = label;
+    }
+
+    if (spotifyMetaCache[cleanUrl]) {
+      setTimeout(function () { applyToDom(spotifyMetaCache[cleanUrl]); }, 0);
+      return;
+    }
+
+    fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent(cleanUrl))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.title) return;
+        var meta = {
+          title: data.title,
+          author: data.author_name || ''
+        };
+        spotifyMetaCache[cleanUrl] = meta;
+        try { localStorage.setItem(cacheKey, JSON.stringify(meta)); } catch (e) {}
+        applyToDom(meta);
+      })
+      .catch(function () {});
+  }
+
+  function renderSpotifyPill(rawUrl) {
+    var cleanUrl = normalizeSpotifyUrl(rawUrl);
+    if (!cleanUrl) return '';
+    var cached = spotifyMetaCache[cleanUrl];
+    if (!cached) {
+      try {
+        var saved = localStorage.getItem('psk_sp_' + cleanUrl);
+        if (saved) {
+          cached = JSON.parse(saved);
+          spotifyMetaCache[cleanUrl] = cached;
+        }
+      } catch (e) {}
+    }
+
+    var fallbackText = /\/playlist\//i.test(cleanUrl)
+      ? 'Spotify Playlist'
+      : (/\/album\//i.test(cleanUrl) ? 'Spotify Album' : 'Memuat judul lagu...');
+    var displayText = cached && cached.title
+      ? (cached.author ? cached.title + ' — ' + cached.author : cached.title)
+      : fallbackText;
+
+    hydrateSpotifyBadge(cleanUrl);
+
+    return (
+      '<a class="sp" href="' + C.esc(cleanUrl) + '" target="_blank" rel="noopener noreferrer" ' +
+         'style="display:inline-flex;align-items:center;gap:7px;max-width:100%;overflow:hidden">' +
+        SPOTIFY_SVG +
+        '<span id="pid-sp-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+          C.esc(displayText) +
+        '</span>' +
+      '</a>'
+    );
+  }
+
+  function compressBannerIfNeeded(file) {
+    return new Promise(function (resolve) {
+      // Jangan kompres GIF agar animasi tetap jalan
+      if (!file || file.type === 'image/gif' || !file.type.startsWith('image/')) {
+        resolve(file);
+        return;
+      }
+      var img = new Image();
+      var objUrl = URL.createObjectURL(file);
+      img.onload = function () {
+        URL.revokeObjectURL(objUrl);
+        var maxW = 1280;
+        var w = img.width;
+        var h = img.height;
+        if (w <= maxW && file.size <= 1.2 * 1024 * 1024) {
+          resolve(file);
+          return;
+        }
+        if (w > maxW) {
+          h = Math.round(h * (maxW / w));
+          w = maxW;
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function (blob) {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          resolve(new File([blob], 'banner.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(objUrl);
+        resolve(file);
+      };
+      img.src = objUrl;
+    });
+  }
 
   function renderPunkCard(u) {
     var dg = (u.memberNo || 'PSK-0001').replace('PSK-', '');
@@ -45,7 +174,6 @@
     );
   }
 
-  // Kelompokkan item inventori berdasarkan itemId agar tidak numpuk jika punya lebih dari 1
   function groupInventoryByType(type) {
     var map = {};
     var list = [];
@@ -79,15 +207,13 @@
 
     return (
       '<div class="pc" style="margin-bottom:18px">' +
-        // Banner bersih tanpa gift raksasa menumpuk di tengah
         '<div class="cv" style="' + bannerStyle + '"></div>' +
         '<div class="pb">' +
-          // Avatar + Border + 1 Gift Pin rapi di pojok foto profil
           C.renderAvatar(u, 'full') +
           '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
           '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + rk.title + '</div>' +
           (u.bio ? '<p class="bio">' + C.esc(u.bio) + '</p>' : '') +
-          (u.spotifyUrl ? '<a class="sp" href="' + C.esc(u.spotifyUrl) + '" target="_blank" rel="noopener noreferrer">♫ Spotify Playlist / Track</a>' : '') +
+          (u.spotifyUrl ? renderSpotifyPill(u.spotifyUrl) : '') +
           '<div style="display:flex;gap:8px;margin-top:10px">' +
             '<button class="btn b2" style="margin-top:0;flex:1" data-act="pid-edit">Edit Profil & Banner</button>' +
             '<button class="btn b2" style="margin-top:0;width:auto;padding:0 14px" data-act="pid-sync-tele" title="Sinkron ulang foto & nama dari Telegram">🔄 Tele</button>' +
@@ -168,7 +294,7 @@
       '<input id="ed-bio" maxlength="90" value="' + C.esc(u.bio || '') + '" placeholder="Tulis bio lo...">' +
 
       '<label>LINK SPOTIFY (OPSIONAL)</label>' +
-      '<input id="ed-sp" value="' + C.esc(u.spotifyUrl || '') + '" placeholder="https://open.spotify.com/...">' +
+      '<input id="ed-sp" value="' + C.esc(u.spotifyUrl || '') + '" placeholder="https://open.spotify.com/track/...">' +
 
       '<label>WARNA RING DASAR AVATAR</label>' +
       '<div class="chips" id="ed-rings">' +
@@ -236,7 +362,7 @@
     } else if (act === 'pid-save-profile') {
       var name = (document.getElementById('ed-name').value || '').trim();
       var bio = (document.getElementById('ed-bio').value || '').trim();
-      var sp = (document.getElementById('ed-sp').value || '').trim();
+      var sp = normalizeSpotifyUrl((document.getElementById('ed-sp').value || '').trim());
       var activeRing = document.querySelector('#ed-rings .chip.on');
       var ringStyle = activeRing ? Number(activeRing.getAttribute('data-idx')) : 0;
 
@@ -249,8 +375,9 @@
       t.textContent = 'Menyimpan...';
       try {
         if (pendingBannerFile) {
+          var readyFile = await compressBannerIfNeeded(pendingBannerFile);
           var fd = new FormData();
-          fd.append('banner', pendingBannerFile);
+          fd.append('banner', readyFile);
           var upRes = await API.upload('/api/profile/banner', fd);
           if (upRes.user) S.user = upRes.user;
         }
