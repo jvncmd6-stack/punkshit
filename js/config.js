@@ -43,6 +43,11 @@
   try {
     savedApi = localStorage.getItem('psk_api_url') || '';
     savedSparkApi = localStorage.getItem('psk_spark_api') || '';
+    // Bersihkan psk_api_url jika sebelumnya sempat ketimpa URL server khusus Spark
+    if (savedApi && savedSparkApi && savedApi === savedSparkApi) {
+      localStorage.removeItem('psk_api_url');
+      savedApi = '';
+    }
   } catch (e) {}
 
   var env = window.__ENV__ || {};
