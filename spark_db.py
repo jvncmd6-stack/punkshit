@@ -3,10 +3,12 @@ import sqlite3
 from datetime import datetime, timezone, timedelta
 
 WIB = timezone(timedelta(hours=7))
-DB_PATH = os.getenv("SPARK_DB_PATH", "punkshit_spark.db")
-MIN_GAP = int(os.getenv("SPARK_MIN_GAP", "5"))
-MIN_MSG = int(os.getenv("SPARK_MIN_MSG", "2"))
-GAP_COOLDOWN = int(os.getenv("SPARK_GAP_COOLDOWN", "30"))
+
+DATA_DIR = os.getenv("DATA_DIR", ".")
+DB_PATH = os.getenv("SPARK_DB_PATH") or os.path.join(DATA_DIR, "punkshit_spark.db")
+MIN_GAP = int(os.getenv("SPARK_MIN_GAP", "5") or "5")
+MIN_MSG = int(os.getenv("SPARK_MIN_MSG", "2") or "2")
+GAP_COOLDOWN = int(os.getenv("SPARK_GAP_COOLDOWN", "30") or "30")
 
 def today_wib() -> str:
     return datetime.now(WIB).strftime("%Y-%m-%d")
