@@ -23,13 +23,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 async def health_check():
     return {"status": "ok", "service": "PUNKSHIT.OS Spark Backend"}
 
-# Pasang API & Bot Router Spark Buddies
+
 app.include_router(spark_api)
 dp.include_router(spark_bot_router)
+
 
 async def main():
     init_spark_db()
@@ -41,6 +43,7 @@ async def main():
         server.serve(),
         dp.start_polling(bot)
     )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
