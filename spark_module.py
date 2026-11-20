@@ -1,7 +1,6 @@
 import os
 import json
 import hmac
-import base64
 import hashlib
 from urllib.parse import parse_qsl
 from fastapi import APIRouter, Request
@@ -35,13 +34,6 @@ spark_api = APIRouter()
 spark_bot_router = Router()
 
 
-def encode_api_param(route: str = "spark") -> str:
-    if not PUBLIC_API_URL:
-        return route
-    b64 = base64.urlsafe_b64encode(PUBLIC_API_URL.encode()).decode().rstrip("=")
-    return f"{route}__{b64}"
-
-
 def verify_tg_user(init_data: str) -> dict | None:
     if not init_data or not BOT_TOKEN:
         return None
@@ -58,17 +50,16 @@ def verify_tg_user(init_data: str) -> dict | None:
 
 
 def build_open_button(is_private_chat: bool, route: str = "spark") -> InlineKeyboardMarkup | None:
-    start_val = encode_api_param(route)
     if is_private_chat and WEBAPP_URL:
         sep = "&" if "?" in WEBAPP_URL else "?"
-        api_q = f"&api={PUBLIC_API_URL}" if PUBLIC_API_URL else ""
-        target_url = f"{WEBAPP_URL}{sep}startapp={start_val}{api_q}"
+        api_q = f"&spark_api={PUBLIC_API_URL}" if PUBLIC_API_URL else ""
+        target_url = f"{WEBAPP_URL}{sep}startapp={route}{api_q}"
         return InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", web_app=WebAppInfo(url=target_url))
         ]])
     if MINIAPP_LINK:
         sep = "&" if "?" in MINIAPP_LINK else "?"
-        target_link = f"{MINIAPP_LINK}{sep}startapp={start_val}"
+        target_link = f"{MINIAPP_LINK}{sep}startapp={route}"
         return InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(text="🔥 Buka & Terima Ajakan", url=target_link)
         ]])
@@ -82,7 +73,7 @@ def build_open_button(is_private_chat: bool, route: str = "spark") -> InlineKeyb
 @spark_api.get("/api/spark/config")
 async def api_spark_config():
     return {
-        "api_url": PUBLIC_API_URL,
+        "spark_api_url": PUBLIC_API_URL,
         "group_url": GROUP_URL,
         "channel_url": CHANNEL_URL,
         "webapp_url": WEBAPP_URL,
@@ -90,8 +81,8 @@ async def api_spark_config():
     }
 
 
-@spark_api.get("/api/warga")
-async def api_get_warga():
+@spark_api.get("/api/spark/warga")
+async def api_get_spark_warga():
     return {"members": list_warga()}
 
 
