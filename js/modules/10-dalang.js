@@ -35,7 +35,7 @@
     var tabsHtml = '<div class="tabs">';
     if (isAdminOrOwner()) {
       tabsHtml += '<button class="tab' + (tab === 'lapak' ? ' on' : '') + '" data-act="dl-tab" data-tab="lapak">🛒 Lapak & Border</button>';
-      tabsHtml += '<button class="tab' + (tab === 'event' ? ' on' : '') + '" data-act="dl-tab" data-tab="event">📢 Event & Info</button>';
+      tabsHtml += '<button class="tab' + (tab === 'event' ? ' on' : '') + '" data-act="dl-tab" data-tab="event">📢 Event & Pasal</button>';
     }
     tabsHtml += '<button class="tab' + (tab === 'mod' ? ' on' : '') + '" data-act="dl-tab" data-tab="mod">📮 Moderasi (' + adminData.pendingMenfess.length + ')</button>';
     if (isOwner()) {
@@ -43,9 +43,7 @@
     }
     tabsHtml += '</div>';
 
-    // =========================================================
     // TAB 1: KELOLA LAPAK RONGSOK (TAMBAH GIFT & DISCORD BORDER)
-    // =========================================================
     if (tab === 'lapak' && isAdminOrOwner()) {
       var items = S.catalog || [];
       return (
@@ -70,9 +68,7 @@
       );
     }
 
-    // =========================================================
-    // TAB 2: BUAT EVENT, POLLING & BROADCAST MAS RAKA
-    // =========================================================
+    // TAB 2: BUAT EVENT, POLLING, BROADCAST & UPDATE PASAL/HELP
     if (tab === 'event' && isAdminOrOwner()) {
       return (
         tabsHtml +
@@ -104,9 +100,7 @@
       );
     }
 
-    // =========================================================
     // TAB 3: MODERASI KOTAK RAHASIA (MENFESS)
-    // =========================================================
     if (tab === 'mod') {
       var list = adminData.pendingMenfess || [];
       return (
@@ -131,9 +125,7 @@
       );
     }
 
-    // =========================================================
-    // TAB 4: KONTROL OWNER (SUNTIK PSC, BADGE & ROLE ADMIN)
-    // =========================================================
+    // TAB 4: KONTROL OWNER (SUNTIK PSC & ROLE ADMIN)
     if (tab === 'owner' && isOwner()) {
       return (
         tabsHtml +
@@ -170,7 +162,6 @@
     return tabsHtml;
   }
 
-  // Sheet Tambah Item Lapak (Gift / Discord-Style Avatar Border / Card Skin)
   function openNewItemSheet() {
     pendingItemFile = null;
     var u = S.user;
@@ -193,11 +184,10 @@
       '<label>UPLOAD FILE VISUAL (PNG / GIF / WEBP TRANSAPARAN)</label>' +
       '<div class="up-box" id="ni-drop">' +
         '<input type="file" id="ni-file" accept="image/png,image/webp,image/gif" hidden>' +
-        '<div style="font-size:13px;font-weight:600;color:var(--gblue)">📁 Pilih File Border / Gift (Maks. 3MB)</div>' +
+        '<div id="ni-file-lbl" style="font-size:13px;font-weight:600;color:var(--gblue)">📁 Pilih File Border / Gift (Maks. 3MB)</div>' +
         '<small style="color:var(--mut);font-size:11px">Gunakan PNG/GIF/WEBP transparan rasio 1:1 agar pas di avatar</small>' +
       '</div>' +
 
-      // Live Preview Box (Langsung nampilin Border di Avatar Admin/Owner!)
       '<div id="ni-preview-area" style="display:none;margin:10px 0">' +
         '<small style="color:#6df0a0;font-weight:700;display:block;margin-bottom:4px">LIVE PREVIEW DI AVATAR:</small>' +
         '<div class="try-box">' + pfp + '<img id="ni-prev-img" class="dc-border" src="" alt=""></div>' +
@@ -223,6 +213,7 @@
 
     var drop = document.getElementById('ni-drop');
     var inp = document.getElementById('ni-file');
+    var lbl = document.getElementById('ni-file-lbl');
     var prevArea = document.getElementById('ni-preview-area');
     var prevImg = document.getElementById('ni-prev-img');
     var typeSel = document.getElementById('ni-type');
@@ -236,6 +227,10 @@
         return;
       }
       pendingItemFile = file;
+      if (lbl) {
+        lbl.innerHTML = '✅ File siap: <b>' + C.esc(file.name) + '</b>';
+        lbl.style.color = '#34C759';
+      }
       prevImg.src = URL.createObjectURL(file);
       prevArea.style.display = 'block';
       prevImg.className = (typeSel.value === 'border') ? 'dc-border' : '';
