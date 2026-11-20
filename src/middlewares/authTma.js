@@ -1,49 +1,14 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
+import { syncTelegramAvatar } from '../services/syncEngine.js';
 
-// Cek kolom foto yang tersedia di tabel users (mendukung photo_url maupun avatar)
-const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-const hasPhotoUrlCol = userCols.includes('photo_url');
-const hasAvatarCol = userCols.includes('avatar');
-const hasUsernameCol = userCols.includes('username');
+// Pastikan subfolder banners tersedia untuk menyimpan cache foto profil Telegram
+fs.mkdirSync(path.join(ENV.UPLOAD_DIR, 'banners'), { recursive: true });
 
-// Cache sementara agar fallback Bot API tidak dipanggil berulang kali tiap detik
-const bgSyncCooldown = new Map();
-
-async function syncTelegramPhotoFallback(uid) {
-  if (!ENV.BOT_TOKEN) return;
-  const now = Date.now();
-  if ((bgSyncCooldown.get(uid) || 0) > now) return;
-  bgSyncCooldown.set(uid, now + 5 * 60 * 1000); // Cooldown 5 menit per user
-
-  try {
-    const res = await fetch(
-      `https://api.telegram.org/bot${ENV.BOT_TOKEN}/getUserProfilePhotos?user_id=${encodeURIComponent(uid)}&limit=1`
-    );
-    const data = await res.json();
-    const photos = data?.result?.photos;
-    if (!photos || !photos.length || !photos[0].length) return;
-
-    const bestPhoto = photos[0][photos[0].length - 1];
-    const fileRes = await fetch(
-      `https://api.telegram.org/bot${ENV.BOT_TOKEN}/getFile?file_id=${encodeURIComponent(bestPhoto.file_id)}`
-    );
-    const fileData = await fileRes.json();
-    const filePath = fileData?.result?.file_path;
-    if (!filePath) return;
-
-    const tgFileUrl = `https://api.telegram.org/file/bot${ENV.BOT_TOKEN}/${filePath}`;
-    if (hasPhotoUrlCol) {
-      db.prepare('UPDATE users SET photo_url = ? WHERE id = ?').run(tgFileUrl, uid);
-    }
-    if (hasAvatarCol) {
-      db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(tgFileUrl, uid);
-    }
-  } catch {
-    // Abaikan jika user menyembunyikan foto profil di privasi Telegram
-  }
-}
+const avatarSyncCooldown = new Map();
 
 export function verifyTelegramInitData(initData) {
   if (!initData) return null;
@@ -79,7 +44,6 @@ export function verifyTelegramInitData(initData) {
   }
 }
 
-// Middleware utama: membaca header `Authorization: tma <initData>` & sinkronisasi profil Telegram
 export function authTma(req, res, next) {
   const raw = (req.get('authorization') || '').replace(/^tma\s+/i, '').trim();
   const tgUser = verifyTelegramInitData(raw);
@@ -92,38 +56,17 @@ export function authTma(req, res, next) {
   let user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
 
   if (user) {
-    // 1. Kunci role owner jika masuk daftar OWNER_IDS
     if (ENV.OWNER_IDS.includes(uid) && user.role !== 'owner') {
       db.prepare('UPDATE users SET role = ? WHERE id = ?').run('owner', uid);
       user.role = 'owner';
     }
 
-    // 2. Sinkronisasi username Telegram terbaru
-    const latestUsername = tgUser.username || '';
-    if (hasUsernameCol && latestUsername && user.username !== latestUsername) {
-      db.prepare('UPDATE users SET username = ? WHERE id = ?').run(latestUsername, uid);
-      user.username = latestUsername;
-    }
-
-    // 3. Sinkronisasi foto profil Telegram (kecuali user memakai foto kustom hasil upload '/uploads/')
-    const currentPhoto = (hasPhotoUrlCol ? user.photo_url : user.avatar) || '';
-    const isCustomUploaded = currentPhoto.startsWith('/uploads/');
-    const latestTgPhoto = tgUser.photo_url || '';
-
-    if (!isCustomUploaded) {
-      if (latestTgPhoto && currentPhoto !== latestTgPhoto) {
-        if (hasPhotoUrlCol) {
-          db.prepare('UPDATE users SET photo_url = ? WHERE id = ?').run(latestTgPhoto, uid);
-          user.photo_url = latestTgPhoto;
-        }
-        if (hasAvatarCol) {
-          db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(latestTgPhoto, uid);
-          user.avatar = latestTgPhoto;
-        }
-      } else if (!latestTgPhoto && !currentPhoto) {
-        // Fallback ambil foto profil via Bot API di background jika initData tidak menyertakan photo_url
-        syncTelegramPhotoFallback(uid);
-      }
+    // Sinkronisasi PP & Username Telegram (tiap 5 menit) selama tidak memakai foto kustom
+    const now = Date.now();
+    const isCustomPhoto = (user.photo_url || '').startsWith('/uploads/') && !(user.photo_url || '').includes('/pfp-');
+    if (!isCustomPhoto && (avatarSyncCooldown.get(uid) || 0) < now) {
+      avatarSyncCooldown.set(uid, now + 5 * 60 * 1000);
+      syncTelegramAvatar(uid, tgUser).catch(() => {});
     }
   }
 
