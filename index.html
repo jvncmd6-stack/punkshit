@@ -81,9 +81,9 @@
   </div>
 
   <!-- Core & Config -->
-  <script src="./js/config.js?v=9"></script>
+  <script src="./js/config.js?v=10"></script>
   <script>
-    window.PUNK_CONFIG = window.PUNK_CONFIG || { API_URL: '', ICONS: {}, BASE_GRID: [], DOCK: [] };
+    window.PUNK_CONFIG = window.PUNK_CONFIG || { API_URL: '', SPARK_API_URL: '', ICONS: {}, BASE_GRID: [], DOCK: [] };
   </script>
   <script src="./js/api.js?v=8"></script>
   <script src="./js/core.js?v=8"></script>
@@ -99,12 +99,13 @@
   <script src="./js/modules/08-lapak.js?v=8"></script>
   <script src="./js/modules/09-museum.js?v=8"></script>
   <script src="./js/modules/10-dalang.js?v=8"></script>
-  <script src="./js/modules/11-spark.js?v=9"></script>
+  <script src="./js/modules/11-spark.js?v=10"></script>
 
   <!-- JEMBATAN OTOMATIS PUNKSHIT.OS <-> SPARK BUDDIES -->
   <script>
     (function initSparkBridge() {
       const cleanUsn = (v) => String(v || "").trim().replace(/^@+/, "").toLowerCase();
+      const getSparkApi = () => (window.PUNK_CONFIG?.SPARK_API_URL || localStorage.getItem("psk_spark_api") || "").replace(/\/$/, "");
 
       function resolveCurrentUser() {
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
@@ -150,7 +151,6 @@
 
         let list = Array.isArray(rawList) ? rawList : Object.values(rawList || {});
 
-        // Coba ambil dari localStorage jika memori global kosong
         if (!list.length) {
           try {
             for (let i = 0; i < localStorage.length; i++) {
@@ -164,11 +164,10 @@
           } catch (_) {}
         }
 
-        // Coba fetch ke API_URL PUNKSHIT.OS jika tersedia
-        if (!list.length && window.PUNK_CONFIG?.API_URL) {
+        const sparkBase = getSparkApi();
+        if (!list.length && sparkBase) {
           try {
-            const base = window.PUNK_CONFIG.API_URL.replace(/\/$/, "");
-            const res = await fetch(base + "/api/warga").catch(() => null);
+            const res = await fetch(sparkBase + "/api/spark/warga").catch(() => null);
             if (res && res.ok) {
               const data = await res.json();
               list = Array.isArray(data) ? data : (data.members || data.warga || []);
@@ -189,17 +188,14 @@
       async function pushSyncToSpark(targetWin) {
         const user = resolveCurrentUser();
         const members = await resolveMembers();
+        const sparkBase = getSparkApi();
 
-        // Sinkronkan status Spark terkini dari server Railway
-        if (user.username && window.PUNK_CONFIG?.API_URL) {
+        if (user.username && sparkBase) {
           try {
-            const base = window.PUNK_CONFIG.API_URL.replace(/\/$/, "");
-            const stRes = await fetch(base + "/api/spark/status?username=" + encodeURIComponent(user.username)).catch(() => null);
+            const stRes = await fetch(sparkBase + "/api/spark/status?username=" + encodeURIComponent(user.username)).catch(() => null);
             if (stRes && stRes.ok) {
               const stData = await stRes.json();
-              if (stData && stData.sparkBuddy) {
-                user.sparkBuddy = stData.sparkBuddy;
-              }
+              if (stData && stData.sparkBuddy) user.sparkBuddy = stData.sparkBuddy;
             }
           } catch (_) {}
         }
@@ -222,11 +218,10 @@
           await pushSyncToSpark(ev.source);
         }
 
-        // Teruskan aksi persetujuan 2 pihak ke backend API PUNKSHIT.OS
         if (["SPARK_INVITE_SEND", "SPARK_INVITE_ACCEPT", "SPARK_INVITE_DECLINE", "SPARK_INVITE_CANCEL", "SPARK_UNPAIR"].includes(d.type)) {
-          if (window.PUNK_CONFIG?.API_URL) {
-            const base = window.PUNK_CONFIG.API_URL.replace(/\/$/, "");
-            fetch(base + "/api/spark/action", {
+          const sparkBase = getSparkApi();
+          if (sparkBase) {
+            fetch(sparkBase + "/api/spark/action", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -241,7 +236,6 @@
         }
       });
 
-      // Pantau saat iframe Spark dimuat ke dalam #bd
       const bd = document.getElementById("bd");
       if (bd) {
         new MutationObserver(() => {
