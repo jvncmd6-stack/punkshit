@@ -65,7 +65,6 @@
       );
     }
 
-    // Memory Wall
     return (
       tabsHtml +
       '<div class="grp">' +
@@ -80,7 +79,6 @@
     var ctx = cv.getContext('2d');
     var fr = FRAMES[pbState.frame] || FRAMES.blue;
 
-    // Background & Border
     ctx.fillStyle = fr.bg;
     ctx.fillRect(0, 0, 600, 750);
 
@@ -88,7 +86,6 @@
     ctx.lineWidth = 18;
     ctx.strokeRect(9, 9, 582, 732);
 
-    // Area Foto (520x520)
     ctx.fillStyle = '#080B12';
     ctx.fillRect(40, 46, 520, 520);
 
@@ -114,7 +111,6 @@
       ctx.fillText('Tap "Pilih Foto dari Galeri"', 300, 310);
     }
 
-    // Watermark & Caption Bawah
     ctx.textAlign = 'left';
     ctx.fillStyle = fr.accent;
     ctx.font = '800 26px -apple-system, sans-serif';
@@ -130,24 +126,54 @@
     ctx.fillText((S.user.memberNo || 'PSK-0001') + ' • ' + new Date().toLocaleDateString('id-ID'), 42, 700);
   }
 
+  // Meme Board dengan indikator file terpilih & support JPG/PNG/WEBP/GIF/WEBM
   function renderMeme() {
     return (
       '<div class="grp" style="margin-bottom:14px">' +
-        '<div class="rw"><div><b>🖼️ Meme Board</b><small>Kirim meme tongkrongan. Meme terbaik minggu ini otomatis masuk Channel!</small></div></div>' +
+        '<div class="rw"><div><b>🖼️ Meme Board</b><small>Kirim meme tongkrongan (Gambar, GIF, atau WebM). Meme terbaik otomatis masuk Channel!</small></div></div>' +
       '</div>' +
-      '<input type="file" id="mm-file" accept="image/png,image/jpeg,image/webp" hidden>' +
-      '<button class="btn b2" style="margin-top:0;margin-bottom:10px" data-act="mm-pick">📁 Pilih Gambar Meme</button>' +
+      '<input type="file" id="mm-file" accept="image/png,image/jpeg,image/webp,image/gif,video/webm,.gif,.webm" hidden>' +
+      '<div class="up-box" data-act="mm-pick" style="margin-bottom:12px">' +
+        '<div id="mm-file-status" style="font-size:13px;font-weight:600;color:var(--gblue)">📁 Tap di Sini untuk Pilih File Meme (Belum ada file)</div>' +
+        '<small style="color:var(--mut);font-size:11px">Mendukung JPG, PNG, WEBP, GIF & WEBM (Maks. 10MB)</small>' +
+      '</div>' +
+      '<div id="mm-prev-wrap" style="display:none;margin-bottom:12px;text-align:center"></div>' +
       '<input id="mm-cap" maxlength="90" placeholder="Caption meme (opsional)">' +
       '<button class="btn" data-act="mm-upload">UNGGAH MEME KE MARKAS</button>'
     );
   }
 
-  var origOpenApp = C.openApp;
+  // Pasal & Help Dinamis
+  function renderRules() {
+    var rh = S.rulesHelp || {};
+    var pasalTxt = C.esc(
+      rh.pasal ||
+      '1. Saling hargai sesama warga markas.\n2. Dilarang spam link judi, scam, atau SARA.\n3. Gunakan fitur Radio Gang dengan tertib saat OS.\n4. Langgar aturan? Siap-siap disidang warga.'
+    ).replace(/\n/g, '<br>');
+
+    var helpTxt = C.esc(
+      rh.help ||
+      '• Cetak PunkID: Buka menu PunkID Gue untuk atur profil & foto.\n• Nitip Lagu OS: Kirim link Spotify di Radio Gang atau kirim file MP3 langsung ke PC Mas Raka.\n• Lapak Warga: Pajang barang, jasa, stiker, atau GIF di etalase.'
+    ).replace(/\n/g, '<br>');
+
+    return (
+      '<h3 class="gh">📜 PASAL & ATURAN TONGKRONGAN</h3>' +
+      '<div class="grp" style="padding:14px;margin-bottom:16px">' +
+        '<div style="font-size:13.5px;line-height:1.65;color:#dbe4f6">' + pasalTxt + '</div>' +
+      '</div>' +
+      '<h3 class="gh">🆘 PUSAT BANTUAN (HELP)</h3>' +
+      '<div class="grp" style="padding:14px">' +
+        '<div style="font-size:13.5px;line-height:1.65;color:#dbe4f6">' + helpTxt + '</div>' +
+      '</div>'
+    );
+  }
+
   C.Views.museum = function () {
     setTimeout(drawPhotobooth, 30);
     return renderMuseum();
   };
   C.Views.meme = renderMeme;
+  C.Views.rules = renderRules;
 
   document.addEventListener('input', function (e) {
     if (e.target && e.target.id === 'pb-cap') {
@@ -166,6 +192,34 @@
         drawPhotobooth();
       };
       img.src = URL.createObjectURL(file);
+    }
+
+    if (e.target && e.target.id === 'mm-file') {
+      var mFile = e.target.files && e.target.files[0];
+      var statusEl = document.getElementById('mm-file-status');
+      var prevWrap = document.getElementById('mm-prev-wrap');
+      if (!mFile) {
+        if (statusEl) {
+          statusEl.textContent = '📁 Tap di Sini untuk Pilih File Meme (Belum ada file)';
+          statusEl.style.color = 'var(--gblue)';
+        }
+        if (prevWrap) prevWrap.style.display = 'none';
+        return;
+      }
+
+      if (statusEl) {
+        statusEl.innerHTML = '✅ File dipilih: <b>' + C.esc(mFile.name) + '</b> (' + Math.max(1, Math.round(mFile.size / 1024)) + ' KB)';
+        statusEl.style.color = '#34C759';
+      }
+      if (prevWrap) {
+        var objUrl = URL.createObjectURL(mFile);
+        prevWrap.style.display = 'block';
+        if (/\.webm$/i.test(mFile.name) || mFile.type === 'video/webm') {
+          prevWrap.innerHTML = '<video src="' + objUrl + '" autoplay loop muted playsinline style="max-height:180px;border-radius:12px;border:1px solid rgba(255,255,255,.15)"></video>';
+        } else {
+          prevWrap.innerHTML = '<img src="' + objUrl + '" style="max-height:180px;border-radius:12px;border:1px solid rgba(255,255,255,.15)">';
+        }
+      }
     }
   });
 
@@ -215,20 +269,23 @@
       var mInp = document.getElementById('mm-file');
       var mFile = mInp && mInp.files && mInp.files[0];
       if (!mFile) {
-        C.notify('Mas Raka', 'Pilih Gambar', 'Pilih gambar meme dulu bro.');
+        C.notify('Mas Raka', 'Pilih File', 'Pilih gambar, GIF, atau WebM meme dulu bro.');
         return;
       }
       t.disabled = true;
+      t.textContent = 'Mengunggah...';
       try {
         var fd = new FormData();
         fd.append('meme', mFile);
         fd.append('caption', (document.getElementById('mm-cap').value || '').trim());
         await API.upload('/api/meme', fd);
+        mInp.value = '';
+        C.refresh();
         C.notify('Mas Raka', '→ Grup Punkshit', 'NEW MEME JUST DROPPED! Meme lo udah diunggah.');
       } catch (err) {
-        C.notify('Mas Raka', 'Gagal Upload', err.message);
-      } finally {
         t.disabled = false;
+        t.textContent = 'UNGGAH MEME KE MARKAS';
+        C.notify('Mas Raka', 'Gagal Upload', err.message);
       }
     }
   });
