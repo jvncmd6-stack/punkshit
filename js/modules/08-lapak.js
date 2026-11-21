@@ -6,6 +6,17 @@
 
   var pendingShopFile = null;
 
+  function isItemEquipped(u, item) {
+    if (!u || !item) return false;
+    if (item.type === 'border') return u.equippedBorderId === item.id;
+    if (item.type === 'skin') return u.equippedSkinId === item.id;
+    if (item.type === 'gift') {
+      var pins = Array.isArray(u.pinnedGifts) ? u.pinnedGifts : (u.pinnedGiftId ? [u.pinnedGiftId] : []);
+      return pins.indexOf(item.id) !== -1;
+    }
+    return false;
+  }
+
   function renderLapak() {
     var u = S.user;
     var tab = S.curTab.lapak || 'all';
@@ -31,8 +42,11 @@
         ? '<div class="gg">' +
             filtered.map(function (it) {
               var owned = (S.inv || []).some(function (x) { return x.itemId === it.id; });
+              var equipped = isItemEquipped(u, it);
               var stockTag = (it.stock != null && it.stock >= 0) ? '<span class="stk">Sisa ' + it.stock + '</span>' : '';
-              var badgeOwned = (owned && it.type !== 'gift') ? ' · DIMILIKI' : '';
+              var badgeOwned = equipped
+                ? ' · TERPASANG'
+                : (owned ? ' · DIMILIKI' : '');
               return (
                 '<button class="gc" data-act="lp-detail" data-id="' + C.esc(it.id) + '">' +
                   stockTag +
@@ -264,6 +278,7 @@
     if (!item) return;
     var u = S.user;
     var owned = (S.inv || []).some(function (x) { return x.itemId === item.id; });
+    var equipped = isItemEquipped(u, item);
     var soldOut = (item.stock != null && item.stock === 0);
 
     var previewHtml = '';
@@ -282,11 +297,25 @@
       previewHtml = '<div style="display:grid;place-items:center">' + C.renderItemVisual(item, 150, true) + '</div>';
     }
 
-    var buyLabel = soldOut ? 'STOK HABIS'
-      : (owned && item.type !== 'gift') ? 'SUDAH DIMILIKI'
-      : ('Beli Sekarang · ' + item.price + ' PSC');
+    var primaryBtnHtml = '';
+    if (owned && item.type !== 'gift') {
+      primaryBtnHtml =
+        '<button class="btn' + (equipped ? ' b2' : '') + '" data-act="lp-equip-toggle" data-id="' + C.esc(item.id) + '">' +
+          (equipped ? '🚫 Lepas dari Profil' : '✨ Pasang di Profil') +
+        '</button>';
+    } else {
+      var buyLabel = soldOut ? 'STOK HABIS' : ('Beli Sekarang · ' + item.price + ' PSC');
+      primaryBtnHtml =
+        '<button class="btn" data-act="lp-buy" data-id="' + C.esc(item.id) + '"' + (soldOut ? ' disabled' : '') + '>' + buyLabel + '</button>';
+    }
 
-    var buyDisabled = (soldOut || (owned && item.type !== 'gift')) ? ' disabled' : '';
+    var giftEquipSection = '';
+    if (item.type === 'gift' && owned) {
+      giftEquipSection =
+        '<button class="btn' + (equipped ? ' b2' : '') + '" data-act="lp-equip-toggle" data-id="' + C.esc(item.id) + '">' +
+          (equipped ? '🚫 Lepas Gift dari Profil' : '📌 Pasang Gift di Profil') +
+        '</button>';
+    }
 
     var sendGiftSection = '';
     if (item.type === 'gift') {
@@ -304,7 +333,8 @@
       previewHtml +
       '<h2>' + C.esc(item.name) + '</h2>' +
       '<p class="sub">' + C.esc(item.rarity || 'Rare') + ' · ' + C.esc(item.desc || 'Item eksklusif Lapak Rongsok.') + '</p>' +
-      '<button class="btn" data-act="lp-buy" data-id="' + C.esc(item.id) + '"' + buyDisabled + '>' + buyLabel + '</button>' +
+      primaryBtnHtml +
+      giftEquipSection +
       sendGiftSection
     );
   }
@@ -402,6 +432,27 @@
     } else if (act === 'lp-detail') {
       var item = C.findItem(t.getAttribute('data-id'));
       openItemDetail(item);
+    } else if (act === 'lp-equip-toggle') {
+      var eqId = t.getAttribute('data-id');
+      var eqItem = C.findItem(eqId);
+      if (!eqItem) return;
+      var currentlyEquipped = isItemEquipped(S.user, eqItem);
+      var eqType = eqItem.type === 'gift' ? 'pin' : eqItem.type;
+      var payloadItemId = eqItem.type === 'gift'
+        ? eqItem.id
+        : (currentlyEquipped ? null : eqItem.id);
+
+      t.disabled = true;
+      try {
+        var eqRes = await API.post('/api/profile/equip', { type: eqType, itemId: payloadItemId });
+        if (eqRes.user) S.user = eqRes.user;
+        C.shut();
+        C.refresh();
+        C.notify('Mas Raka', 'Profil Updated', currentlyEquipped ? (eqItem.name + ' dilepas dari profil.') : (eqItem.name + ' dipasang di profil!'));
+      } catch (err) {
+        t.disabled = false;
+        C.notify('Mas Raka', 'Error', err.message);
+      }
     } else if (act === 'lp-toggle-send') {
       var box = document.getElementById('lp-send-box');
       if (box) box.hidden = !box.hidden;
@@ -421,7 +472,7 @@
         if (res.catalog) S.catalog = res.catalog;
         C.shut();
         C.refresh();
-        C.notify('Mas Raka', '→ Grup Punkshit', S.user.name + ' baru beli ' + it.name + '! Dompet berkurang, gaya bertambah.');
+        C.notify('Mas Raka', 'Lapak Rongsok', it.name + ' berhasil dibeli! Cek tab Gue atau tap item buat pasang.');
       } catch (err) {
         t.disabled = false;
         t.textContent = 'Beli Sekarang · ' + it.price + ' PSC';
