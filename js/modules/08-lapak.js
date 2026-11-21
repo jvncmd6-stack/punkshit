@@ -48,20 +48,15 @@
     );
   }
 
-  // Tampilan Lapak Warga ala Shopee (Profil Toko + Latar Belakang Toko + Etalase Multi-Media)
+  // Tampilan Lapak Warga ala Shopee (Profil Toko + Etalase Multi-Media + Transaksi Beli)
   function renderLapakWarga() {
     var u = S.user || {};
     var tab = S.curTab.lapakwarga || 'all';
     var allItems = S.market || [];
-
-    var filtered = allItems.filter(function (m) {
-      if (tab === 'mine') return String(m.seller_id) === String(u.id);
-      return true;
-    });
+    var orders = S.marketOrders || [];
 
     var myCount = allItems.filter(function (m) { return String(m.seller_id) === String(u.id); }).length;
 
-    // Header Toko Shopee-Style dengan Latar Belakang & Profil Pelapak
     var shopHeader =
       '<div style="position:relative;border-radius:18px;overflow:hidden;margin-bottom:14px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(135deg,#ea580c 0%,#9a3412 45%,#0f172a 100%)">' +
         '<div style="padding:16px 14px;background:radial-gradient(circle at top right,rgba(255,214,51,.25),transparent 60%)">' +
@@ -73,7 +68,7 @@
                   '<b style="font-size:15px;color:#fff">' + C.esc(u.name || 'Warga') + ' Official</b>' +
                   '<span style="background:#FFD633;color:#000;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px">STAR+</span>' +
                 '</div>' +
-                '<small style="color:rgba(255,255,255,.85);display:block;margin-top:2px">Etalase: ' + myCount + ' Produk · Rating 5.0 ⭐</small>' +
+                '<small style="color:rgba(255,255,255,.9);display:block;margin-top:2px">Saldo: <b>' + (u.psc || 0) + ' PSC</b> · Etalase: ' + myCount + ' Produk</small>' +
               '</div>' +
             '</div>' +
             '<button class="pill" style="background:#fff;color:#ea580c;font-weight:800" data-act="lw-new-sheet">+ Jual</button>' +
@@ -83,36 +78,71 @@
 
     var tabsHtml =
       '<div class="tabs">' +
-        '<button class="tab' + (tab === 'all' ? ' on' : '') + '" data-act="lw-tab" data-tab="all">🏬 Semua Etalase (' + allItems.length + ')</button>' +
+        '<button class="tab' + (tab === 'all' ? ' on' : '') + '" data-act="lw-tab" data-tab="all">🏬 Etalase (' + allItems.length + ')</button>' +
         '<button class="tab' + (tab === 'mine' ? ' on' : '') + '" data-act="lw-tab" data-tab="mine">📦 Toko Gue (' + myCount + ')</button>' +
+        '<button class="tab' + (tab === 'orders' ? ' on' : '') + '" data-act="lw-tab" data-tab="orders">🧾 Order (' + orders.length + ')</button>' +
       '</div>';
+
+    if (tab === 'orders') {
+      var ordersHtml = orders.length
+        ? '<div class="grp">' +
+            orders.map(function (o) {
+              var isBuyer = String(o.buyer_id) === String(u.id);
+              var badge = isBuyer
+                ? '<span class="pill" style="background:#EF444433;color:#FCA5A5">BELI -' + o.price + ' PSC</span>'
+                : '<span class="pill" style="background:#34C75933;color:#6df0a0">LAKU +' + o.price + ' PSC</span>';
+              var partner = isBuyer ? ('Pelapak: ' + C.esc(o.seller_name)) : ('Pembeli: ' + C.esc(o.buyer_name));
+              return (
+                '<div class="rw">' +
+                  '<div>' +
+                    '<b>' + C.esc(o.item_title) + '</b>' +
+                    '<small>' + partner + (o.note ? (' · "' + C.esc(o.note) + '"') : '') + '</small>' +
+                  '</div>' +
+                  badge +
+                '</div>'
+              );
+            }).join('') +
+          '</div>'
+        : '<div class="emp">Belum ada riwayat transaksi jual-beli di Lapak Warga.</div>';
+
+      return shopHeader + tabsHtml + ordersHtml;
+    }
+
+    var filtered = allItems.filter(function (m) {
+      if (tab === 'mine') return String(m.seller_id) === String(u.id);
+      return true;
+    });
 
     var gridHtml = filtered.length
       ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
           filtered.map(function (m) {
             var mediaUrl = m.image_url || m.imageUrl || '';
             var isWebm = /\.webm$/i.test(mediaUrl);
+            var isSold = m.status === 'sold';
             var mediaBox = '';
+
             if (mediaUrl) {
               var fullSrc = C.esc(API.assetUrl(mediaUrl));
               mediaBox = isWebm
-                ? '<video src="' + fullSrc + '" autoplay loop muted playsinline style="width:100%;height:145px;object-fit:cover;display:block;background:#080B12"></video>'
-                : '<img src="' + fullSrc + '" alt="" style="width:100%;height:145px;object-fit:cover;display:block;background:#080B12">';
+                ? '<video src="' + fullSrc + '" autoplay loop muted playsinline style="width:100%;height:145px;object-fit:cover;display:block;background:#080B12' + (isSold ? ';opacity:.45' : '') + '"></video>'
+                : '<img src="' + fullSrc + '" alt="" style="width:100%;height:145px;object-fit:cover;display:block;background:#080B12' + (isSold ? ';opacity:.45' : '') + '">';
             } else {
               mediaBox = '<div style="width:100%;height:130px;background:linear-gradient(135deg,#1e293b,#0f172a);display:grid;place-items:center;color:#64748b;font-size:12px">🛍️ Produk Warga</div>';
             }
 
             return (
-              '<div class="gc" style="padding:0;overflow:hidden;text-align:left;align-items:stretch;justify-content:space-between" data-act="lw-detail" data-id="' + C.esc(m.id) + '">' +
+              '<div class="gc" style="padding:0;overflow:hidden;text-align:left;align-items:stretch;justify-content:space-between;cursor:pointer" data-act="lw-detail" data-id="' + C.esc(m.id) + '">' +
                 '<div style="position:relative">' +
                   mediaBox +
                   '<span style="position:absolute;top:6px;left:6px;background:rgba(15,23,42,.85);color:#FFD633;font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px">' + C.esc(m.category || 'Etalase') + '</span>' +
+                  (isSold ? '<span style="position:absolute;top:6px;right:6px;background:#EF4444;color:#fff;font-size:9px;font-weight:900;padding:2px 6px;border-radius:6px">SOLD OUT</span>' : '') +
                 '</div>' +
                 '<div style="padding:9px 10px">' +
                   '<b style="font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + C.esc(m.title) + '</b>' +
                   '<span class="pr" style="display:inline-block;margin-top:5px;font-size:13px">' + C.esc(m.price) + ' PSC</span>' +
-                  '<div style="display:flex;align-items:center;gap:5px;margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)">' +
-                    '<small style="font-size:10px;opacity:.85">🏪 ' + C.esc(m.seller_name || 'Warga') + '</small>' +
+                  '<div style="display:flex;align-items:center;justify-content:space-between;gap:5px;margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)">' +
+                    '<small style="font-size:10px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🏪 ' + C.esc(m.seller_name || 'Warga') + '</small>' +
+                    '<small style="font-size:10px;color:#38BDF8;font-weight:700">' + (isSold ? 'Terjual' : 'Detail ›') + '</small>' +
                   '</div>' +
                 '</div>' +
               '</div>'
@@ -142,8 +172,8 @@
       '<input id="lw-title" maxlength="60" placeholder="mis. Stiker Pack / Akun / Jasa Desain">' +
 
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
-        '<div><label>HARGA (PSC)</label><input id="lw-price" type="number" min="0" value="50"></div>' +
-        '<div><label>KATEGORI</label><select id="lw-cat"><option value="Barang">Barang</option><option value="Stiker / GIF">Stiker / GIF</option><option value="WebM / Video">WebM / Video</option><option value="Jasa">Jasa</option></select></div>' +
+        '<div><label>HARGA (PSC)</label><input id="lw-price" type="number" min="1" value="50"></div>' +
+        '<div><label>KATEGORI</label><select id="lw-cat"><option value="Barang">Barang (1x Beli)</option><option value="Stiker / GIF">Stiker / GIF</option><option value="WebM / Video">WebM / Video</option><option value="Jasa">Jasa (Berulang)</option></select></div>' +
       '</div>' +
 
       '<label>DESKRIPSI PRODUK</label>' +
@@ -177,13 +207,44 @@
 
   function openShopItemDetail(m) {
     if (!m) return;
+    var u = S.user || {};
+    var isSold = m.status === 'sold';
+    var isMine = String(m.seller_id) === String(u.id);
+    var myPsc = Number(u.psc) || 0;
+    var price = Number(m.price) || 0;
+    var enough = myPsc >= price;
+
     var mediaUrl = m.image_url || m.imageUrl || '';
     var fullSrc = mediaUrl ? C.esc(API.assetUrl(mediaUrl)) : '';
     var mediaHtml = '';
     if (fullSrc) {
       mediaHtml = /\.webm$/i.test(mediaUrl)
-        ? '<video src="' + fullSrc + '" autoplay loop muted playsinline style="width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:#080B12;margin-bottom:10px"></video>'
-        : '<img src="' + fullSrc + '" style="width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:#080B12;margin-bottom:10px">';
+        ? '<video src="' + fullSrc + '" autoplay loop muted playsinline style="width:100%;max-height:210px;object-fit:contain;border-radius:12px;background:#080B12;margin-bottom:10px"></video>'
+        : '<img src="' + fullSrc + '" style="width:100%;max-height:210px;object-fit:contain;border-radius:12px;background:#080B12;margin-bottom:10px">';
+    }
+
+    var actionSection = '';
+    if (isSold) {
+      actionSection =
+        '<button class="btn b2" disabled style="opacity:.65">SUDAH TERJUAL' + (m.buyer_name ? (' KE ' + C.esc(m.buyer_name.toUpperCase())) : '') + '</button>' +
+        '<button class="btn b2" data-act="shut">TUTUP DETAIL</button>';
+    } else if (isMine) {
+      actionSection =
+        '<button class="btn b2" style="color:#FCA5A5" data-act="lw-delete" data-id="' + C.esc(m.id) + '">🗑️ HAPUS DAGANGAN DARI ETALASE</button>' +
+        '<button class="btn" data-act="shut">TUTUP DETAIL</button>';
+    } else {
+      var btnTitle = m.category === 'Jasa' ? ('🛒 PESAN JASA · ' + price + ' PSC') : ('🛒 BELI SEKARANG · ' + price + ' PSC');
+      actionSection =
+        '<div style="background:rgba(255,255,255,.05);padding:9px 11px;border-radius:10px;margin:10px 0;font-size:12px">' +
+          'Saldo PSC Lu: <b style="color:#FFD633">' + myPsc + ' PSC</b> ' +
+          (enough
+            ? '<span style="color:#6df0a0">(Sisa nanti: ' + (myPsc - price) + ' PSC)</span>'
+            : '<span style="color:#FCA5A5">(Saldo kurang ' + (price - myPsc) + ' PSC)</span>') +
+        '</div>' +
+        '<label>CATATAN / KONTAK UNTUK PELAPAK (OPSIONAL)</label>' +
+        '<input id="lw-buy-note" maxlength="100" placeholder="Contoh: Cek DM Tele ya / Detail pesanan...">' +
+        '<button class="btn" data-act="lw-buy" data-id="' + C.esc(m.id) + '"' + (enough ? '' : ' disabled') + '>' + btnTitle + '</button>' +
+        '<button class="btn b2" data-act="shut">BATAL</button>';
     }
 
     C.sheet(
@@ -193,9 +254,9 @@
         '<span class="pill">' + C.esc(m.category || 'Etalase') + '</span>' +
       '</div>' +
       '<h2>' + C.esc(m.title) + '</h2>' +
-      '<div style="color:#FFD633;font-size:18px;font-weight:800;margin:4px 0">' + C.esc(m.price) + ' PSC</div>' +
+      '<div style="color:#FFD633;font-size:18px;font-weight:800;margin:4px 0">' + price + ' PSC</div>' +
       '<p class="sub">' + C.esc(m.description || 'Tidak ada deskripsi tambahan.') + '</p>' +
-      '<button class="btn" data-act="shut">TUTUP DETAIL</button>'
+      actionSection
     );
   }
 
@@ -268,6 +329,40 @@
       var sid = t.getAttribute('data-id');
       var found = (S.market || []).find(function (x) { return String(x.id) === String(sid); });
       openShopItemDetail(found);
+    } else if (act === 'lw-buy') {
+      var buyId = t.getAttribute('data-id');
+      var noteEl = document.getElementById('lw-buy-note');
+      var buyNote = noteEl ? noteEl.value.trim() : '';
+      t.disabled = true;
+      t.textContent = 'Memproses Transaksi...';
+      try {
+        var bRes = await API.post('/api/warga-shop/buy', { itemId: buyId, note: buyNote });
+        if (bRes.user) S.user = bRes.user;
+        if (bRes.items) S.market = bRes.items;
+        if (bRes.orders) S.marketOrders = bRes.orders;
+        C.shut();
+        C.refresh();
+        C.notify('Mas Raka', 'Lapak Warga', bRes.message || 'Transaksi berhasil! Pelapak sudah dikabari.');
+      } catch (err) {
+        t.disabled = false;
+        t.textContent = 'COBA BELI LAGI';
+        C.notify('Mas Raka', 'Gagal Beli', err.message);
+      }
+    } else if (act === 'lw-delete') {
+      var delId = t.getAttribute('data-id');
+      t.disabled = true;
+      t.textContent = 'Menghapus...';
+      try {
+        var dRes = await API.post('/api/warga-shop/delete', { itemId: delId });
+        if (dRes.items) S.market = dRes.items;
+        C.shut();
+        C.refresh();
+        C.notify('Mas Raka', 'Lapak Warga', 'Dagangan berhasil dihapus dari etalase.');
+      } catch (err) {
+        t.disabled = false;
+        t.textContent = '🗑️ HAPUS DAGANGAN DARI ETALASE';
+        C.notify('Mas Raka', 'Gagal Hapus', err.message);
+      }
     } else if (act === 'lw-save') {
       var title = (document.getElementById('lw-title').value || '').trim();
       var price = Number(document.getElementById('lw-price').value) || 0;
@@ -295,6 +390,7 @@
         pendingShopFile = null;
         var listRes = await API.get('/api/shop');
         S.market = listRes.items || [];
+        S.marketOrders = listRes.orders || [];
         C.shut();
         C.refresh();
         C.notify('Mas Raka', 'Lapak Warga', 'Produk "' + title + '" resmi masuk etalase!');
