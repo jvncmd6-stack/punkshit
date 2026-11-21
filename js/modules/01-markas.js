@@ -28,7 +28,7 @@
           '<small>SALDO PSC</small><b style="font-size:20px;color:var(--yel)">' + (u.psc || 0) + '</b>' +
         '</div>' +
         '<div class="gc" style="align-items:flex-start;padding:12px 14px">' +
-          '<small>STREAK NYAWA</small><b style="font-size:20px">' + (u.streak || 0) + ' Hari</b>' +
+          '<small>STREAK</small><b style="font-size:20px">' + (u.streak || 0) + ' Hari</b>' +
         '</div>' +
         '<div class="gc" style="align-items:flex-start;padding:12px 14px">' +
           '<small>STREET CRED</small><b style="font-size:20px;color:#8FC7FF">' + (u.cred || 0) + '</b>' +
@@ -38,11 +38,11 @@
         '</div>' +
       '</div>' +
 
-      // Absen Nyawa Card
+      // Absen Card
       '<div class="grp">' +
         '<div class="rw">' +
           '<div>' +
-            '<b>Absen Nyawa</b>' +
+            '<b>Absen</b>' +
             '<small>Bonus hari ini: +' + rk.bonus + ' PSC · Rekor: ' + (u.best || 0) + ' hari</small>' +
           '</div>' +
           '<button class="pill" data-act="mk-absen"' + (done ? ' disabled' : '') + '>' + (done ? 'SUDAH ABSEN' : '🔥 ABSEN') + '</button>' +
