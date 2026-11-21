@@ -1,0 +1,175 @@
+import { Router } from 'express';
+import { db } from '../database/db.js';
+import { requireUser } from '../middlewares/authTma.js';
+import {
+  formatUser,
+  getCatalog,
+  parsePinnedGifts,
+  broadcastToTelegram,
+  escHtml
+} from '../services/syncEngine.js';
+
+export const socialExtraRouter = Router();
+
+// 1. GET /api/leaderboard/global -> Klasemen Top Sultan PSC, Street Cred, & Spark Streak
+socialExtraRouter.get('/leaderboard/global', (req, res) => {
+  try {
+    const topPsc = db.prepare(`
+      SELECT id, name, username, role, psc, streak, photo_url AS photoUrl, equipped_border_id AS equippedBorderId, ring_style AS ringStyle
+      FROM users
+      ORDER BY psc DESC, id ASC
+      LIMIT 10
+    `).all();
+
+    const topCred = db.prepare(`
+      SELECT id, name, username, role, cred, streak, photo_url AS photoUrl, equipped_border_id AS equippedBorderId, ring_style AS ringStyle
+      FROM users
+      ORDER BY cred DESC, psc DESC
+      LIMIT 10
+    `).all();
+
+    let topSpark = [];
+    try {
+      topSpark = db.prepare(`
+        SELECT user1, user2, streak, xp
+        FROM spark_pairs
+        WHERE status = 'paired' AND streak > 0
+        ORDER BY streak DESC, xp DESC
+        LIMIT 10
+      `).all();
+    } catch (_) {}
+
+    res.json({ topPsc, topCred, topSpark });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal memuat klasemen markas: ' + err.message });
+  }
+});
+
+// 2. POST /api/social/transfer-psc -> Transfer PSC antarwarga langsung dari profil
+socialExtraRouter.post('/social/transfer-psc', requireUser, async (req, res) => {
+  const sender = req.dbUser;
+  const targetId = String(req.body?.targetUserId || '').trim();
+  const amount = Math.floor(Number(req.body?.amount) || 0);
+  const note = String(req.body?.note || '').trim().slice(0, 60);
+
+  if (!targetId || targetId === String(sender.id)) {
+    return res.status(400).json({ error: 'Target penerima tidak valid.' });
+  }
+  if (amount < 10 || amount > 5000) {
+    return res.status(400).json({ error: 'Nominal transfer minimal 10 PSC dan maksimal 5.000 PSC.' });
+  }
+  if ((sender.psc || 0) < amount) {
+    return res.status(400).json({ error: 'Saldo PSC kamu kurang bro!' });
+  }
+
+  const receiver = db.prepare('SELECT * FROM users WHERE id = ?').get(targetId);
+  if (!receiver) {
+    return res.status(404).json({ error: 'Warga penerima tidak ditemukan.' });
+  }
+
+  const now = Date.now();
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE users SET psc = psc - ? WHERE id = ?').run(amount, sender.id);
+    db.prepare('UPDATE users SET psc = psc + ?, cred = cred + 1 WHERE id = ?').run(amount, receiver.id);
+
+    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(sender.id, 'transfer_out', -amount, `Transfer ke ${receiver.name}${note ? ': ' + note : ''}`, now);
+    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(receiver.id, 'transfer_in', amount, `Kiriman dari ${sender.name}${note ? ': ' + note : ''}`, now);
+  });
+  tx();
+
+  await broadcastToTelegram({
+    target: 'group',
+    text:
+      `💸 <b>SAWERAN MARKAS!</b>\n` +
+      `<b>${escHtml(sender.name)}</b> baru aja ngirim <b>${amount} PSC</b> ke <b>${escHtml(receiver.name)}</b>!` +
+      (note ? `\n<i>"${escHtml(note)}"</i>` : ''),
+    buttonText: '🪪 CEK MARKAS',
+    startParam: 'warga',
+    feedText: `${sender.name} transfer ${amount} PSC ke ${receiver.name}.`
+  });
+
+  const updatedSender = db.prepare('SELECT * FROM users WHERE id = ?').get(sender.id);
+  res.json({
+    ok: true,
+    message: `Berhasil kirim ${amount} PSC ke ${receiver.name}!`,
+    user: formatUser(updatedSender)
+  });
+});
+
+// 3. POST /api/social/send-gift -> Kirim item dari Gudang Barang ke warga lain
+socialExtraRouter.post('/social/send-gift', requireUser, async (req, res) => {
+  const sender = req.dbUser;
+  const targetId = String(req.body?.targetUserId || '').trim();
+  const invId = Number(req.body?.invId);
+  const note = String(req.body?.note || '').trim().slice(0, 60);
+
+  if (!targetId || targetId === String(sender.id)) {
+    return res.status(400).json({ error: 'Target penerima tidak valid.' });
+  }
+  if (!invId) {
+    return res.status(400).json({ error: 'Pilih item dari gudang kamu dulu.' });
+  }
+
+  const receiver = db.prepare('SELECT * FROM users WHERE id = ?').get(targetId);
+  if (!receiver) {
+    return res.status(404).json({ error: 'Warga penerima tidak ditemukan.' });
+  }
+
+  const invRow = db.prepare('SELECT * FROM inventory WHERE id = ? AND user_id = ?').get(invId, sender.id);
+  if (!invRow) {
+    return res.status(404).json({ error: 'Item tidak ditemukan di gudang kamu.' });
+  }
+
+  const catalog = getCatalog();
+  const itemMeta = catalog.find(i => i.id === invRow.item_id) || { name: invRow.item_id, rarity: 'Rare' };
+
+  const transferTx = db.transaction(() => {
+    db.prepare('UPDATE inventory SET user_id = ?, acquired_at = ? WHERE id = ?')
+      .run(receiver.id, Date.now(), invRow.id);
+
+    // Lepas item jika sebelumnya sedang dipakai/dipin pengirim dan stoknya habis
+    const stillHas = db.prepare('SELECT 1 FROM inventory WHERE user_id = ? AND item_id = ?').get(sender.id, invRow.item_id);
+    if (!stillHas) {
+      if (sender.equipped_border_id === invRow.item_id) {
+        db.prepare("UPDATE users SET equipped_border_id = '' WHERE id = ?").run(sender.id);
+      }
+      if (sender.equipped_skin_id === invRow.item_id) {
+        db.prepare("UPDATE users SET equipped_skin_id = '' WHERE id = ?").run(sender.id);
+      }
+      const pinned = parsePinnedGifts(sender.pinned_gift_id);
+      if (pinned.includes(invRow.item_id)) {
+        const nextPinned = pinned.filter(x => x !== invRow.item_id);
+        db.prepare('UPDATE users SET pinned_gift_id = ? WHERE id = ?')
+          .run(nextPinned.length ? JSON.stringify(nextPinned) : '', sender.id);
+      }
+    }
+
+    db.prepare('UPDATE users SET cred = cred + 2 WHERE id = ?').run(sender.id);
+  });
+  transferTx();
+
+  await broadcastToTelegram({
+    target: 'group',
+    text:
+      `🎁 <b>KIRIMAN HADIAH WARGA!</b>\n` +
+      `<b>${escHtml(sender.name)}</b> ngasih <b>${escHtml(itemMeta.name)}</b> (${escHtml(itemMeta.rarity)}) ke <b>${escHtml(receiver.name)}</b>!` +
+      (note ? `\n<i>"${escHtml(note)}"</i>` : ''),
+    buttonText: '🎒 LIHAT PROFIL',
+    startParam: 'warga',
+    feedText: `${sender.name} ngasih hadiah "${itemMeta.name}" ke ${receiver.name}.`
+  });
+
+  const updatedSender = db.prepare('SELECT * FROM users WHERE id = ?').get(sender.id);
+  const updatedInv = db.prepare(
+    'SELECT id, item_id AS itemId, acquired_at AS acquiredAt FROM inventory WHERE user_id = ? ORDER BY id DESC'
+  ).all(sender.id);
+
+  res.json({
+    ok: true,
+    message: `Hadiah "${itemMeta.name}" resmi terkirim ke ${receiver.name}!`,
+    user: formatUser(updatedSender),
+    inv: updatedInv
+  });
+});
