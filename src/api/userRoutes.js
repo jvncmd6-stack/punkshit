@@ -244,3 +244,24 @@ userRouter.post('/presence', requireUser, (req, res) => {
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
   res.json({ user: formatUser(updated), onlineUsers: getOnlineUsers() });
 });
+
+// GET /api/users/profile/:target -> Lihat profil publik warga lain (by ID atau @username)
+userRouter.get('/users/profile/:target', (req, res) => {
+  const raw = String(req.params.target || '').trim().replace(/^@+/, '');
+  if (!raw) return res.status(400).json({ error: 'Target warga tidak valid.' });
+
+  const row = db.prepare(`
+    SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?) LIMIT 1
+  `).get(raw, raw);
+
+  if (!row) return res.status(404).json({ error: 'Warga tidak ditemukan.' });
+
+  const itemCount = db.prepare('SELECT COUNT(*) AS c FROM inventory WHERE user_id = ?').get(row.id).c;
+  const pubUser = formatUser(row);
+  delete pubUser.psc; // Jangan tampilkan saldo privat orang lain
+
+  res.json({
+    user: pubUser,
+    itemCount
+  });
+});
