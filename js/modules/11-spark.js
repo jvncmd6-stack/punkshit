@@ -184,7 +184,7 @@
     var apiBase = getApiBase();
     var initData = getInitData();
     var qs =
-      '?v=20&_ts=' + Date.now() +
+      '?v=21&_ts=' + Date.now() +
       (me.username ? '&usn=' + encodeURIComponent(me.username) : '') +
       (apiBase ? '&api=' + encodeURIComponent(apiBase) : '') +
       (initData ? '&tma=' + encodeURIComponent(initData) : '');
