@@ -40,6 +40,8 @@ db.exec(`
   );
 `);
 
+const MAX_SPARK_SLOTS = 3;
+
 function todayWib() {
   const now = new Date(Date.now() + 7 * 3600 * 1000);
   return now.toISOString().slice(0, 10);
@@ -49,38 +51,46 @@ function cleanUsn(v) {
   return String(v || '').trim().replace(/^@+/, '').toLowerCase();
 }
 
-export function getSparkStateForUser(username) {
+export function getSparkListForUser(username) {
   const usn = cleanUsn(username);
-  if (!usn) return null;
+  if (!usn) return [];
 
-  const pair = db.prepare(`
+  const rows = db.prepare(`
     SELECT * FROM spark_pairs
     WHERE (user1 = ? OR user2 = ?) AND status IN ('pending', 'paired')
-    ORDER BY id DESC LIMIT 1
-  `).get(usn, usn);
+    ORDER BY id ASC
+  `).all(usn, usn);
 
-  if (!pair) return null;
-
-  if (pair.status === 'pending') {
-    if (pair.user1 === usn) {
-      return { status: 'outgoing', targetUsername: pair.user2 };
-    }
-    return { status: 'incoming', fromUsername: pair.user1 };
-  }
-
-  const partner = pair.user1 === usn ? pair.user2 : pair.user1;
   const today = todayWib();
   const a1 = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, usn);
-  const a2 = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, partner);
+  const g1 = { gap: a1 ? a1.gap : 0, msg: a1 ? a1.msg : 0 };
 
-  return {
-    status: 'paired',
-    partnerUsername: partner,
-    streak: pair.streak || 0,
-    xp: pair.xp || 0,
-    g1: { gap: a1 ? a1.gap : 0, msg: a1 ? a1.msg : 0 },
-    g2: { gap: a2 ? a2.gap : 0, msg: a2 ? a2.msg : 0 }
-  };
+  return rows.map((pair) => {
+    if (pair.status === 'pending') {
+      if (pair.user1 === usn) {
+        return { status: 'outgoing', targetUsername: pair.user2 };
+      }
+      return { status: 'incoming', fromUsername: pair.user1 };
+    }
+
+    const partner = pair.user1 === usn ? pair.user2 : pair.user1;
+    const a2 = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, partner);
+
+    return {
+      status: 'paired',
+      partnerUsername: partner,
+      streak: pair.streak || 0,
+      xp: pair.xp || 0,
+      g1,
+      g2: { gap: a2 ? a2.gap : 0, msg: a2 ? a2.msg : 0 }
+    };
+  });
+}
+
+// Kompatibilitas backward untuk fungsi lama
+export function getSparkStateForUser(username) {
+  const list = getSparkListForUser(username);
+  return list.length ? list[0] : null;
 }
 
 const app = express();
@@ -104,12 +114,16 @@ app.use('/api', actionRouter);
 app.use('/api', gameRouter);
 app.use('/api', socialRouter);
 
-// === ENDPOINT SPARK BUDDIES ===
+// === ENDPOINT SPARK BUDDIES (MAX 3 SLOTS) ===
 app.get('/api/spark/status', (req, res) => {
   const authUser = req.user || req.tgUser || res.locals?.user || {};
   const usn = cleanUsn(authUser.username || req.query.username);
-  if (!usn) return res.json({ sparkBuddy: null });
-  res.json({ sparkBuddy: getSparkStateForUser(usn) });
+  if (!usn) return res.json({ sparkBuddies: [], sparkBuddy: null });
+  const list = getSparkListForUser(usn);
+  res.json({
+    sparkBuddies: list,
+    sparkBuddy: list[0] || null
+  });
 });
 
 app.post('/api/spark/action', async (req, res) => {
@@ -129,19 +143,62 @@ app.post('/api/spark/action', async (req, res) => {
 
     if (action === 'SPARK_INVITE_SEND') {
       if (!target || actor === target) {
-        return res.json({ ok: false, message: 'Username target tidak valid.', sparkBuddy: getSparkStateForUser(actor) });
-      }
-
-      const existing = db.prepare(`
-        SELECT 1 FROM spark_pairs
-        WHERE (user1 IN (?, ?) OR user2 IN (?, ?)) AND status IN ('pending', 'paired')
-      `).get(actor, target, actor, target);
-
-      if (existing) {
+        const list = getSparkListForUser(actor);
         return res.json({
           ok: false,
-          message: 'Salah satu sudah punya koneksi atau ajakan aktif.',
-          sparkBuddy: getSparkStateForUser(actor)
+          message: 'Username target tidak valid.',
+          sparkBuddies: list,
+          sparkBuddy: list[0] || null
+        });
+      }
+
+      // Cek apakah pasangan ini sudah terhubung / pending
+      const samePair = db.prepare(`
+        SELECT 1 FROM spark_pairs
+        WHERE ((user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?))
+          AND status IN ('pending', 'paired')
+      `).get(actor, target, target, actor);
+
+      if (samePair) {
+        const list = getSparkListForUser(actor);
+        return res.json({
+          ok: false,
+          message: `Kamu dan @${target} sudah terhubung atau sedang pending.`,
+          sparkBuddies: list,
+          sparkBuddy: list[0] || null
+        });
+      }
+
+      // Cek slot pengirim (maks 3 aktif/outgoing)
+      const actorCount = db.prepare(`
+        SELECT COUNT(*) AS cnt FROM spark_pairs
+        WHERE (user1 = ? AND status IN ('pending', 'paired'))
+           OR (user2 = ? AND status = 'paired')
+      `).get(actor, actor).cnt;
+
+      if (actorCount >= MAX_SPARK_SLOTS) {
+        const list = getSparkListForUser(actor);
+        return res.json({
+          ok: false,
+          message: `Slot kamu sudah penuh (maksimal ${MAX_SPARK_SLOTS} partner).`,
+          sparkBuddies: list,
+          sparkBuddy: list[0] || null
+        });
+      }
+
+      // Cek slot partner (maks 3 paired)
+      const targetPairedCount = db.prepare(`
+        SELECT COUNT(*) AS cnt FROM spark_pairs
+        WHERE (user1 = ? OR user2 = ?) AND status = 'paired'
+      `).get(target, target).cnt;
+
+      if (targetPairedCount >= MAX_SPARK_SLOTS) {
+        const list = getSparkListForUser(actor);
+        return res.json({
+          ok: false,
+          message: `Slot partner @${target} sudah penuh (${MAX_SPARK_SLOTS}/${MAX_SPARK_SLOTS}).`,
+          sparkBuddies: list,
+          sparkBuddy: list[0] || null
         });
       }
 
@@ -180,7 +237,13 @@ app.post('/api/spark/action', async (req, res) => {
         }
       }
 
-      return res.json({ ok: true, message: 'Ajakan terkirim!', sparkBuddy: getSparkStateForUser(actor) });
+      const list = getSparkListForUser(actor);
+      return res.json({
+        ok: true,
+        message: 'Ajakan terkirim!',
+        sparkBuddies: list,
+        sparkBuddy: list[0] || null
+      });
     }
 
     if (action === 'SPARK_INVITE_ACCEPT') {
@@ -189,11 +252,39 @@ app.post('/api/spark/action', async (req, res) => {
       `).get(target, actor);
 
       if (!row) {
-        return res.json({ ok: false, message: 'Ajakan tidak ditemukan.', sparkBuddy: getSparkStateForUser(actor) });
+        const list = getSparkListForUser(actor);
+        return res.json({
+          ok: false,
+          message: 'Ajakan tidak ditemukan.',
+          sparkBuddies: list,
+          sparkBuddy: list[0] || null
+        });
+      }
+
+      // Pastikan penerima tidak melebihi 3 partner aktif
+      const actorPairedCount = db.prepare(`
+        SELECT COUNT(*) AS cnt FROM spark_pairs
+        WHERE (user1 = ? OR user2 = ?) AND status = 'paired'
+      `).get(actor, actor).cnt;
+
+      if (actorPairedCount >= MAX_SPARK_SLOTS) {
+        const list = getSparkListForUser(actor);
+        return res.json({
+          ok: false,
+          message: `Slot aktif kamu sudah penuh (${MAX_SPARK_SLOTS}/${MAX_SPARK_SLOTS}). Putuskan 1 slot dulu.`,
+          sparkBuddies: list,
+          sparkBuddy: list[0] || null
+        });
       }
 
       db.prepare("UPDATE spark_pairs SET status = 'paired' WHERE id = ?").run(row.id);
-      return res.json({ ok: true, message: 'Spark resmi menyala!', sparkBuddy: getSparkStateForUser(actor) });
+      const list = getSparkListForUser(actor);
+      return res.json({
+        ok: true,
+        message: 'Spark resmi menyala!',
+        sparkBuddies: list,
+        sparkBuddy: list[0] || null
+      });
     }
 
     if (['SPARK_INVITE_DECLINE', 'SPARK_INVITE_CANCEL', 'SPARK_UNPAIR'].includes(action)) {
@@ -202,10 +293,22 @@ app.post('/api/spark/action', async (req, res) => {
         WHERE (user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)
       `).run(actor, target, target, actor);
 
-      return res.json({ ok: true, message: 'Koneksi dihapus.', sparkBuddy: null });
+      const list = getSparkListForUser(actor);
+      return res.json({
+        ok: true,
+        message: 'Koneksi dihapus.',
+        sparkBuddies: list,
+        sparkBuddy: list[0] || null
+      });
     }
 
-    return res.json({ ok: false, message: 'Aksi tidak dikenal.', sparkBuddy: getSparkStateForUser(actor) });
+    const list = getSparkListForUser(actor);
+    return res.json({
+      ok: false,
+      message: 'Aksi tidak dikenal.',
+      sparkBuddies: list,
+      sparkBuddy: list[0] || null
+    });
   } catch (err) {
     console.error('[Spark Action Error]:', err);
     res.status(500).json({ ok: false, message: err.message });
