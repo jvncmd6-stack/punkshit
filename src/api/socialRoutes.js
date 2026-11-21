@@ -555,4 +555,3 @@ socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, re
     res.status(400).json({ error: err.message || 'Gagal memproses file.' });
   }
 });
-```[cite: 1]
