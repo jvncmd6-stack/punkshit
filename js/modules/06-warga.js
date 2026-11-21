@@ -14,6 +14,7 @@
     });
 
     return (
+      ${window.renderBirthdayBannerSlot ? window.renderBirthdayBannerSlot() : ''}
       '<input id="wg-search" placeholder="🔍 Cari nama atau @username warga..." value="' + C.esc(searchQuery) + '" style="margin-bottom:14px">' +
 
       '<div class="chips" style="margin-bottom:14px">' +
@@ -87,6 +88,7 @@
       '<label>ISI PESAN ANONIM</label>' +
       '<textarea id="mf-txt" maxlength="280" placeholder="Tulis unek-unek lo di sini (identitas aman)..."></textarea>' +
       '<button class="btn" data-act="wg-menfess-send">KIRIM KE KOTAK RAHASIA</button>'
+      ${window.renderKotakArchiveSection ? window.renderKotakArchiveSection() : ''}
     );
   }
 
