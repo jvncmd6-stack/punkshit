@@ -6,7 +6,7 @@ import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
 import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
-import { getBot, broadcastToTelegram, escHtml } from '../services/syncEngine.js';
+import { formatUser, getBot, broadcastToTelegram, escHtml } from '../services/syncEngine.js';
 
 export const socialRouter = Router();
 
@@ -37,12 +37,33 @@ db.exec(`
     category TEXT DEFAULT 'Etalase',
     image_url TEXT DEFAULT '',
     description TEXT DEFAULT '',
+    status TEXT DEFAULT 'available',
+    buyer_id TEXT DEFAULT '',
+    buyer_name TEXT DEFAULT '',
+    sold_at INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS shop_orders (
+    id TEXT PRIMARY KEY,
+    item_id TEXT NOT NULL,
+    item_title TEXT NOT NULL,
+    category TEXT DEFAULT 'Etalase',
+    price INTEGER NOT NULL,
+    seller_id TEXT NOT NULL,
+    seller_name TEXT NOT NULL,
+    buyer_id TEXT NOT NULL,
+    buyer_name TEXT NOT NULL,
+    note TEXT DEFAULT '',
     created_at INTEGER NOT NULL
   );
 `);
 
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN source_type TEXT DEFAULT 'spotify'"); } catch (e) {}
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN file_id TEXT DEFAULT ''"); } catch (e) {}
+try { db.exec("ALTER TABLE shop_items ADD COLUMN status TEXT DEFAULT 'available'"); } catch (e) {}
+try { db.exec("ALTER TABLE shop_items ADD COLUMN buyer_id TEXT DEFAULT ''"); } catch (e) {}
+try { db.exec("ALTER TABLE shop_items ADD COLUMN buyer_name TEXT DEFAULT ''"); } catch (e) {}
+try { db.exec("ALTER TABLE shop_items ADD COLUMN sold_at INTEGER DEFAULT 0"); } catch (e) {}
 
 // GET /api/rules-help -> Ambil teks Pasal & Help dinamis dari setting bot untuk WebApp
 socialRouter.get('/rules-help', (req, res) => {
@@ -55,22 +76,42 @@ socialRouter.get('/rules-help', (req, res) => {
   });
 });
 
-// GET /api/shop -> Etalase Toko Warga (Support profil toko & media gambar/GIF/WebM)
+// GET /api/shop -> Etalase Toko Warga + Riwayat Order User
 socialRouter.get('/shop', (req, res) => {
-  const items = db.prepare('SELECT * FROM shop_items ORDER BY created_at DESC LIMIT 40').all();
-  res.json({ items });
+  const items = db.prepare(`
+    SELECT * FROM shop_items
+    ORDER BY CASE WHEN status = 'available' THEN 0 ELSE 1 END ASC, created_at DESC
+    LIMIT 50
+  `).all();
+
+  const authUser = req.user || req.tgUser || res.locals?.user;
+  let orders = [];
+  if (authUser && authUser.id) {
+    const uid = String(authUser.id);
+    orders = db.prepare(`
+      SELECT * FROM shop_orders
+      WHERE buyer_id = ? OR seller_id = ?
+      ORDER BY created_at DESC
+      LIMIT 25
+    `).all(uid, uid);
+  }
+
+  res.json({ items, orders });
 });
 
-// POST /api/shop -> Tambah produk ke etalase Lapak Warga
+// POST /api/shop -> Tambah produk/jasa ke etalase Lapak Warga
 socialRouter.post('/shop', requireUser, uploadMem.single('media'), async (req, res) => {
   try {
     const title = String(req.body?.title || '').trim().slice(0, 60);
-    const price = Math.max(0, Number(req.body?.price) || 0);
-    const category = String(req.body?.category || 'Etalase').trim().slice(0, 30);
+    const price = Math.max(1, Math.floor(Number(req.body?.price) || 0));
+    const category = String(req.body?.category || 'Barang').trim().slice(0, 30);
     const description = String(req.body?.description || '').trim().slice(0, 220);
 
     if (title.length < 3) {
-      return res.status(400).json({ error: 'Nama barang minimal 3 karakter cuy.' });
+      return res.status(400).json({ error: 'Nama produk/jasa minimal 3 karakter cuy.' });
+    }
+    if (price < 1 || price > 100000) {
+      return res.status(400).json({ error: 'Harga harus antara 1 sampai 100.000 PSC.' });
     }
 
     let imageUrl = '';
@@ -79,15 +120,137 @@ socialRouter.post('/shop', requireUser, uploadMem.single('media'), async (req, r
     }
 
     const id = 'sh_' + crypto.randomBytes(4).toString('hex');
+    const sellerAvatar = req.dbUser.photo_url || req.dbUser.avatar || '';
+
     db.prepare(`
-      INSERT INTO shop_items (id, seller_id, seller_name, seller_avatar, title, price, category, image_url, description, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, req.dbUser.id, req.dbUser.name, req.dbUser.avatar || '', title, price, category, imageUrl, description, Date.now());
+      INSERT INTO shop_items (id, seller_id, seller_name, seller_avatar, title, price, category, image_url, description, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', ?)
+    `).run(id, req.dbUser.id, req.dbUser.name, sellerAvatar, title, price, category, imageUrl, description, Date.now());
 
     res.json({ ok: true, id, imageUrl });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Gagal pajang barang di lapak.' });
+    res.status(400).json({ error: err.message || 'Gagal pajang produk di lapak.' });
   }
+});
+
+// POST /api/warga-shop/buy -> Beli item/jasa dari Lapak Warga (Potong PSC pembeli -> Masuk ke penjual)
+socialRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
+  const buyer = req.dbUser;
+  const itemId = String(req.body?.itemId || '').trim();
+  const note = String(req.body?.note || '').trim().slice(0, 120);
+
+  const item = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(itemId);
+  if (!item) {
+    return res.status(404).json({ error: 'Produk atau jasa tidak ditemukan di etalase.' });
+  }
+  if (item.status === 'sold') {
+    return res.status(400).json({ error: 'Yah telat! Barang ini sudah dibeli warga lain.' });
+  }
+  if (String(item.seller_id) === String(buyer.id)) {
+    return res.status(400).json({ error: 'Nggak bisa beli dagangan sendiri bro!' });
+  }
+  if ((buyer.psc || 0) < item.price) {
+    return res.status(400).json({ error: `Saldo PSC kurang! Butuh ${item.price} PSC, saldo lu ${buyer.psc || 0} PSC.` });
+  }
+
+  const seller = db.prepare('SELECT * FROM users WHERE id = ?').get(String(item.seller_id));
+  if (!seller) {
+    return res.status(404).json({ error: 'Akun pelapak sudah tidak aktif.' });
+  }
+
+  const orderId = 'ord_' + crypto.randomBytes(4).toString('hex');
+  const now = Date.now();
+  // Jika kategori "Jasa", tetap terbuka untuk dipesan warga lain; jika Barang/Stiker, tandai terjual
+  const nextStatus = item.category === 'Jasa' ? 'available' : 'sold';
+
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE users SET psc = psc - ? WHERE id = ?').run(item.price, buyer.id);
+    db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(item.price, seller.id);
+
+    db.prepare(`
+      UPDATE shop_items
+      SET status = ?, buyer_id = ?, buyer_name = ?, sold_at = ?
+      WHERE id = ?
+    `).run(nextStatus, buyer.id, buyer.name, now, item.id);
+
+    db.prepare(`
+      INSERT INTO shop_orders (id, item_id, item_title, category, price, seller_id, seller_name, buyer_id, buyer_name, note, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(orderId, item.id, item.title, item.category, item.price, seller.id, seller.name, buyer.id, buyer.name, note, now);
+
+    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(buyer.id, 'lapak_buy', -item.price, `Beli "${item.title}" dari ${seller.name}`, now);
+
+    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(seller.id, 'lapak_sell', item.price, `Terjual "${item.title}" ke ${buyer.name}`, now);
+  });
+  tx();
+
+  // Kirim DM ke penjual via Bot Mas Raka agar langsung diproses
+  const bot = getBot();
+  if (bot && seller.id) {
+    const buyerTag = buyer.username ? `@${escHtml(buyer.username)}` : `<b>${escHtml(buyer.name)}</b>`;
+    const dmText =
+      `🛍️ <b>ORDERAN LAPAK WARGA MASUK!</b>\n\n` +
+      `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
+      `• Harga: <b>+${item.price} PSC</b> (otomatis masuk dompet)\n` +
+      `• Pembeli: <b>${escHtml(buyer.name)}</b> (${buyerTag})\n` +
+      (note ? `• Catatan Pembeli: <i>"${escHtml(note)}"</i>\n` : '') +
+      `\nSegera hubungi pembeli buat serah terima barang/jasanya!`;
+
+    const kb = new InlineKeyboard().url('🪪 BUKA LAPAK WARGA', `${ENV.MINIAPP_LINK}?startapp=lapakwarga`);
+    bot.api.sendMessage(seller.id, dmText, { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
+  }
+
+  await broadcastToTelegram({
+    target: 'group',
+    text: `🛍️ <b>TRANSAKSI LAPAK WARGA!</b>\n<b>${escHtml(buyer.name)}</b> baru saja membeli <b>${escHtml(item.title)}</b> dari lapak <b>${escHtml(seller.name)}</b> seharga <b>${item.price} PSC</b>!`,
+    buttonText: '🛍️ CEK LAPAK WARGA',
+    startParam: 'lapakwarga',
+    feedText: `${buyer.name} membeli "${item.title}" dari ${seller.name} (${item.price} PSC).`
+  });
+
+  const updatedBuyer = db.prepare('SELECT * FROM users WHERE id = ?').get(buyer.id);
+  const items = db.prepare(`
+    SELECT * FROM shop_items
+    ORDER BY CASE WHEN status = 'available' THEN 0 ELSE 1 END ASC, created_at DESC
+    LIMIT 50
+  `).all();
+  const orders = db.prepare(`
+    SELECT * FROM shop_orders
+    WHERE buyer_id = ? OR seller_id = ?
+    ORDER BY created_at DESC
+    LIMIT 25
+  `).all(buyer.id, buyer.id);
+
+  res.json({
+    ok: true,
+    orderId,
+    message: `Berhasil membeli "${item.title}"! Saldo -${item.price} PSC.`,
+    user: formatUser(updatedBuyer),
+    items,
+    orders
+  });
+});
+
+// POST /api/warga-shop/delete -> Hapus dagangan sendiri dari etalase
+socialRouter.post('/warga-shop/delete', requireUser, (req, res) => {
+  const itemId = String(req.body?.itemId || '').trim();
+  const item = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(itemId);
+
+  if (!item) return res.status(404).json({ error: 'Item tidak ditemukan.' });
+  if (String(item.seller_id) !== String(req.dbUser.id)) {
+    return res.status(403).json({ error: 'Lu cuma bisa hapus dagangan milik sendiri.' });
+  }
+
+  db.prepare('DELETE FROM shop_items WHERE id = ?').run(itemId);
+  const items = db.prepare(`
+    SELECT * FROM shop_items
+    ORDER BY CASE WHEN status = 'available' THEN 0 ELSE 1 END ASC, created_at DESC
+    LIMIT 50
+  `).all();
+
+  res.json({ ok: true, items });
 });
 
 // POST /api/social/greet -> Sapa warga lain di Grup
