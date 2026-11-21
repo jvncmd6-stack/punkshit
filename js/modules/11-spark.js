@@ -9,6 +9,21 @@
     return String(v || '').trim().replace(/^@+/, '').toLowerCase();
   }
 
+  function getApiBase() {
+    var u = '';
+    try {
+      u =
+        (window.PUNK_CONFIG && window.PUNK_CONFIG.API_URL) ||
+        localStorage.getItem('psk_api_url') ||
+        '';
+    } catch (e) {}
+    return String(u || '').replace(/\/+$/, '');
+  }
+
+  function getInitData() {
+    return (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+  }
+
   function buildUserPayload() {
     var tgUser =
       (window.Telegram &&
@@ -51,20 +66,20 @@
       var list = resolveMembersList();
 
       if (userPayload.username && API && typeof API.get === 'function') {
-        try {
-          var stData = await API.get(
-            '/api/spark/status?username=' + encodeURIComponent(userPayload.username) + '&_t=' + Date.now()
-          );
-          if (stData && typeof stData === 'object') {
-            userPayload.sparkBuddy = stData.sparkBuddy || null;
-            if (S.user) S.user.sparkBuddy = stData.sparkBuddy || null;
-          }
-        } catch (e) {}
+        var stData = await API.get(
+          '/api/spark/status?username=' + encodeURIComponent(userPayload.username) + '&_t=' + Date.now()
+        );
+        if (stData && typeof stData === 'object' && 'sparkBuddy' in stData) {
+          userPayload.sparkBuddy = stData.sparkBuddy || null;
+          if (S.user) S.user.sparkBuddy = stData.sparkBuddy || null;
+        }
       }
 
       frame.contentWindow.postMessage(
         {
           type: 'PUNK_SYNC',
+          apiBase: getApiBase(),
+          initData: getInitData(),
           user: userPayload,
           members: list
         },
@@ -88,16 +103,14 @@
       var resp = await API.post('/api/spark/action', payload);
       if (resp) {
         if (!resp.ok && resp.message && C.notify) {
-          C.notify('Spark Buddies', 'Gagal', resp.message);
-        } else if (resp.ok && data.type === 'SPARK_INVITE_SEND' && C.notify) {
-          C.notify('Spark Buddies', 'Ajakan Terkirim', 'Notifikasi sudah dikirim ke @' + cleanUsn(data.targetUsername));
+          C.notify('Spark Buddies', 'Info', resp.message);
         }
         if (S.user) S.user.sparkBuddy = resp.sparkBuddy || null;
         syncSparkData();
       }
     } catch (err) {
       if (C.notify) {
-        C.notify('Spark Buddies', 'Error Server', err.message || 'Gagal menghubungi server.');
+        C.notify('Spark Error', 'Gagal Kirim', err.message || 'Gagal menghubungi server.');
       }
       syncSparkData();
     }
@@ -112,7 +125,7 @@
         return;
       }
       syncSparkData();
-    }, 4000);
+    }, 3500);
   }
 
   function stopPolling() {
@@ -158,7 +171,13 @@
     });
 
     var me = buildUserPayload();
-    var qs = '?v=9' + (me.username ? '&usn=' + encodeURIComponent(me.username) : '');
+    var apiBase = getApiBase();
+    var initData = getInitData();
+    var qs =
+      '?v=11' +
+      (me.username ? '&usn=' + encodeURIComponent(me.username) : '') +
+      (apiBase ? '&api=' + encodeURIComponent(apiBase) : '') +
+      (initData ? '&tma=' + encodeURIComponent(initData) : '');
 
     return (
       '<iframe id="spark-frame" src="./spark.html' + qs + '" ' +
@@ -178,7 +197,9 @@
         d.type
       ) !== -1
     ) {
-      forwardSparkAction(d);
+      if (!d._directHandled) {
+        forwardSparkAction(d);
+      }
     }
   });
 
