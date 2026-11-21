@@ -159,7 +159,7 @@ socialRouter.post('/shop', requireUser, uploadMem.single('media'), async (req, r
   }
 });
 
-// POST /api/warga-shop/buy -> Beli item/jasa dari Lapak Warga (Potong PSC pembeli -> Masuk ke penjual)
+// POST /api/warga-shop/buy -> Beli item/jasa dari Lapak Warga (Hanya notif PC ke Pembeli & Penjual, tanpa notif Grup/CH)
 socialRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
   const buyer = req.dbUser;
   const itemId = String(req.body?.itemId || '').trim();
@@ -186,7 +186,6 @@ socialRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
 
   const orderId = 'ord_' + crypto.randomBytes(4).toString('hex');
   const now = Date.now();
-  // Jika kategori "Jasa", tetap terbuka untuk dipesan warga lain; jika Barang/Stiker, tandai terjual
   const nextStatus = item.category === 'Jasa' ? 'available' : 'sold';
 
   const tx = db.transaction(() => {
@@ -212,31 +211,42 @@ socialRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
   });
   tx();
 
-  // Kirim DM ke penjual via Bot Mas Raka agar langsung diproses
-  const bot = getBot();
-  if (bot && seller.id) {
-    const buyerTag = buyer.username ? `@${escHtml(buyer.username)}` : `<b>${escHtml(buyer.name)}</b>`;
-    const dmText =
-      `🛍️ <b>ORDERAN LAPAK WARGA MASUK!</b>\n\n` +
-      `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
-      `• Harga: <b>+${item.price} PSC</b> (otomatis masuk dompet)\n` +
-      `• Pembeli: <b>${escHtml(buyer.name)}</b> (${buyerTag})\n` +
-      (note ? `• Catatan Pembeli: <i>"${escHtml(note)}"</i>\n` : '') +
-      `\nSegera hubungi pembeli buat serah terima barang/jasanya!`;
+  const updatedBuyer = db.prepare('SELECT * FROM users WHERE id = ?').get(buyer.id);
 
-    const kb = new InlineKeyboard().url('🪪 BUKA LAPAK WARGA', `${ENV.MINIAPP_LINK}?startapp=lapakwarga`);
-    bot.api.sendMessage(seller.id, dmText, { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
+  // Kirim DM hanya ke PC Bot Penjual & Pembeli (tidak broadcast ke Grup/Channel)
+  const bot = getBot();
+  if (bot) {
+    const kb = ENV.MINIAPP_LINK
+      ? new InlineKeyboard().url('🪪 BUKA LAPAK WARGA', `${ENV.MINIAPP_LINK}?startapp=lapakwarga`)
+      : undefined;
+
+    if (seller.id) {
+      const buyerTag = buyer.username ? `@${escHtml(buyer.username)}` : `<b>${escHtml(buyer.name)}</b>`;
+      const sellerDmText =
+        `🛍️ <b>ORDERAN LAPAK WARGA MASUK!</b>\n\n` +
+        `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
+        `• Harga: <b>+${item.price} PSC</b> (otomatis masuk dompet)\n` +
+        `• Pembeli: <b>${escHtml(buyer.name)}</b> (${buyerTag})\n` +
+        (note ? `• Catatan Pembeli: <i>"${escHtml(note)}"</i>\n` : '') +
+        `\nSegera hubungi pembeli buat serah terima barang/jasanya!`;
+
+      bot.api.sendMessage(seller.id, sellerDmText, { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
+    }
+
+    if (buyer.id) {
+      const sellerTag = seller.username ? `@${escHtml(seller.username)}` : `<b>${escHtml(seller.name)}</b>`;
+      const buyerDmText =
+        `🛍️ <b>TRANSAKSI LAPAK WARGA BERHASIL!</b>\n\n` +
+        `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
+        `• Harga: <b>-${item.price} PSC</b> (Sisa: <b>${updatedBuyer.psc} PSC</b>)\n` +
+        `• Penjual: <b>${escHtml(seller.name)}</b> (${sellerTag})\n` +
+        (note ? `• Catatan Lu: <i>"${escHtml(note)}"</i>\n` : '') +
+        `\nSilakan kontak penjual untuk serah terima barang/jasanya!`;
+
+      bot.api.sendMessage(buyer.id, buyerDmText, { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
+    }
   }
 
-  await broadcastToTelegram({
-    target: 'group',
-    text: `🛍️ <b>TRANSAKSI LAPAK WARGA!</b>\n<b>${escHtml(buyer.name)}</b> baru saja membeli <b>${escHtml(item.title)}</b> dari lapak <b>${escHtml(seller.name)}</b> seharga <b>${item.price} PSC</b>!`,
-    buttonText: '🛍️ CEK LAPAK WARGA',
-    startParam: 'lapakwarga',
-    feedText: `${buyer.name} membeli "${item.title}" dari ${seller.name} (${item.price} PSC).`
-  });
-
-  const updatedBuyer = db.prepare('SELECT * FROM users WHERE id = ?').get(buyer.id);
   const items = db.prepare(`
     SELECT * FROM shop_items
     ORDER BY CASE WHEN status = 'available' THEN 0 ELSE 1 END ASC, created_at DESC
