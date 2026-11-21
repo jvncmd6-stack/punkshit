@@ -5,6 +5,7 @@ import { requireUser } from '../middlewares/authTma.js';
 import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
 import {
   formatUser,
+  parsePinnedGifts,
   getCatalog,
   getOnlineUsers,
   syncTelegramAvatar,
@@ -167,9 +168,9 @@ userRouter.post('/profile/sync-telegram', requireUser, async (req, res) => {
   res.json({ user: formatUser(updated) });
 });
 
-// POST /api/profile/equip -> Pasang / lepas Border Avatar, Pin Gift di profil, atau Card Skin
+// POST /api/profile/equip -> Pasang / lepas Border Avatar, Multi-Gift Profil (>1), atau Card Skin
 userRouter.post('/profile/equip', requireUser, (req, res) => {
-  const { type, itemId } = req.body || {};
+  const { type, itemId, itemIds } = req.body || {};
   const uid = req.dbUser.id;
 
   if (itemId) {
@@ -179,10 +180,39 @@ userRouter.post('/profile/equip', requireUser, (req, res) => {
 
   if (type === 'border') {
     db.prepare('UPDATE users SET equipped_border_id = ? WHERE id = ?').run(itemId || '', uid);
-  } else if (type === 'pin') {
-    db.prepare('UPDATE users SET pinned_gift_id = ? WHERE id = ?').run(itemId || '', uid);
   } else if (type === 'skin') {
     db.prepare('UPDATE users SET equipped_skin_id = ? WHERE id = ?').run(itemId || '', uid);
+  } else if (type === 'pin') {
+    // Mendukung multi-gift (array itemIds) maupun toggle satuan (itemId) hingga 6 gift sekaligus
+    if (Array.isArray(itemIds)) {
+      const validIds = [];
+      for (const id of itemIds) {
+        const cleanId = String(id || '').trim();
+        if (!cleanId || validIds.includes(cleanId)) continue;
+        const owned = db.prepare('SELECT 1 FROM inventory WHERE user_id = ? AND item_id = ?').get(uid, cleanId);
+        if (owned) validIds.push(cleanId);
+        if (validIds.length >= 6) break;
+      }
+      db.prepare('UPDATE users SET pinned_gift_id = ? WHERE id = ?')
+        .run(validIds.length ? JSON.stringify(validIds) : '', uid);
+    } else if (!itemId) {
+      // Kosongkan semua gift dari profil
+      db.prepare('UPDATE users SET pinned_gift_id = ? WHERE id = ?').run('', uid);
+    } else {
+      const curList = parsePinnedGifts(req.dbUser.pinned_gift_id);
+      const targetId = String(itemId).trim();
+      let nextList;
+      if (curList.includes(targetId)) {
+        nextList = curList.filter(x => x !== targetId);
+      } else {
+        if (curList.length >= 6) {
+          return res.status(400).json({ error: 'Maksimal 6 gift bisa dipasang sekaligus di profil.' });
+        }
+        nextList = [...curList, targetId];
+      }
+      db.prepare('UPDATE users SET pinned_gift_id = ? WHERE id = ?')
+        .run(nextList.length ? JSON.stringify(nextList) : '', uid);
+    }
   } else {
     return res.status(400).json({ error: 'Tipe equip tidak valid.' });
   }
