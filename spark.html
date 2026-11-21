@@ -11,41 +11,95 @@
 html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:#07070b}
 body{display:flex;justify-content:center;align-items:center;color:#fff;font:400 16px/1.3 var(--sans);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
 button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-action:manipulation;cursor:pointer}
-.card{position:relative;display:flex;flex-direction:column;width:100%;height:100vh;height:100dvh;padding-top:6px;background:#07070b;overflow:hidden}
-.top{display:flex;justify-content:space-between;align-items:center;padding:2px 18px 0;gap:8px;transition:opacity .25s,transform .25s}
-.top h1{margin:0;font:700 18px/1.15 var(--rnd);letter-spacing:-.2px}.top p{margin:1px 0 0;font-size:12px;color:var(--t2)}
-.top-act{display:flex;align-items:center;gap:8px}
-.rare{background:var(--ac);color:#111;font:700 11px var(--sans);padding:4px 10px;border-radius:99px}
-.icon-btn{width:32px;height:32px;border-radius:99px;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:15px;transition:transform .2s,background .2s}
-.icon-btn:active{transform:scale(.92)}
 
-.stage{position:relative;flex:1;min-height:140px;touch-action:none;overflow:hidden;background:radial-gradient(ellipse 75% 50% at 50% 82%,color-mix(in srgb,var(--ac) 34%,transparent),transparent 72%);transition:all .35s cubic-bezier(.2,.9,.3,1)}
-.streak{position:absolute;left:18px;top:6px;z-index:2;pointer-events:none;max-width:56%;transition:opacity .25s,transform .25s}
-.num{font:800 48px/1 var(--rnd);color:var(--ac);letter-spacing:-2px;text-shadow:0 0 28px color-mix(in srgb,var(--ac) 55%,transparent)}
+/* Boot Loader */
+.boot-loader{position:absolute;inset:0;z-index:50;background:#07070b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:opacity .2s ease}
+.boot-loader.hide{opacity:0;pointer-events:none}
+.boot-flame{font-size:44px;animation:pulseFire 1.1s ease-in-out infinite}
+@keyframes pulseFire{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.boot-txt{font:700 14px var(--rnd);color:#fff}.boot-sub{font-size:12px;color:var(--t2)}
+
+/* LOBBY 3 SLOT (LAYAR UTAMA PERTAMA) */
+.pair-gate{position:absolute;inset:0;z-index:20;background:linear-gradient(180deg,#0b0b12 0%,#12121c 100%);display:flex;flex-direction:column;padding:14px 18px max(var(--sab),20px);overflow-y:auto}
+.pg-hero{text-align:center;margin-top:2px}
+.pg-fire{font-size:36px;line-height:1}
+.pg-hero h2{margin:6px 0 3px;font:800 20px/1.2 var(--rnd)}
+.pg-hero p{margin:0;font-size:12px;color:var(--t2);line-height:1.35}
+.pg-my-usn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 12px;border-radius:99px;background:rgba(255,138,31,.14);border:1px solid rgba(255,138,31,.35);font:700 11.5px var(--sans);color:var(--ac)}
+
+/* Kartu 3 Slot */
+.slots-grid{display:flex;flex-direction:column;gap:8px;margin:12px 0 6px}
+.slot-card{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);text-align:left;transition:transform .15s}
+.slot-card:active{transform:scale(.98)}
+.slot-card.active{background:linear-gradient(135deg,rgba(255,138,31,.18),rgba(255,138,31,.06));border-color:rgba(255,138,31,.45)}
+.slot-card.pending{background:rgba(255,210,74,.08);border-color:rgba(255,210,74,.3)}
+.slot-card.empty{border-style:dashed;border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.03)}
+.sc-left{display:flex;align-items:center;gap:10px;min-width:0}
+.sc-ico{width:38px;height:38px;border-radius:12px;background:rgba(255,138,31,.18);display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}
+.slot-card.empty .sc-ico{background:rgba(255,255,255,.07);font-size:16px;color:var(--t2)}
+.sc-info{min-width:0}
+.sc-info b{display:block;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-info small{display:block;font-size:11.5px;color:var(--t2);margin-top:2px}
+.sc-act{padding:6px 12px;border-radius:99px;background:var(--ac);color:#111;font:700 11.5px var(--sans);white-space:nowrap}
+.sc-act.sec{background:var(--fill);color:#fff}
+.sc-act.danger{background:rgba(255,69,58,.2);color:#ff453a}
+
+.pg-rules{margin:8px 0;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);font-size:11.5px;color:var(--t2);display:flex;flex-direction:column;gap:4px}
+.pg-rules b{color:#fff}
+.pg-label{font:700 11px var(--sans);color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px}
+.pg-input-row{display:flex;gap:8px;margin-bottom:8px}
+.pg-input{flex:1;height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);padding:0 13px;color:#fff;font:600 13.5px var(--sans)}
+.pg-btn{height:42px;padding:0 15px;border-radius:12px;background:var(--ac);color:#111;font:700 13px var(--sans);white-space:nowrap}
+.pg-btn.sec{background:var(--fill);color:#fff}
+.pg-btn.danger{background:rgba(255,69,58,.18);color:#ff453a}
+.pg-box{padding:12px 14px;border-radius:15px;background:rgba(255,138,31,.12);border:1px solid rgba(255,138,31,.4);margin-bottom:8px}
+.pg-box h3{margin:0 0 3px;font:700 14px var(--rnd);color:#fff}
+.pg-box p{margin:0 0 9px;font-size:12px;color:var(--t2);line-height:1.35}
+.pg-box-act{display:flex;gap:8px}
+.pg-list{display:flex;flex-direction:column;gap:7px}
+.pg-user{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-radius:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07)}
+.pg-user-info b{display:block;font-size:13px;color:#fff}.pg-user-info small{color:var(--ac);font-size:11.5px;font-weight:600}
+.pg-invite{padding:6px 12px;border-radius:99px;background:var(--ac);color:#111;font:700 11.5px var(--sans)}
+
+/* PANGGUNG KARAKTER API */
+.card{position:relative;display:flex;flex-direction:column;width:100%;height:100vh;height:100dvh;padding-top:6px;background:#07070b;overflow:hidden}
+.top{display:flex;justify-content:space-between;align-items:center;padding:2px 16px 0;gap:8px}
+.top-left{display:flex;align-items:center;gap:8px;min-width:0}
+.hub-back{padding:6px 11px;border-radius:99px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);font:700 12px var(--sans);color:#fff;white-space:nowrap}
+.hub-back:active{transform:scale(.94)}
+.top h1{margin:0;font:700 16px/1.15 var(--rnd);letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top p{margin:1px 0 0;font-size:11px;color:var(--t2)}
+.top-act{display:flex;align-items:center;gap:7px;flex:none}
+.rare{background:var(--ac);color:#111;font:700 11px var(--sans);padding:4px 9px;border-radius:99px}
+.icon-btn{width:30px;height:30px;border-radius:99px;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:14px}
+
+.stage{position:relative;flex:1;min-height:140px;touch-action:none;overflow:hidden;background:radial-gradient(ellipse 75% 50% at 50% 82%,color-mix(in srgb,var(--ac) 30%,transparent),transparent 72%)}
+.streak{position:absolute;left:18px;top:6px;z-index:2;pointer-events:none;max-width:56%}
+.num{font:800 48px/1 var(--rnd);color:var(--ac);letter-spacing:-2px}
 .lab{font-size:12px;font-weight:600;margin-top:2px}
 .badge{display:inline-block;margin-top:4px;font:600 11px var(--sans);padding:2px 8px;border-radius:99px;background:var(--fill)}
 .pair{margin-top:5px;font:700 12px var(--sans);color:#fff;pointer-events:auto;display:flex;align-items:center;gap:4px;flex-wrap:wrap}.pair i{font-style:normal;color:var(--ac)}
-.gap-box{margin-top:6px;display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--t2);background:rgba(28,28,30,.72);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
+.gap-box{margin-top:6px;display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--t2);background:rgba(24,24,28,.9);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
 .gap-row{display:flex;justify-content:space-between;gap:8px}.gap-row b{color:#fff;font-weight:600}
 
-.tilt{position:absolute;inset:4px 0 0 22%;transform-origin:50% 85%;will-change:transform;backface-visibility:hidden;transition:inset .35s cubic-bezier(.2,.9,.3,1)}
+.tilt{position:absolute;inset:4px 0 0 22%;transform-origin:50% 85%;will-change:transform;transform:translate3d(0,0,0)}
 .tilt svg{width:100%;height:100%;display:block;overflow:visible}
 
 .card.sheet-low .tilt,.card.clear-mode .tilt{inset:4px 0 6px 0}
-.card.clear-mode .top,.card.clear-mode .streak,.card.clear-mode .plate,.card.clear-mode .xp,.card.clear-mode .sheet{opacity:0;pointer-events:none;transform:translateY(12px)}
+.card.clear-mode .top,.card.clear-mode .streak,.card.clear-mode .plate,.card.clear-mode .xp,.card.clear-mode .sheet{opacity:0;pointer-events:none}
 .card.clear-mode .sheet{flex-basis:0!important;padding:0;overflow:hidden}
 .card.clear-mode .plate,.card.clear-mode .xp{height:0;padding:0;overflow:hidden}
-.exit-clear{position:absolute;top:max(14px,var(--sat));right:18px;z-index:15;padding:7px 14px;border-radius:99px;background:rgba(28,28,30,.85);border:1px solid rgba(255,255,255,.15);backdrop-filter:blur(12px);font:600 12px var(--sans);color:#fff;display:none;align-items:center;gap:6px}
+.exit-clear{position:absolute;top:max(14px,var(--sat));right:18px;z-index:15;padding:7px 14px;border-radius:99px;background:rgba(28,28,30,.92);border:1px solid rgba(255,255,255,.15);font:600 12px var(--sans);color:#fff;display:none;align-items:center;gap:6px}
 .card.clear-mode .exit-clear{display:flex}
 
-.plate{display:flex;align-items:center;gap:10px;padding:6px 18px 0;transition:opacity .25s}
+.plate{display:flex;align-items:center;gap:10px;padding:6px 18px 0}
 .nm{flex:1;min-width:0;font:700 24px/1.15 var(--rnd);letter-spacing:-.4px;white-space:nowrap;overflow:hidden}
 .chip{flex:none;font:600 12px var(--sans);padding:4px 10px;border-radius:99px;background:var(--fill)}
-.xp{padding:6px 18px 10px;transition:opacity .25s}.bar{height:7px;border-radius:99px;background:var(--fill);overflow:hidden}
-#fill{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gl),var(--ac));transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.xp{padding:6px 18px 10px}.bar{height:7px;border-radius:99px;background:var(--fill);overflow:hidden}
+#fill{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gl),var(--ac));transition:width .4s ease}
 .xpl{display:flex;justify-content:space-between;margin-top:5px;font-size:12px;color:var(--t2)}
 
-.sheet{flex:0 0 var(--sh,clamp(180px,36%,310px));min-height:54px;transition:flex-basis .35s cubic-bezier(.2,.9,.3,1),opacity .25s;display:flex;flex-direction:column;background:rgba(28,28,30,.9);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border-radius:24px 24px 0 0;box-shadow:0 -1px 0 rgba(255,255,255,.12);padding-bottom:max(var(--sab),10px);overflow:hidden}
+.sheet{flex:0 0 var(--sh,clamp(180px,36%,310px));min-height:54px;transition:flex-basis .26s cubic-bezier(.2,.9,.3,1);display:flex;flex-direction:column;background:#18181c;border-radius:24px 24px 0 0;box-shadow:0 -1px 0 rgba(255,255,255,.12);padding-bottom:max(var(--sab),10px);overflow:hidden;contain:layout style}
 .sheet.collapsed .tabs,.sheet.collapsed .seg,.sheet.collapsed .sc,.sheet.collapsed .foot{opacity:0;pointer-events:none}
 .grab{flex:none;height:32px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;touch-action:none;cursor:grab}
 .grab::before{content:"";width:40px;height:4px;border-radius:3px;background:rgba(235,235,245,.38)}
@@ -53,14 +107,14 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .sheet.collapsed .grab{height:54px}.sheet.collapsed .grab-hint{display:block}
 
 .tabs{display:flex;gap:6px;overflow-x:auto;padding:0 16px 8px;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
-.tabs button{flex:none;padding:6px 14px;border-radius:99px;font:600 14px var(--sans);color:var(--t2);transition:background .25s,color .25s,transform .2s}
-.tabs button:active{transform:scale(.94)}.tabs .on{background:var(--ac);color:#111}
+.tabs button{flex:none;padding:6px 14px;border-radius:99px;font:600 14px var(--sans);color:var(--t2)}
+.tabs .on{background:var(--ac);color:#111}
 .seg{display:flex;margin:0 16px 8px;padding:2px;border-radius:9px;background:var(--fill)}
-.seg button{flex:1;padding:4px 0;border-radius:7px;font:500 12px var(--sans);transition:background .25s}.seg .on{background:#636366;font-weight:600}
-.sc{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.seg button{flex:1;padding:4px 0;border-radius:7px;font:500 12px var(--sans)}.seg .on{background:#636366;font-weight:600}
+.sc{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;contain:content}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:2px 16px 12px}
-.it{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:80px;padding:7px 4px;border-radius:15px;background:var(--fill);font:500 12px/1.15 var(--sans);text-align:center;transition:transform .3s cubic-bezier(.2,.9,.3,1.3),background .25s,box-shadow .25s}
-.it:active{transform:scale(.93)}.it i{display:block;font-style:normal;font-size:28px;line-height:1}
+.it{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:80px;padding:7px 4px;border-radius:15px;background:var(--fill);font:500 12px/1.15 var(--sans);text-align:center}
+.it:active{transform:scale(.95)}.it i{display:block;font-style:normal;font-size:28px;line-height:1}
 .it.on{background:color-mix(in srgb,var(--ac) 26%,#2c2c2e);box-shadow:inset 0 0 0 2px var(--ac)}
 .it.on::after{content:"✓";position:absolute;top:5px;right:5px;width:16px;height:16px;border-radius:50%;background:var(--ac);color:#111;font:700 10px/16px var(--sans)}
 .it .dot{width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4)}
@@ -69,54 +123,29 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .ms-card b{display:block;font-size:13px}.ms-card small{color:var(--t2);font-size:11px}
 .ms-xp{font:700 12px var(--sans);color:var(--ac);background:rgba(255,138,31,.15);padding:4px 9px;border-radius:99px;white-space:nowrap}
 .foot{display:flex;gap:8px;padding:8px 16px 0}
-.rand{flex:1;height:44px;border-radius:13px;background:var(--ac);color:#111;font:600 15px var(--sans);transition:transform .25s cubic-bezier(.2,.9,.3,1.3)}.rand:active{transform:scale(.97)}
+.rand{flex:1;height:44px;border-radius:13px;background:var(--ac);color:#111;font:600 15px var(--sans)}.rand:active{transform:scale(.97)}
 .tear,.zz,.dt,.cf,.sp{transform-box:fill-box;transform-origin:center}
 .tear{animation:tr 1.3s ease-in infinite}@keyframes tr{0%{transform:translateY(-4px) scale(.5);opacity:0}25%{opacity:1;transform:translateY(0) scale(1)}100%{transform:translateY(38px) scale(.9);opacity:0}}
 .zz{animation:zz 2.6s ease-out infinite}@keyframes zz{0%{transform:translate(0,10px) scale(.6);opacity:0}30%{opacity:.95}100%{transform:translate(16px,-34px) scale(1.2);opacity:0}}
 .dt{animation:dt 1.2s ease-in-out infinite}@keyframes dt{0%,100%{opacity:.2;transform:translateY(0)}40%{opacity:1;transform:translateY(-7px)}}
 .cf{animation:cf 2.2s ease-in infinite}@keyframes cf{0%{transform:translateY(-30px) rotate(0);opacity:0}15%{opacity:1}100%{transform:translateY(130px) rotate(300deg);opacity:0}}
 .bolt{opacity:0;animation:bz 2.6s ease-in-out infinite}@keyframes bz{0%,55%,100%{opacity:0}62%{opacity:1}70%{opacity:.3}78%{opacity:1}92%{opacity:0}}
-.orb{animation:ob 7s linear infinite;transform-origin:150px 200px}@keyframes ob{to{transform:rotate(360deg)}}
-.sp{animation:tw 1.8s ease-in-out infinite}@keyframes tw{50%{opacity:.2}}
+.orb{animation:ob 8s linear infinite;transform-origin:150px 200px}@keyframes ob{to{transform:rotate(360deg)}}
+.sp{animation:tw 2s ease-in-out infinite}@keyframes tw{50%{opacity:.2}}
 .pvw{display:block;width:100%;height:54px;overflow:hidden;pointer-events:none}.it svg *{animation:none!important}.it svg .zz,.it svg .tear,.it svg .cf,.it svg .dt,.it svg .sp,.it svg .orb{display:none}
-.shot{flex:none;width:44px;height:44px;border-radius:13px;background:var(--fill);font-size:20px;transition:transform .25s cubic-bezier(.2,.9,.3,1.3)}.shot:active{transform:scale(.92)}
+.shot{flex:none;width:44px;height:44px;border-radius:13px;background:var(--fill);font-size:20px}.shot:active{transform:scale(.92)}
 .reset{margin-top:8px;width:100%;height:42px;border-radius:12px;background:var(--fill);color:#ff453a;font:600 14px var(--sans)}
-.toast{position:absolute;left:50%;bottom:calc(var(--sab) + 74px);transform:translate(-50%,20px);padding:8px 14px;border-radius:99px;background:rgba(60,60,64,.95);font:600 13px var(--sans);white-space:nowrap;opacity:0;pointer-events:none;transition:.3s cubic-bezier(.2,.9,.3,1.2);z-index:30}.toast.on{opacity:1;transform:translate(-50%,0)}
-.spk{position:absolute;left:50%;top:55%;width:10px;height:10px;margin:-5px;border-radius:50%;background:var(--gl);pointer-events:none;animation:spk .65s cubic-bezier(.1,.7,.3,1) forwards}@keyframes spk{to{transform:translate(var(--x),var(--y)) scale(0);opacity:0}}
-.ci{pointer-events:auto;margin-top:6px;padding:6px 12px;border-radius:99px;background:var(--ac);color:#111;font:700 12px var(--sans);transition:transform .25s cubic-bezier(.2,.9,.3,1.3),background .3s}.ci:active{transform:scale(.94)}.ci.done{background:var(--fill);color:var(--t2)}
+.toast{position:absolute;left:50%;bottom:calc(var(--sab) + 74px);transform:translate(-50%,20px);padding:8px 14px;border-radius:99px;background:rgba(52,52,58,.96);font:600 13px var(--sans);white-space:nowrap;opacity:0;pointer-events:none;transition:.25s ease;z-index:30}.toast.on{opacity:1;transform:translate(-50%,0)}
+.spk{position:absolute;left:50%;top:55%;width:10px;height:10px;margin:-5px;border-radius:50%;background:var(--gl);pointer-events:none;animation:spk .55s ease-out forwards}@keyframes spk{to{transform:translate(var(--x),var(--y)) scale(0);opacity:0}}
+.ci{pointer-events:auto;margin-top:6px;padding:6px 12px;border-radius:99px;background:var(--ac);color:#111;font:700 12px var(--sans)}.ci:active{transform:scale(.94)}.ci.done{background:var(--fill);color:var(--t2)}
 .it small{font-size:11px;color:var(--t2);margin-top:-2px}.it.lk{color:var(--t2)}.it.lk::before{content:"🔒";position:absolute;top:5px;right:6px;font-size:12px}.it.lk svg,.it.lk .dot{filter:grayscale(1) brightness(.45)}
-.it.shake{animation:shk .4s}@keyframes shk{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+.it.shake{animation:shk .35s}@keyframes shk{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
 .sheet.dragging{transition:none}
-.tabs button.nw{position:relative}.tabs button.nw::after{content:"";position:absolute;top:3px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--ac);box-shadow:0 0 0 2px #1c1c1e}
+.tabs button.nw{position:relative}.tabs button.nw::after{content:"";position:absolute;top:3px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--ac);box-shadow:0 0 0 2px #18181c}
 .it.nu::before{content:"Baru";position:absolute;top:5px;left:5px;padding:1px 5px;border-radius:99px;background:var(--ac);color:#111;font:700 10px/13px var(--sans)}
 .shot:disabled{opacity:.35}
 
-/* Layar Awal: Konek Partner (Persetujuan 2 Pihak & Deteksi @username) */
-.pair-gate{position:absolute;inset:0;z-index:20;background:linear-gradient(180deg,#0b0b12 0%,#12121c 100%);display:flex;flex-direction:column;padding:18px 20px max(var(--sab),20px);overflow-y:auto}
-.pg-hero{text-align:center;margin-top:4px}
-.pg-fire{font-size:40px;line-height:1;filter:drop-shadow(0 0 20px rgba(255,138,31,.6))}
-.pg-hero h2{margin:8px 0 4px;font:800 21px/1.2 var(--rnd)}
-.pg-hero p{margin:0;font-size:12.5px;color:var(--t2);line-height:1.4}
-.pg-my-usn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 12px;border-radius:99px;background:rgba(255,138,31,.14);border:1px solid rgba(255,138,31,.35);font:700 12px var(--sans);color:var(--ac)}
-.pg-rules{margin:12px 0;padding:11px 13px;border-radius:15px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:12px;color:var(--t2);display:flex;flex-direction:column;gap:5px}
-.pg-rules b{color:#fff}
-.pg-label{font:700 11px var(--sans);color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 6px}
-.pg-input-row{display:flex;gap:8px;margin-bottom:10px}
-.pg-input{flex:1;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);padding:0 14px;color:#fff;font:600 14px var(--sans)}
-.pg-btn{height:44px;padding:0 16px;border-radius:12px;background:var(--ac);color:#111;font:700 13.5px var(--sans);white-space:nowrap}
-.pg-btn.sec{background:var(--fill);color:#fff}
-.pg-btn.danger{background:rgba(255,69,58,.18);color:#ff453a}
-.pg-box{padding:14px;border-radius:16px;background:rgba(255,138,31,.1);border:1px solid rgba(255,138,31,.35);margin-bottom:12px}
-.pg-box h3{margin:0 0 4px;font:700 15px var(--rnd);color:#fff}
-.pg-box p{margin:0 0 10px;font-size:12.5px;color:var(--t2);line-height:1.4}
-.pg-box-act{display:flex;gap:8px;flex-wrap:wrap}
-.pg-list{display:flex;flex-direction:column;gap:8px;flex:1;min-height:100px}
-.pg-user{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07)}
-.pg-user-info b{display:block;font-size:13.5px;color:#fff}.pg-user-info small{color:var(--ac);font-size:12px;font-weight:600}
-.pg-invite{padding:6px 12px;border-radius:99px;background:var(--ac);color:#111;font:700 12px var(--sans)}
-
-/* Modal Preview Screenshot */
-.shot-modal{position:absolute;inset:0;z-index:25;background:rgba(7,7,11,.92);backdrop-filter:blur(16px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.shot-modal{position:absolute;inset:0;z-index:25;background:rgba(7,7,11,.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
 .shot-modal img{max-width:78%;max-height:62vh;border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.15);-webkit-touch-callout:default!important;-webkit-user-select:auto!important;user-select:auto!important}
 .shot-tip{margin:12px 0 14px;font-size:12.5px;color:var(--t2);text-align:center;line-height:1.4}
 .shot-tip b{color:#fff}
@@ -124,95 +153,91 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .shot-actions button{flex:1;height:44px;border-radius:12px;font:700 14px var(--sans)}
 </style></head><body>
 
-<!-- LAYAR AWAL: KONEK PARTNER (2-WAY CONSENT + @USERNAME) -->
-<section class="pair-gate" id="pairGate" hidden>
+<div class="boot-loader" id="bootLoader">
+  <div class="boot-flame">🔥</div>
+  <div class="boot-txt">Spark Buddies</div>
+  <div class="boot-sub">Menyiapkan 3 slot api...</div>
+</div>
+
+<!-- LAYAR PERTAMA: LOBBY 3 SLOT & AJAK TEMAN -->
+<section class="pair-gate" id="pairGate">
   <div class="pg-hero">
     <div class="pg-fire">🔥</div>
-    <h2>Konek Spark Buddy</h2>
-    <p>Two Members • One Group • One Spark.<br>Wajib pakai <b>@username</b> dan persetujuan kedua belah pihak.</p>
+    <h2>Spark Buddies (3 Slot)</h2>
+    <p>Pilih partner aktif untuk lihat karakter api, atau ajak teman baru ke slot kosong.</p>
     <div class="pg-my-usn" id="myUsnBadge">🆔 Mendeteksi @username...</div>
   </div>
-  <div class="pg-rules">
-    <div>🆔 <b>Deteksi Akurat (@username):</b> Sistem melacak berdasarkan <b>@username</b> unik, bukan nama tampilan yang bisa kembar.</div>
-    <div>🤝 <b>Persetujuan 2 Pihak:</b> Kamu kirim ajakan → partner wajib klik <b>Terima</b> baru api menyala.</div>
-    <div>⚡ <b>Target Harian:</b> Masing-masing min <b>5 GAP</b> & <b>2 pesan valid</b> di grup markas pada hari yang sama.</div>
-  </div>
 
-  <!-- Undangan Masuk dari Partner -->
-  <div class="pg-box" id="incomingBox" hidden>
-    <h3>📩 Ajakan Spark Masuk!</h3>
-    <p><b id="incFromUser">@username</b> mengajak kamu menyalakan Spark Buddies bersama di grup.</p>
-    <div class="pg-box-act">
-      <button class="pg-btn" id="acceptInviteBtn">Terima & Nyalakan 🔥</button>
-      <button class="pg-btn danger" id="declineInviteBtn">Tolak</button>
-    </div>
-  </div>
+  <!-- 3 Slot Spark Cards -->
+  <div class="slots-grid" id="slotsGrid"></div>
 
-  <!-- Status Menunggu Persetujuan Partner -->
-  <div class="pg-box" id="outgoingBox" hidden>
-    <h3>⏳ Menunggu Persetujuan Partner</h3>
-    <p>Ajakan terkirim ke <b id="outToUser">@username</b>. Api baru menyala setelah dia menyetujui ajakanmu.</p>
-    <div class="pg-box-act">
-      <button class="pg-btn danger" id="cancelInviteBtn">Batalkan Ajakan</button>
-    </div>
-  </div>
+  <!-- Undangan Masuk -->
+  <div id="incomingListWrap"></div>
 
+  <!-- Form Ajak Teman Baru -->
   <div id="inviteFormWrap">
-    <div class="pg-label">Masukkan @Username Partner (Wajib @usn)</div>
+    <div class="pg-label">Ajak Teman ke Slot Kosong (Wajib @username)</div>
     <div class="pg-input-row">
       <input type="text" class="pg-input" id="partnerInput" placeholder="@username_partner" maxlength="33" autocapitalize="none" autocorrect="off">
       <button class="pg-btn" id="partnerConnectBtn">Kirim Ajakan</button>
     </div>
-    <div class="pg-label" id="wargaListLabel">Pilih dari @Username Warga Markas</div>
+    <div class="pg-rules">
+      <div>⚡ <b>Target Harian:</b> Capai <b>5 GAP & 2 pesan valid</b> di grup markas untuk menyalakan semua slot aktifmu sekaligus.</div>
+    </div>
+    <div class="pg-label" id="wargaListLabel">Warga Markas</div>
     <div class="pg-list" id="wargaList"></div>
   </div>
 </section>
 
-<!-- MODAL PREVIEW SCREENSHOT -->
+<!-- MODAL SCREENSHOT -->
 <div class="shot-modal" id="shotModal" hidden>
   <img id="shotImg" alt="Spark Buddy Screenshot">
-  <div class="shot-tip"><b>Tekan & tahan gambar di atas</b> lalu pilih <b>Simpan ke Foto / Galeri</b>, atau tekan tombol Simpan di bawah.</div>
+  <div class="shot-tip"><b>Tekan & tahan gambar di atas</b> lalu pilih <b>Simpan ke Foto / Galeri</b>.</div>
   <div class="shot-actions">
     <button class="pg-btn sec" id="shotClose">Tutup</button>
     <button class="pg-btn" id="shotShareBtn">Simpan / Bagikan</button>
   </div>
 </div>
 
+<!-- LAYAR KEDUA: PANGGUNG API PARTNER TERPILIH -->
 <main class="card" id="card">
 <button class="exit-clear" id="exitClear">👁️ Tampilkan UI</button>
 <header class="top">
-  <div><h1>Spark Buddies</h1><p>Two Members • One Group</p></div>
+  <div class="top-left">
+    <button class="hub-back" id="hubBackBtn">‹ 3 Slot</button>
+    <div><h1 id="stageTitle">Spark Buddies</h1><p id="stageSub">Slot 1/3 • One Group</p></div>
+  </div>
   <div class="top-act">
-    <span class="rare" id="rare"></span>
-    <button class="icon-btn" id="clearBtn" title="Clear Screen (Bersihkan Layar)" aria-label="Clear Screen">👁️</button>
+    <span class="rare" id="rare">Common</span>
+    <button class="icon-btn" id="clearBtn" title="Clear Screen">👁️</button>
   </div>
 </header>
 <section class="stage" id="stage">
 <div class="streak">
-  <div class="num" id="num"></div>
+  <div class="num" id="num">0</div>
   <div class="lab">Hari nyala 🔥</div>
-  <span class="badge" id="sb"></span>
+  <span class="badge" id="sb">🔒 Belum Nyala</span>
   <div class="pair"><span id="p1Name">@gue</span><i>×</i><span id="p2Name">@partner</span></div>
   <div class="gap-box">
     <div class="gap-row"><span id="g1Lbl">@gue</span><b id="g1Val">0/5 GAP · 0/2</b></div>
     <div class="gap-row"><span id="g2Lbl">@partner</span><b id="g2Val">0/5 GAP · 0/2</b></div>
   </div>
-  <button class="ci" id="ci"></button>
+  <button class="ci" id="ci">Setor Aktivitas Gue</button>
 </div>
 <div class="tilt" id="tilt"><svg id="svg" viewBox="0 0 300 372"></svg></div>
 </section>
-<section class="plate"><div class="nm" id="nm" contenteditable="true" spellcheck="false">BARA</div><span class="chip" id="lvc"></span></section>
-<section class="xp"><div class="bar"><i id="fill"></i></div><div class="xpl"><span id="bt"></span><span id="bh"></span></div></section>
+<section class="plate"><div class="nm" id="nm" contenteditable="true" spellcheck="false">BARA</div><span class="chip" id="lvc">Lv 1 · Baby Spark</span></section>
+<section class="xp"><div class="bar"><i id="fill"></i></div><div class="xpl"><span id="bt">0 / 100 XP</span><span id="bh">100 XP lagi naik level</span></div></section>
 <section class="sheet" id="sheet">
-  <div class="grab" id="grab" role="button" aria-label="Tarik naik/turun panel"><span class="grab-hint">Tarik ke atas untuk atur tampilan</span></div>
+  <div class="grab" id="grab" role="button" aria-label="Tarik panel"><span class="grab-hint">Tarik ke atas untuk atur tampilan</span></div>
   <nav class="tabs" id="tabs"></nav>
   <div class="seg" id="gf"></div>
   <div class="sc" id="sc"><div id="body"></div></div>
-  <div class="foot"><button class="rand" id="rnd">🎲 Acak penampilan</button><button class="shot" id="shot" aria-label="Simpan gambar ke galeri">📸</button><button class="shot" id="undo" aria-label="Urungkan" disabled>↩︎</button></div>
+  <div class="foot"><button class="rand" id="rnd">🎲 Acak penampilan</button><button class="shot" id="shot" aria-label="Simpan gambar">📸</button><button class="shot" id="undo" aria-label="Urungkan" disabled>↩︎</button></div>
 </section>
 <div class="toast" id="toast"></div></main>
 <script>
-const OL="#26101c";
+const MAX_SLOTS=3, OL="#26101c";
 const TH={Api:["#ffd24a","#ff8a1f","#e0360f","#fff35c"],Biru:["#9be8ff","#2f8cff","#1c47e0","#fff35c"],Toxic:["#eaff7a","#7dea2b","#18a83a","#e65cff"],Pink:["#ffd6ec","#ff7ac0","#ff2f8e","#59f0ff"],Ungu:["#e6d0ff","#a66bff","#6a2cff","#ffe94d"],Merah:["#ffb3a0","#ff4a3a","#a8100f","#ffe14d"],Emas:["#fff6b0","#ffc81f","#c97a00","#ff4fd8"],Tosca:["#b8fff0","#18d6b8","#087c86","#ffef5c"],Putih:["#ffffff","#cfd6ea","#7c86b0","#ff6a3d"]};
 const GN={"Dress Tartan":"Cewek","Pita Besar":"Cewek","Jepit Petir":"Cewek","Bulu Mata":"Cewek","Choker":"Cewek","Kaos Petir":"Cowok","Rompi Jeans":"Cowok","Jambul Petir":"Cowok","Kumis":"Cowok","Kalung Spike":"Cowok",Tengkorak:"Cowok","Telinga Kucing":"Cewek",Mohawk:"Cowok","Pipi Merah":"Cewek","Parut Petir":"Cowok"},gen=v=>GN[v]||"Unisex";
 const TABS=[
@@ -238,32 +263,23 @@ const DN={Polos:"Tanpa"};
 const normUsn = raw => String(raw||"").trim().replace(/^@+/,"").replace(/\s+/g,"").toLowerCase();
 const fmtUsn = u => u ? "@"+normUsn(u) : "";
 
-let DIRECT_API = "";
-let DIRECT_TMA = "";
+let DIRECT_API = "", DIRECT_TMA = "";
 
 function autoDetectIdentity(){
- let detectedUsn="";
- let detectedMembers=[];
-
+ let detectedUsn="", detectedMembers=[];
  try{
   const qp=new URLSearchParams(location.search);
   if(qp.get("usn")) detectedUsn=normUsn(qp.get("usn"));
   if(qp.get("api")) DIRECT_API=String(qp.get("api")).replace(/\/+$/,"");
   if(qp.get("tma")) DIRECT_TMA=String(qp.get("tma"));
-  if(qp.get("members")){
-   const m=JSON.parse(qp.get("members"));
-   if(Array.isArray(m)) detectedMembers=m;
-  }
+  if(qp.get("members")){const m=JSON.parse(qp.get("members"));if(Array.isArray(m)) detectedMembers=m;}
  }catch(_){}
-
  try{
-  const tgSelf=window.Telegram?.WebApp;
-  const tgParent=window.parent?.Telegram?.WebApp;
+  const tgSelf=window.Telegram?.WebApp, tgParent=window.parent?.Telegram?.WebApp;
   const u=tgSelf?.initDataUnsafe?.user || tgParent?.initDataUnsafe?.user;
   if(u&&u.username) detectedUsn=normUsn(u.username);
   if(!DIRECT_TMA) DIRECT_TMA = tgSelf?.initData || tgParent?.initData || "";
  }catch(_){}
-
  try{
   const p=window.parent;
   if(p&&p!==window){
@@ -274,58 +290,21 @@ function autoDetectIdentity(){
    if(Array.isArray(pm)&&pm.length) detectedMembers=pm;
   }
  }catch(_){}
-
  try{
-  if(!DIRECT_API){
-   const lsApi=localStorage.getItem("psk_api_url");
-   if(lsApi) DIRECT_API=String(lsApi).replace(/\/+$/,"");
-  }
-  for(let i=0;i<localStorage.length;i++){
-   const k=localStorage.key(i);
-   if(k==="punkshit.spark.v3") continue;
-   const raw=localStorage.getItem(k);
-   if(!raw||(raw[0]!=="{"&&raw[0]!=="[")) continue;
-   const obj=JSON.parse(raw);
-   if(!detectedUsn){
-    const u=obj?.username||obj?.usn||obj?.user?.username||obj?.user?.usn;
-    if(u) detectedUsn=normUsn(u);
-   }
-   if(!detectedMembers.length){
-    const arr=Array.isArray(obj)?obj:(obj?.members||obj?.warga);
-    if(Array.isArray(arr)&&arr.length&&arr[0]&&(arr[0].username||arr[0].usn)) detectedMembers=arr;
-   }
-  }
+  if(!DIRECT_API){const lsApi=localStorage.getItem("psk_api_url");if(lsApi) DIRECT_API=String(lsApi).replace(/\/+$/,"");}
  }catch(_){}
-
  return {usn:detectedUsn,members:detectedMembers};
 }
 
-let S={
-  paired:false,
-  pairStatus:"none",
-  pendingUser:"",
-  p1:"",
-  p2:"",
-  g1:{gap:0,msg:0},
-  g2:{gap:0,msg:0},
-  theme:"Api",
-  outfit:"Jaket Punk",
-  head:"Beanie",
-  face:"Normal",
-  extra:new Set(["Peniti"]),
-  bolts:1,
-  emo:"Happy",
-  xp:0,
-  days:0,
-  last:""
-},tab=0,gf="Semua";
+let MY_USN = "", PAIRS = [], INCOMING = [], OUTGOING = [], ACTIVE_IDX = 0, PET_STYLES = {}, VIEW_MODE = "hub";
+let S={p1:"",p2:"",g1:{gap:0,msg:0},g2:{gap:0,msg:0},theme:"Api",outfit:"Jaket Punk",head:"Beanie",face:"Normal",extra:new Set(["Peniti"]),bolts:1,emo:"Happy",xp:0,days:0,last:""},tab=0,gf="Semua";
 
 const lvl=()=>XP.filter(x=>S.xp>=x).length;
 const mix=(h,m,t)=>{const p=c=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)),A=p(h),B=p(m);return "#"+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,"0")).join("")};
 let CR=1,CRt=1,SPD=1;const Y=v=>v<150?150-(150-v)*CR:v;
-const bodyD=(t=0)=>{const a=Math.sin(t*2.1)*5,b=Math.sin(t*2.6+1)*6,c=Math.sin(t*2.3+2)*6,d=Math.sin(t*2.9+3)*5,y=Math.sin(t*3.3)*2.5;return `M150 334C88 334 50 292 52 236C54 196 78 178 82 150C82 ${Y(132)} ${66+a/2} ${Y(116)} ${70+a} ${Y(88+y)}C${90+a/2} ${Y(100)} 100 ${Y(112)} 106 ${Y(124)}C104 ${Y(96)} ${116+b/2} ${Y(62)} ${132+b} ${Y(36-y)}C${140+b/2} ${Y(62)} 144 ${Y(78)} 148 ${Y(92)}C158 ${Y(62)} ${178+c/2} ${Y(44)} ${198+c} ${Y(30+y)}C${196+c/2} ${Y(60)} 200 ${Y(80)} 204 ${Y(96)}C216 ${Y(78)} ${232+d/2} ${Y(70)} ${246+d} ${Y(72-y)}C${240+d/2} ${Y(92)} 238 ${Y(108)} 236 ${Y(124)}C252 150 252 190 248 236C250 292 212 334 150 334Z`};
-const BODY=bodyD(0);
-const st3=(w=4)=>`stroke="${OL}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+const bodyD=(t=0)=>{const a=Math.sin(t*2.1)*4,b=Math.sin(t*2.6+1)*5,c=Math.sin(t*2.3+2)*5,d=Math.sin(t*2.9+3)*4,y=Math.sin(t*3.3)*2;return `M150 334C88 334 50 292 52 236C54 196 78 178 82 150C82 ${Y(132)} ${66+a/2} ${Y(116)} ${70+a} ${Y(88+y)}C${90+a/2} ${Y(100)} 100 ${Y(112)} 106 ${Y(124)}C104 ${Y(96)} ${116+b/2} ${Y(62)} ${132+b} ${Y(36-y)}C${140+b/2} ${Y(62)} 144 ${Y(78)} 148 ${Y(92)}C158 ${Y(62)} ${178+c/2} ${Y(44)} ${198+c} ${Y(30+y)}C${196+c/2} ${Y(60)} 200 ${Y(80)} 204 ${Y(96)}C216 ${Y(78)} ${232+d/2} ${Y(70)} ${246+d} ${Y(72-y)}C${240+d/2} ${Y(92)} 238 ${Y(108)} 236 ${Y(124)}C252 150 252 190 248 236C250 292 212 334 150 334Z`};
+const BODY=bodyD(0), st3=(w=4)=>`stroke="${OL}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
+
 function mouth(e,st=2){const R="#7a1622",T="#ff7a8a",fg=(x,y,s=1)=>st<1?"":`<path d="M${x} ${y}l${10*s} 0l${-5*s} ${12*s}z" fill="#fff" ${st3(1.6)}/>`;
  if(["Excited","Celebrating","Dancing"].includes(e))return `<path d="M110 256Q150 246 190 256Q184 304 150 304Q116 304 110 256Z" fill="${R}" ${st3(3.5)}/><ellipse cx="150" cy="292" rx="16" ry="8" fill="${T}"/>${fg(120,257)}${fg(170,257,.8)}`;
  if(e=="Surprised")return `<ellipse cx="150" cy="284" rx="14" ry="19" fill="${R}" ${st3(3.5)}/><ellipse cx="150" cy="292" rx="8" ry="6" fill="${T}"/>`;if(e=="Angry")return `<path d="M116 286Q150 266 184 286Q150 306 116 286Z" fill="#fff" ${st3(4)}/><path d="M132 278v16M150 275v22M168 278v16" ${st3(2)}/>`;if(e=="Waiting")return `<path d="M128 274L172 270" ${st3(6)} fill="none"/>`;
@@ -335,7 +314,7 @@ function mouth(e,st=2){const R="#7a1622",T="#ff7a8a",fg=(x,y,s=1)=>st<1?"":`<pat
  return `<path d="M122 260Q150 254 178 258Q172 290 148 290Q126 288 122 260Z" fill="${R}" ${st3(3.5)}/><ellipse cx="150" cy="282" rx="12" ry="6" fill="${T}"/>${fg(128,260)}${fg(160,259,.7)}`}
 
 function draw(pv){
- const [L,M,D,bo]=TH[S.theme],e=S.emo,lv=lvl(),st=Math.ceil(lv/2)-1,s=SC[st],Ls=LG[st],O=S.outfit,H=S.head,X=S.extra,G=X.has("Gitar");
+ const [L,M,D,bo]=TH[S.theme]||TH.Api,e=S.emo,lv=lvl(),st=Math.ceil(lv/2)-1,s=SC[st],Ls=LG[st],O=S.outfit,H=S.head,X=S.extra,G=X.has("Gitar");
  let h=`<defs>
  <linearGradient id="bd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L}"/><stop offset=".5" stop-color="${M}"/><stop offset="1" stop-color="${D}"/></linearGradient>
  <radialGradient id="sh" cx=".5" cy=".5" r=".62"><stop offset=".68" stop-color="${D}" stop-opacity="0"/><stop offset="1" stop-color="${mix(D,"#000000",.5)}" stop-opacity=".45"/></radialGradient>
@@ -359,12 +338,12 @@ function draw(pv){
  h+=`<polygon points="156,114 146,114 150,126 142,126 154,146 151,132 160,132" transform="translate(0 -2)" fill="${bo}" ${st3(2)}/>`;
  if(st>=3)h+=`<path d="M86 282l12-12-6 14 14-10M214 282l-12-12 6 14-14-10M96 318l10-8-4 12 12-8M204 318l-10-8 4 12-12-8" fill="none" stroke="${bo}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
  if(st==4)h+=`<ellipse cx="150" cy="10" rx="46" ry="9" fill="none" stroke="#ffd21f" stroke-width="5"/>`;
- if(O=="Hoodie")h+=`<g clip-path="url(#cp)"><g><path d="M40 284Q150 316 260 284L272 400H28Z" fill="url(#hd)" ${st3(3.5)}/></g><path d="M92 290Q150 326 208 290" fill="none" stroke="#5b36b8" stroke-width="11" stroke-linecap="round"/><path d="M130 306v26M170 306v26" ${st3(3)} stroke="#efe6ff"/><path d="M98 332Q150 322 202 332L210 372H90Z" fill="#0002" ${st3(3)}/></g>`;
- if(O=="Jaket Punk")h+=`<g clip-path="url(#cp)"><g><path d="M40 278Q150 306 260 278L272 400H28Z" fill="url(#bk)" ${st3(3.5)}/><path d="M92 286L134 340L106 352L84 308Z" fill="#33333f" ${st3(3)}/><path d="M208 286L166 340L194 352L216 308Z" fill="#33333f" ${st3(3)}/></g><path d="M150 312V400" ${st3(3)} stroke="#9a9aa8"/>${[[94,304],[106,322],[206,304],[194,322],[116,296],[184,296]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4.5" fill="url(#st)" ${st3(1.5)}/>`).join("")}<path d="M128 358h14l-3 12h-8z" fill="${bo}" ${st3(2)}/></g>`;
- if(O=="Singlet")h+=`<g clip-path="url(#cp)"><g><path d="M70 290Q150 314 230 290L240 400H60Z" fill="url(#bk)" ${st3(3.5)}/></g><text x="150" y="336" text-anchor="middle" font-size="17" font-weight="900" fill="${bo}" font-family="Impact,Arial Black,sans-serif">PUNKSHIT</text></g>`;
- if(O=="Dress Tartan")h+=`<g clip-path="url(#cp)"><g><path d="M44 288Q150 312 256 288L272 400H28Z" fill="url(#pl)" ${st3(3.5)}/></g><path d="M46 300Q150 326 254 300" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="3 7" stroke-linecap="round" opacity=".8"/><path d="M150 300l-17-10v20zM150 300l17-10v20z" fill="#fff" ${st3(2.5)}/><circle cx="150" cy="300" r="5" fill="#ff5fb0" ${st3(2)}/></g>`;
- if(O=="Kaos Petir")h+=`<g clip-path="url(#cp)"><g><path d="M56 290Q150 316 244 290L252 400H48Z" fill="#ececf2" ${st3(3.5)}/></g><path d="M104 294Q150 322 196 294" fill="none" stroke="#1b1b22" stroke-width="7" stroke-linecap="round"/><polygon points="158,316 136,316 146,340 134,340 164,376 152,336 164,336" fill="${M}" ${st3(2.5)}/></g>`;
- if(O=="Rompi Jeans")h+=`<g clip-path="url(#cp)"><g><path d="M40 284Q92 298 130 288L136 400H28Z" fill="#3f73ad" ${st3(3.5)}/><path d="M260 284Q208 298 170 288L164 400H272Z" fill="#3f73ad" ${st3(3.5)}/></g>${[[124,312],[176,312],[124,338],[176,338]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4.5" fill="url(#st)" ${st3(1.5)}/>`).join("")}<circle cx="84" cy="344" r="9" fill="${M}" ${st3(2)}/></g>`;
+ if(O=="Hoodie")h+=`<g clip-path="url(#cp)"><path d="M40 284Q150 316 260 284L272 400H28Z" fill="url(#hd)" ${st3(3.5)}/><path d="M92 290Q150 326 208 290" fill="none" stroke="#5b36b8" stroke-width="11" stroke-linecap="round"/><path d="M130 306v26M170 306v26" ${st3(3)} stroke="#efe6ff"/><path d="M98 332Q150 322 202 332L210 372H90Z" fill="#0002" ${st3(3)}/></g>`;
+ if(O=="Jaket Punk")h+=`<g clip-path="url(#cp)"><path d="M40 278Q150 306 260 278L272 400H28Z" fill="url(#bk)" ${st3(3.5)}/><path d="M92 286L134 340L106 352L84 308Z" fill="#33333f" ${st3(3)}/><path d="M208 286L166 340L194 352L216 308Z" fill="#33333f" ${st3(3)}/><path d="M150 312V400" ${st3(3)} stroke="#9a9aa8"/>${[[94,304],[106,322],[206,304],[194,322],[116,296],[184,296]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4.5" fill="url(#st)" ${st3(1.5)}/>`).join("")}<path d="M128 358h14l-3 12h-8z" fill="${bo}" ${st3(2)}/></g>`;
+ if(O=="Singlet")h+=`<g clip-path="url(#cp)"><path d="M70 290Q150 314 230 290L240 400H60Z" fill="url(#bk)" ${st3(3.5)}/><text x="150" y="336" text-anchor="middle" font-size="17" font-weight="900" fill="${bo}" font-family="Impact,Arial Black,sans-serif">PUNKSHIT</text></g>`;
+ if(O=="Dress Tartan")h+=`<g clip-path="url(#cp)"><path d="M44 288Q150 312 256 288L272 400H28Z" fill="url(#pl)" ${st3(3.5)}/><path d="M46 300Q150 326 254 300" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="3 7" stroke-linecap="round" opacity=".8"/><path d="M150 300l-17-10v20zM150 300l17-10v20z" fill="#fff" ${st3(2.5)}/><circle cx="150" cy="300" r="5" fill="#ff5fb0" ${st3(2)}/></g>`;
+ if(O=="Kaos Petir")h+=`<g clip-path="url(#cp)"><path d="M56 290Q150 316 244 290L252 400H48Z" fill="#ececf2" ${st3(3.5)}/><path d="M104 294Q150 322 196 294" fill="none" stroke="#1b1b22" stroke-width="7" stroke-linecap="round"/><polygon points="158,316 136,316 146,340 134,340 164,376 152,336 164,336" fill="${M}" ${st3(2.5)}/></g>`;
+ if(O=="Rompi Jeans")h+=`<g clip-path="url(#cp)"><path d="M40 284Q92 298 130 288L136 400H28Z" fill="#3f73ad" ${st3(3.5)}/><path d="M260 284Q208 298 170 288L164 400H272Z" fill="#3f73ad" ${st3(3.5)}/>${[[124,312],[176,312],[124,338],[176,338]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4.5" fill="url(#st)" ${st3(1.5)}/>`).join("")}<circle cx="84" cy="344" r="9" fill="${M}" ${st3(2)}/></g>`;
  if(O=="Flanel")h+=`<g clip-path="url(#cp)"><path d="M44 288Q150 312 256 288L272 400H28Z" fill="url(#fl)" ${st3(3.5)}/><path d="M150 304V400" stroke="#1b1b22" stroke-width="3"/><path d="M104 292L150 326L196 292L150 304Z" fill="#b9420f" ${st3(3)}/></g>`;
  if(O=="Tengkorak")h+=`<g clip-path="url(#cp)"><path d="M56 290Q150 316 244 290L252 400H48Z" fill="#1b1b22" ${st3(3.5)}/><ellipse cx="150" cy="334" rx="19" ry="17" fill="#f4f1ea"/><rect x="140" y="346" width="20" height="12" rx="3" fill="#f4f1ea"/><circle cx="142" cy="333" r="5" fill="#1b1b22"/><circle cx="158" cy="333" r="5" fill="#1b1b22"/></g>`;
  if(O=="Jersey")h+=`<g clip-path="url(#cp)"><path d="M56 290Q150 316 244 290L252 400H48Z" fill="#e0360f" ${st3(3.5)}/><path d="M104 294Q150 322 196 294" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><text x="150" y="360" text-anchor="middle" font-size="44" font-weight="900" fill="#fff" font-family="ui-rounded,Arial Black,sans-serif">07</text></g>`;
@@ -384,7 +363,7 @@ function draw(pv){
  else h+=(st==0?`<g transform="translate(150 224) scale(1.1) translate(-150 -224)">${eye(108,1)+eye(192,-1)}</g>`:eye(108,1)+eye(192,-1));
  if(S.face=="Bulu Mata"&&e!="Sleepy")h+=`<path d="M80 202q-10-2-16-12M84 194q-8-6-10-16M92 188q-4-8-4-14M220 202q10-2 16-12M216 194q8-6 10-16M208 188q4-8 4-14" fill="none" ${st3(4.5)}/>`;
  h+=`<path d="${brow[0]}M${brow[1].slice(1)}" fill="none" ${st3(10)}/>`;
- if(S.face=="Bandana")h+=`<g><path d="M80 252Q150 284 220 252L214 298Q150 330 86 298Z" fill="url(#rd)" ${st3(3.5)}/></g>`;
+ if(S.face=="Bandana")h+=`<path d="M80 252Q150 284 220 252L214 298Q150 330 86 298Z" fill="url(#rd)" ${st3(3.5)}/>`;
  else if(S.face=="Masker")h+=`<path d="M86 248Q150 236 214 248L208 302Q150 330 92 302Z" fill="#1b1b22" ${st3(3.5)}/>`;
  else h+=mouth(e,st);
  if(S.face=="Kumis")h+=`<path d="M150 260C138 248 112 250 104 266C120 264 136 266 150 266C164 266 180 264 196 266C188 250 162 248 150 260Z" fill="#1b1b22" ${st3(2.5)}/>`;
@@ -394,12 +373,12 @@ function draw(pv){
  h+=`<g transform="translate(206 262) rotate(-24)"><rect x="-17" y="-8" width="34" height="16" rx="6" fill="#f4c9a0" ${st3(2.5)}/><rect x="-6" y="-8" width="12" height="16" fill="#e0a878"/></g>`;
  if(e=="Crying")h+=`<path class="tear" d="M84 250q-8 16 0 24q8-8 0-24z" fill="#6fd2ff" ${st3(1.5)}/><path class="tear" style="animation-delay:.5s" d="M216 250q-8 16 0 24q8-8 0-24z" fill="#6fd2ff" ${st3(1.5)}/>`;
  if(e=="Worried")h+=`<path class="tear" style="animation-duration:1.8s" d="M232 130q-10 18 0 24q10-6 0-24z" fill="#6fd2ff" ${st3(1.5)}/>`;
- if(H=="Beanie")h+=`<g><path d="M62 134C56 54 120 30 164 36C216 42 246 90 238 134Z" fill="url(#bk)" ${st3(4)}/><path d="M60 126Q150 158 240 126L240 150Q150 182 60 150Z" fill="#33333f" ${st3(4)}/></g><path d="M60 138Q150 170 240 138" fill="none" stroke="${bo}" stroke-width="4"/><circle cx="194" cy="92" r="14" fill="${M}" ${st3(3)}/>`;
- if(H=="Snapback")h+=`<g><path d="M66 140C62 60 120 40 160 42C214 46 242 92 236 140Z" fill="url(#rd)" ${st3(4)}/><path d="M58 138Q150 164 242 138Q290 146 292 164Q220 176 150 162Q96 160 58 138Z" fill="#7a0d1d" ${st3(4)}/></g>`;
- if(H=="Ikat Kepala")h+=`<g><path d="M56 124Q150 156 244 124L244 148Q150 180 56 148Z" fill="url(#rd)" ${st3(4)}/></g>`;
+ if(H=="Beanie")h+=`<path d="M62 134C56 54 120 30 164 36C216 42 246 90 238 134Z" fill="url(#bk)" ${st3(4)}/><path d="M60 126Q150 158 240 126L240 150Q150 182 60 150Z" fill="#33333f" ${st3(4)}/><path d="M60 138Q150 170 240 138" fill="none" stroke="${bo}" stroke-width="4"/><circle cx="194" cy="92" r="14" fill="${M}" ${st3(3)}/>`;
+ if(H=="Snapback")h+=`<path d="M66 140C62 60 120 40 160 42C214 46 242 92 236 140Z" fill="url(#rd)" ${st3(4)}/><path d="M58 138Q150 164 242 138Q290 146 292 164Q220 176 150 162Q96 160 58 138Z" fill="#7a0d1d" ${st3(4)}/>`;
+ if(H=="Ikat Kepala")h+=`<path d="M56 124Q150 156 244 124L244 148Q150 180 56 148Z" fill="url(#rd)" ${st3(4)}/>`;
  const bolt=(x,y,k,r)=>`<polygon points="0,0 20,0 12,26 28,26 -4,66 4,34 -10,34" transform="translate(${x} ${y}) rotate(${r}) scale(${k})" fill="url(#bg2)" ${st3(3)}/>`;
  if(H=="Jambul Petir")h+=bolt(124,-14,.9,-12)+bolt(190,-20,1,10)+bolt(158,0,.7,0);
- if(H=="Jepit Petir")h+=`<g>${bolt(84,112,.55,-20)}${bolt(98,134,.42,-30)}</g>`;
+ if(H=="Jepit Petir")h+=bolt(84,112,.55,-20)+bolt(98,134,.42,-30);
  if(H=="Pita Besar")h+=`<g transform="translate(112 92) rotate(-18)"><path d="M0 0C-24-26-44-8-38 14C-30 28-10 16 0 0Z" fill="#ff5fb0" ${st3(3.5)}/><path d="M0 0C24-26 44-8 38 14C30 28-10 16 0 0Z" fill="#ff5fb0" ${st3(3.5)}/><circle r="8" fill="#e0338a" ${st3(3)}/></g>`;
  if(H=="Bucket")h+=`<path d="M64 136C58 76 100 58 150 58C200 58 242 76 236 136Z" fill="#d9c58a" ${st3(4)}/><path d="M50 136Q150 112 250 136Q250 160 150 164Q50 160 50 136Z" fill="#b9a46a" ${st3(4)}/>`;
  if(H=="Mohawk")h+=`<path d="M104 114L116 24L134 78L150 6L168 78L186 24L196 114Z" fill="#ff3d78" ${st3(4)}/>`;
@@ -428,8 +407,62 @@ function draw(pv){
 
 const $=id=>document.getElementById(id),hap=()=>{try{navigator.vibrate&&navigator.vibrate(6)}catch(_){}};
 
+function saveCurrentPetStyle(){
+ const key=normUsn(S.p2);
+ if(!key)return;
+ PET_STYLES[key]={nm:$("nm").textContent,theme:S.theme,outfit:S.outfit,head:S.head,face:S.face,extra:[...S.extra],emo:EB||S.emo};
+}
+
+function loadActivePairIntoStage(){
+ if(ACTIVE_IDX>=PAIRS.length) ACTIVE_IDX=Math.max(0,PAIRS.length-1);
+ const p=PAIRS[ACTIVE_IDX];
+ S.p1=MY_USN;
+ if(!p){S.p2="";S.days=0;S.xp=0;S.g1={gap:0,msg:0};S.g2={gap:0,msg:0};return;}
+ S.p2=normUsn(p.partnerUsername);
+ S.days=Number(p.streak)||0;
+ S.xp=Number(p.xp)||0;
+ S.g1=p.g1||{gap:0,msg:0};
+ S.g2=p.g2||{gap:0,msg:0};
+ $("stageTitle").textContent="@"+S.p2;
+ $("stageSub").textContent=`Slot ${ACTIVE_IDX+1}/${MAX_SLOTS} • One Group`;
+
+ const st=PET_STYLES[S.p2];
+ if(st){
+  if(st.nm) $("nm").textContent=String(st.nm).slice(0,14);
+  if(TH[st.theme]) S.theme=st.theme;
+  if(st.outfit) S.outfit=st.outfit;
+  if(st.head) S.head=st.head;
+  if(st.face) S.face=st.face;
+  if(Array.isArray(st.extra)) S.extra=new Set(st.extra);
+  if(E[st.emo]) S.emo=st.emo;
+ }else{
+  $("nm").textContent=S.p2.toUpperCase().slice(0,12);
+ }
+}
+
+function openStageForSlot(idx){
+ saveCurrentPetStyle();
+ ACTIVE_IDX=idx;
+ VIEW_MODE="stage";
+ loadActivePairIntoStage();
+ $("pairGate").hidden=true;
+ draw();
+ ui();
+ hap();
+}
+
+function openHubScreen(){
+ saveCurrentPetStyle();
+ VIEW_MODE="hub";
+ $("pairGate").hidden=false;
+ renderHub();
+ hap();
+}
+
+$("hubBackBtn").onclick=openHubScreen;
+
 function hud(lv,st){
- const [L,M,D,bo]=TH[S.theme],a=XP[lv-1],b=XP[lv],mx=lv>=10;
+ const [L,M,D,bo]=TH[S.theme]||TH.Api,a=XP[lv-1],b=XP[lv],mx=lv>=10;
  document.documentElement.style.setProperty("--ac",M);document.documentElement.style.setProperty("--gl",bo);
  $("num").textContent=S.days;
  const q1=S.g1.gap>=5&&S.g1.msg>=2, q2=S.g2.gap>=5&&S.g2.msg>=2;
@@ -438,11 +471,9 @@ function hud(lv,st){
  else if(q1||q2) stLabel="⏳ Nunggu Partner";
  else if(S.days>=3) stLabel="🚨 Critical Spark";
  $("sb").textContent=stLabel;
- const u1=fmtUsn(S.p1)||"@gue", u2=fmtUsn(S.p2)||"@partner";
- $("p1Name").textContent=u1;
- $("p2Name").textContent=u2;
- $("g1Lbl").textContent=u1.slice(0,12);
- $("g2Lbl").textContent=u2.slice(0,12);
+ const u1=fmtUsn(S.p1||MY_USN)||"@gue", u2=fmtUsn(S.p2)||"@partner";
+ $("p1Name").textContent=u1;$("p2Name").textContent=u2;
+ $("g1Lbl").textContent=u1.slice(0,12);$("g2Lbl").textContent=u2.slice(0,12);
  $("g1Val").textContent=`${S.g1.gap}/5 GAP · ${S.g1.msg}/2 ${q1?"✅":"⏳"}`;
  $("g2Val").textContent=`${S.g2.gap}/5 GAP · ${S.g2.msg}/2 ${q2?"✅":"⏳"}`;
  $("rare").textContent=RN[st];
@@ -458,8 +489,8 @@ const U={Singlet:2,"Kaos Petir":2,"Kaos Garis":3,"Rompi Jeans":3,Flanel:4,"Dress
 const unl=v=>lvl()>=(U[v]||1)&&S.days>=(UD[v]||0),need=v=>[(U[v]||1)>1?"Lv "+U[v]:"",UD[v]?UD[v]+" hari":""].filter(Boolean).join(" & ");
 function tog(v){if(S.extra.has(v))return S.extra.delete(v);if(NECK.includes(v))NECK.forEach(n=>S.extra.delete(n));S.extra.add(v)}
 function lock(v,b){toast("Terbuka di "+need(v));b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake");hap()}
-const VB={outfit:"30 240 240 150",head:"40 0 220 190",face:"60 160 180 170",extra:"20 200 260 180",emo:"20 60 260 300"};let pvn=0;
-function pv(k,v){const o=S,c=CRt,sp=SPD;S={...o,extra:new Set(o.extra)};if(k=="extra")S.extra.add(v);else S[k]=v;if(k!="emo")S.emo="Happy";let h;try{h=draw(1)}finally{S=o;CRt=c;SPD=sp}const p="t"+(pvn++)+"_";return h.replace(/(id="|url\(#)(\w+)/g,`$1${p}$2`)}
+const VB={outfit:"30 240 240 150",head:"40 0 220 190",face:"60 160 180 170",extra:"20 200 260 180",emo:"20 60 260 300"}, PV_CACHE={};let pvn=0;
+function pv(k,v){const ck=k+":"+v;if(PV_CACHE[ck])return PV_CACHE[ck];const o=S,c=CRt,sp=SPD;S={...o,extra:new Set(o.extra)};if(k=="extra")S.extra.add(v);else S[k]=v;if(k!="emo")S.emo="Happy";let h;try{h=draw(1)}finally{S=o;CRt=c;SPD=sp}const p="t"+(pvn++)+"_";return PV_CACHE[ck]=h.replace(/(id="|url\(#)(\w+)/g,`$1${p}$2`)}
 
 function tabsInit(){TABS.forEach(([n],i)=>{const b=document.createElement("button");b.textContent=n;b.onclick=()=>{if(tab!=i){tab=i;ui();hap()}};$("tabs").appendChild(b)})}
 function mark(){const k=TABS[tab][1];$("body").querySelectorAll(".it").forEach(b=>{const on=k=="extra"?S.extra.has(b.dataset.v):S[k]==b.dataset.v;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)})}
@@ -473,12 +504,15 @@ function ui(){
  if(k=="missions"){
   bd.className="missions";
   bd.innerHTML=DUO_MISSIONS.map(m=>`<div class="ms-card"><div><b>${m.title}</b><small>${m.desc}</small></div><span class="ms-xp">${m.xp}</span></div>`).join("")+
-  `<button class="reset" id="unpairBtn">Putuskan / Ganti Partner (${fmtUsn(S.p2)})</button>`;
-  $("unpairBtn").onclick=()=>{
-    if(confirm(`Putuskan koneksi Spark Buddies dengan ${fmtUsn(S.p2)}?`)){
-      sendActionToServer({type:"SPARK_UNPAIR",targetUsername:S.p2});
-      S.paired=false;S.pairStatus="none";S.pendingUser="";S.p2="";S.days=0;S.g1={gap:0,msg:0};S.g2={gap:0,msg:0};
-      save();showPairGate();
+  `<button class="reset" id="unpairBtn">Putuskan Slot Ini (${fmtUsn(S.p2)})</button>`;
+  $("unpairBtn").onclick=async()=>{
+    const target=S.p2;if(!target)return;
+    if(confirm(`Putuskan koneksi Spark Buddies dengan ${fmtUsn(target)}?`)){
+      delete PET_STYLES[target];
+      PAIRS=PAIRS.filter(x=>normUsn(x.partnerUsername)!==target);
+      ACTIVE_IDX=0;
+      await sendActionToServer({type:"SPARK_UNPAIR",targetUsername:target});
+      openHubScreen();
     }
   };
   return;
@@ -494,32 +528,35 @@ function ui(){
 
 document.getElementById("rnd").onclick=()=>{snapPush();const pk=a=>a[Math.floor(Math.random()*a.length)];TABS.forEach(([,k,l])=>{if(l.length&&k!="extra")S[k]=pk(l.filter(unl))});S.extra=new Set();TABS[3][2].filter(unl).sort(()=>Math.random()-.5).slice(0,1+Math.floor(Math.random()*3)).forEach(tog);draw();ui();bump()};
 
+/* ENGINE ANIMASI 60FPS RINGAN (TANPA PERSPECTIVE 3D & THROTTLED PATH) */
 const E={
-Happy:{br:.022,bf:1.7,h:26,hi:5.2,sw:1.6,sf:.8,sh:0,dy:0,ln:0,up:0,wv:0,sp:1},
-Excited:{br:.02,bf:4,h:15,hi:.55,sw:3,sf:1.8,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.2},
+Happy:{br:.022,bf:1.7,h:24,hi:5.2,sw:1.6,sf:.8,sh:0,dy:0,ln:0,up:0,wv:0,sp:1},
+Excited:{br:.02,bf:4,h:14,hi:.55,sw:3,sf:1.8,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.2},
 Waiting:{br:.012,bf:1.3,h:0,hi:0,sw:3.5,sf:.3,sh:0,dy:0,ln:0,up:0,wv:0,sp:.9},
 Worried:{br:.012,bf:5,h:0,hi:0,sw:0,sf:1,sh:1.5,dy:2,ln:0,up:.08,wv:3,sp:3},
 Dancing:{br:.02,bf:2,h:12,hi:.67,sw:6,sf:.75,sh:0,dy:0,ln:0,up:1,wv:10,sp:1.8},
 Crying:{br:.02,bf:1.8,h:0,hi:0,sw:1,sf:.9,sh:0,dy:4,ln:0,up:0,wv:0,sp:.8},
-Celebrating:{br:.02,bf:3,h:38,hi:.85,sw:5,sf:1.2,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.5},
+Celebrating:{br:.02,bf:3,h:34,hi:.85,sw:5,sf:1.2,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.5},
 Sleepy:{br:.03,bf:.8,h:0,hi:0,sw:0,sf:1,sh:0,dy:6,ln:6,up:0,wv:0,sp:.45},
 Love:{br:.025,bf:2,h:10,hi:1.8,sw:4,sf:.6,sh:0,dy:0,ln:0,up:.5,wv:3,sp:1.2},
 Angry:{br:.015,bf:5,h:0,hi:0,sw:0,sf:1,sh:1.1,dy:5,ln:0,up:0,wv:0,sp:2.6},
-Surprised:{br:.01,bf:2,h:30,hi:4,sw:0,sf:1,sh:0,dy:0,ln:0,up:.45,wv:2,sp:1.4},
+Surprised:{br:.01,bf:2,h:28,hi:4,sw:0,sf:1,sh:0,dy:0,ln:0,up:.45,wv:2,sp:1.4},
 Wink:{br:.022,bf:1.7,h:18,hi:3.2,sw:3,sf:.8,sh:0,dy:0,ln:0,up:0,wv:0,sp:1.1}};
 const SV=$("svg"),stg=$("stage"),tl=$("tilt"),RM=matchMedia("(prefers-reduced-motion:reduce)").matches,C={...E.Happy},P={x:0,y:0,on:0},G=3200;
-let R={},curSt=0,ph=0,pb=0,ps=0,pw=0,y=0,vy=0,q=0,qv=0,nx=1.5,cr=0,last=0,bk=0,nb=2,ex=0,ey=0,wx=0,wy=0,nw=1,pxs=0,pys=0,PT="",TT=0;
+let R={},curSt=0,ph=0,pb=0,ps=0,pw=0,y=0,vy=0,q=0,qv=0,nx=1.5,cr=0,last=0,bk=0,nb=2,ex=0,ey=0,wx=0,wy=0,nw=1,pxs=0,pys=0,PT="",TT="",pathTick=0;
 function bind(){const f=s=>[...SV.querySelectorAll(s)];R={pet:SV.querySelector(".pet"),bp:f(".bp"),pp:f(".pp"),eye:f(".eye"),arm:f(".arm")}}
 function apply(){
- const d=bodyD(ph);R.bp.forEach(p=>p.setAttribute("d",d));
+ pathTick=(pathTick+1)%3;
+ if(pathTick===0){const d=bodyD(ph);R.bp.forEach(p=>p.setAttribute("d",d));}
  R.pet&&R.pet.setAttribute("transform",PT);
- const pt=`translate(${ex.toFixed(2)} ${ey.toFixed(2)})`;R.pp.forEach(p=>p.setAttribute("transform",pt));
+ const pt=`translate(${ex.toFixed(1)} ${ey.toFixed(1)})`;R.pp.forEach(p=>p.setAttribute("transform",pt));
  const sy=bk>0?1-.92*Math.sin((1-bk/.14)*Math.PI):1;
- R.eye.forEach(e=>{const x=e.dataset.x;e.setAttribute("transform",sy<.999?`translate(${x} 218) scale(1 ${sy.toFixed(3)}) translate(-${x} -218)`:"")});
+ R.eye.forEach(e=>{const x=e.dataset.x;e.setAttribute("transform",sy<.999?`translate(${x} 218) scale(1 ${sy.toFixed(2)}) translate(-${x} -218)`:"")});
  R.arm.forEach(a=>{const m=+a.dataset.m,s=m?-1:1,ang=(m&&+a.dataset.g)?Math.sin(pw)*2:C.up*136*s+C.wv*Math.sin(pw*1.1+m*1.9)+(1-C.up)*Math.sin(ps*1.3+m*2.1)*4*s-s*q*60;
-  a.setAttribute("transform",`rotate(${ang.toFixed(2)} ${m?238:62} 262)`)});
+  a.setAttribute("transform",`rotate(${ang.toFixed(1)} ${m?238:62} 262)`)});
  tl.style.transform=TT}
 function step(ms){
+ if(document.hidden || VIEW_MODE!=="stage"){last=ms;requestAnimationFrame(step);return;}
  const dt=Math.min((ms-last)/1000||.016,.05);last=ms;
  const T=E[S.emo]||E.Happy,a=1-Math.exp(-dt*6);
  for(const k in C)C[k]+=(T[k]-C[k])*a;
@@ -534,8 +571,8 @@ function step(ms){
  const b=Math.sin(pb)*C.br,sy=(1+q)*(1+b),sx=(1-q*.75)*(1-b*.6),k=1-Math.exp(-dt*8);
  pxs+=(P.x*P.on-pxs)*k;pys+=(P.y*P.on-pys)*k;
  const rot=Math.sin(ps)*C.sw+C.ln+pxs*4,dx=Math.sin(ps)*C.sw*.9+Math.sin(pw*5)*C.sh,ty=C.dy-y;
- PT=`translate(${dx.toFixed(2)} ${ty.toFixed(2)}) translate(150 350) rotate(${rot.toFixed(2)}) scale(${sx.toFixed(4)} ${sy.toFixed(4)}) translate(-150 -350)`;
- TT=`perspective(900px) rotateX(${(-pys*14).toFixed(2)}deg) rotateY(${(pxs*20+Math.sin(ms/1500)*2).toFixed(2)}deg)`;
+ PT=`translate(${dx.toFixed(1)} ${ty.toFixed(1)}) translate(150 350) rotate(${rot.toFixed(1)}) scale(${sx.toFixed(3)} ${sy.toFixed(3)}) translate(-150 -350)`;
+ TT=`translate3d(${(pxs*12).toFixed(1)}px,${(pys*8).toFixed(1)}px,0)`;
  if(P.on){wx=P.x*14;wy=P.y*10}else{nw-=dt;if(nw<=0){nw=1.2+Math.random()*2.4;wx=(Math.random()-.5)*14;wy=(Math.random()-.5)*8}}
  const ke=1-Math.exp(-dt*(P.on?14:9));ex+=(wx-ex)*ke;ey+=(wy-ey)*ke;
  nb-=dt;if(bk>0)bk=Math.max(0,bk-dt);else if(nb<=0){bk=.14;nb=2+Math.random()*3.5}
@@ -547,17 +584,28 @@ stg.addEventListener("pointerdown",e=>{pm(e);if(y===0&&cr<=0){vy=Math.sqrt(2*G*3
 document.querySelectorAll("[contenteditable]").forEach(el=>el.addEventListener("keydown",e=>{if(e.key=="Enter"){e.preventDefault();el.blur()}}));
 document.querySelectorAll("[contenteditable]").forEach(el=>el.addEventListener("input",save));
 
-const K="punkshit.spark.v3";let svT,tt;
-function doSave(){try{localStorage.setItem(K,JSON.stringify({S:{...S,emo:EB||S.emo,extra:[...S.extra]},seen:[...SEEN],nm:$("nm").textContent,tab,gf}))}catch(_){}}
+const K="punkshit.spark.v4";let svT,tt;
+function doSave(){saveCurrentPetStyle();try{localStorage.setItem(K,JSON.stringify({PAIRS,INCOMING,OUTGOING,ACTIVE_IDX,PET_STYLES,seen:[...SEEN],tab,gf}))}catch(_){}}
 function save(){clearTimeout(svT);svT=setTimeout(doSave,250)}
-function load(){try{const d=JSON.parse(localStorage.getItem(K));if(!d||!d.S)return;Object.assign(S,d.S,{extra:new Set(d.S.extra||[])});if(!TH[S.theme])S.theme="Api";if(!E[S.emo])S.emo="Happy";if(d.nm)$("nm").textContent=String(d.nm).slice(0,14);tab=Math.min(TABS.length-1,+d.tab||0);gf=d.gf||"Semua";if(d.seen){SEEN=new Set(d.seen);SEED=0}}catch(_){}}
+function load(){
+ try{
+  const d=JSON.parse(localStorage.getItem(K));if(!d)return;
+  if(Array.isArray(d.PAIRS)) PAIRS=d.PAIRS;
+  if(Array.isArray(d.INCOMING)) INCOMING=d.INCOMING;
+  if(Array.isArray(d.OUTGOING)) OUTGOING=d.OUTGOING;
+  if(typeof d.ACTIVE_IDX==="number") ACTIVE_IDX=d.ACTIVE_IDX;
+  if(d.PET_STYLES && typeof d.PET_STYLES==="object") PET_STYLES=d.PET_STYLES;
+  tab=Math.min(TABS.length-1,+d.tab||0);gf=d.gf||"Semua";
+  if(d.seen){SEEN=new Set(d.seen);SEED=0}
+ }catch(_){}
+}
 addEventListener("pagehide",doSave);document.addEventListener("visibilitychange",()=>document.hidden&&doSave());
-function toast(m){const e=$("toast");e.textContent=m;e.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>e.classList.remove("on"),2600)}
+function toast(m){const e=$("toast");e.textContent=m;e.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>e.classList.remove("on"),2500)}
 function bump(){if(y===0&&cr<=0){vy=Math.sqrt(2*G*22);qv-=.6}burst()}
-function burst(){if(RM)return;for(let i=0;i<8;i++){const e=document.createElement("i"),a=i/8*6.283+Math.random()*.5,r=70+Math.random()*50;e.className="spk";e.style.setProperty("--x",Math.cos(a)*r+"px");e.style.setProperty("--y",Math.sin(a)*r*.8-20+"px");if(i%2)e.style.background="var(--ac)";stg.appendChild(e);setTimeout(()=>e.remove(),700)}}
+function burst(){if(RM)return;for(let i=0;i<6;i++){const e=document.createElement("i"),a=i/6*6.283+Math.random()*.5,r=65+Math.random()*45;e.className="spk";e.style.setProperty("--x",Math.cos(a)*r+"px");e.style.setProperty("--y",Math.sin(a)*r*.8-20+"px");if(i%2)e.style.background="var(--ac)";stg.appendChild(e);setTimeout(()=>e.remove(),600)}}
 
-$("clearBtn").onclick=()=>{ $("card").classList.add("clear-mode"); hap(); };
-$("exitClear").onclick=()=>{ $("card").classList.remove("clear-mode"); hap(); };
+$("clearBtn").onclick=()=>{$("card").classList.add("clear-mode");hap()};
+$("exitClear").onclick=()=>{$("card").classList.remove("clear-mode");hap()};
 
 let lastShotBlob=null,lastShotName="spark-buddy.png";
 async function shot(){try{
@@ -565,31 +613,22 @@ async function shot(){try{
  const W=1080,Hh=1350,c=document.createElement("canvas");c.width=W;c.height=Hh;const x=c.getContext("2d"),F='-apple-system,"SF Pro Rounded",system-ui,sans-serif';
  const rr=(a,b,w,h)=>{x.beginPath();x.roundRect?x.roundRect(a,b,w,h,h/2):x.rect(a,b,w,h);x.fill()},t=(s,px,py,sz,w,col,al)=>{x.font=`${w} ${sz}px ${F}`;x.fillStyle=col;x.textAlign=al||"left";x.fillText(s,px,py)};
  x.fillStyle="#07070b";x.fillRect(0,0,W,Hh);const g=x.createRadialGradient(540,1000,0,540,1000,640);g.addColorStop(0,ac+"88");g.addColorStop(1,ac+"00");x.fillStyle=g;x.fillRect(0,0,W,Hh);
- t("Spark Buddies",60,110,56,700,"#fff");t("Two Members • One Group",60,155,28,400,"#9a9aa4");
+ t("Spark Buddies",60,110,56,700,"#fff");t("3 Slots • One Group",60,155,28,400,"#9a9aa4");
  const rt=$("rare").textContent;x.font=`600 30px ${F}`;const rw=x.measureText(rt).width+44;x.fillStyle=ac;rr(W-60-rw,70,rw,52);t(rt,W-60-rw/2,107,30,600,"#111","center");
- t($("num").textContent,60,300,150,800,ac);t("Hari nyala 🔥",60,352,34,600,"#fff");t($("sb").textContent,60,396,28,600,"#9a9aa4");t(`${fmtUsn(S.p1)}  ×  ${fmtUsn(S.p2)}`,60,444,28,700,"#fff");
+ t($("num").textContent,60,300,150,800,ac);t("Hari nyala 🔥",60,352,34,600,"#fff");t($("sb").textContent,60,396,28,600,"#9a9aa4");t(`${fmtUsn(S.p1||MY_USN)}  ×  ${fmtUsn(S.p2)}`,60,444,28,700,"#fff");
  const img=await new Promise((ok,no)=>{const c2=SV.cloneNode(true);c2.setAttribute("width",640);c2.setAttribute("height",793);c2.removeAttribute("style");const i=new Image;i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(c2)],{type:"image/svg+xml"}))});
  x.drawImage(img,220,410,640,793);
  t($("nm").textContent,60,1230,78,700,"#fff");const lc=$("lvc").textContent;x.font=`600 30px ${F}`;const lw=x.measureText(lc).width+44;x.fillStyle="#ffffff2e";rr(W-60-lw,1182,lw,52);t(lc,W-60-lw/2,1219,30,600,"#fff","center");
  x.fillStyle="#ffffff22";rr(60,1262,960,18);const lg=x.createLinearGradient(60,0,1020,0);lg.addColorStop(0,gl);lg.addColorStop(1,ac);x.fillStyle=lg;rr(60,1262,Math.max(18,9.6*(parseFloat($("fill").style.width)||0)),18);t($("bt").textContent,60,1320,28,400,"#9a9aa4");
-
- const dataUrl=c.toDataURL("image/png");
- lastShotBlob=await new Promise(r=>c.toBlob(r,"image/png"));
- lastShotName="spark-"+($("nm").textContent.replace(/\W+/g,"")||"buddy")+".png";
- $("shotImg").src=dataUrl;
- $("shotModal").hidden=false;
- hap();
+ const dataUrl=c.toDataURL("image/png");lastShotBlob=await new Promise(r=>c.toBlob(r,"image/png"));lastShotName="spark-"+($("nm").textContent.replace(/\W+/g,"")||"buddy")+".png";
+ $("shotImg").src=dataUrl;$("shotModal").hidden=false;hap();
 }catch(_){toast("Gagal bikin gambar")}}
-
 $("shotClose").onclick=()=>{$("shotModal").hidden=true};
 $("shotShareBtn").onclick=async()=>{
  if(!lastShotBlob)return;
  const fl=new File([lastShotBlob],lastShotName,{type:"image/png"});
- if(navigator.canShare&&navigator.canShare({files:[fl]})){
-  try{await navigator.share({files:[fl],title:"Spark Buddies"});toast("Tersimpan / Dibagikan ✓");return}catch(e){if(e.name=="AbortError")return}
- }
- const a=document.createElement("a");a.href=URL.createObjectURL(lastShotBlob);a.download=lastShotName;a.click();
- toast("Jika belum masuk galeri, tahan gambar lalu Simpan Foto");
+ if(navigator.canShare&&navigator.canShare({files:[fl]})){try{await navigator.share({files:[fl],title:"Spark Buddies"});toast("Tersimpan ✓");return}catch(e){if(e.name=="AbortError")return}}
+ const a=document.createElement("a");a.href=URL.createObjectURL(lastShotBlob);a.download=lastShotName;a.click();toast("Tahan gambar lalu Simpan Foto");
 };
 
 let LL=0,EB=null;
@@ -598,24 +637,12 @@ function levelUp(l,n){toast(`Naik ke Lv ${l}: ${LV[l-1]}${n?` · ${n} item baru`
  if(S.emo!="Celebrating"){EB=S.emo;S.emo="Celebrating";draw();setTimeout(()=>{if(S.emo=="Celebrating"&&EB){S.emo=EB;EB=null;draw()}},2800)}}
 
 const dk=d=>d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(),day=()=>dk(new Date());
-function ciUpd(){
- const b=$("ci");if(!b)return;
- const done=S.last==day()&&S.g1.gap>=5&&S.g1.msg>=2;
- b.textContent=done?"Target Gue Aman ✓":"Setor Aktivitas Gue";
- b.classList.toggle("done",done);
-}
+function ciUpd(){const b=$("ci");if(!b)return;const done=S.last==day()&&S.g1.gap>=5&&S.g1.msg>=2;b.textContent=done?"Target Gue Aman ✓":"Setor Aktivitas Gue";b.classList.toggle("done",done)}
 function checkin(){
- const t=day();
- if(S.last!==t){S.g1={gap:0,msg:0};S.g2={gap:0,msg:0};S.last=t;}
+ const t=day();if(S.last!==t){S.g1={gap:0,msg:0};S.g2={gap:0,msg:0};S.last=t;}
  S.g1.gap+=5;S.g1.msg+=2;
- const bothQualified=(S.g1.gap>=5&&S.g1.msg>=2)&&(S.g2.gap>=5&&S.g2.msg>=2);
- if(bothQualified){
-  S.days+=1;S.xp=Math.min(5500,S.xp+10);S.emo="Happy";
-  toast(`🔥 SPARK SECURED! Day ${S.days} · +10 XP`);
- }else{
-  S.emo="Waiting";
-  toast(`✅ Aktivitasmu tercatat! Nunggu ${fmtUsn(S.p2)} (min 5 GAP)`);
- }
+ if((S.g1.gap>=5&&S.g1.msg>=2)&&(S.g2.gap>=5&&S.g2.msg>=2)){S.days+=1;S.xp=Math.min(5500,S.xp+10);S.emo="Happy";toast(`🔥 SPARK SECURED! Day ${S.days} · +10 XP`);}
+ else{S.emo="Waiting";toast(`✅ Aktivitasmu tercatat! Nunggu ${fmtUsn(S.p2)}`);}
  draw();bump();
 }
 
@@ -628,257 +655,251 @@ function snapPush(){HS.push(snap());if(HS.length>30)HS.shift();undoUpd()}
 function undo(){const d=HS.pop();if(!d)return;const o=JSON.parse(d);["theme","outfit","head","face","emo"].forEach((k,i)=>S[k]=o.a[i]);S.extra=new Set(o.x);EB=null;draw();mark();undoUpd();hap();toast("Dibatalkan")}
 
 (()=>{const g=$("grab"),sh=$("sheet"),cd=$("card");let y0=0,h0=0,dr=0;
- function syncSheetState(h){
-  const H=cd.offsetHeight;
-  sh.classList.toggle("collapsed",h<=72);
-  cd.classList.toggle("sheet-low",h<=H*0.24);
- }
+ function syncSheetState(h){const H=cd.offsetHeight;sh.classList.toggle("collapsed",h<=72);cd.classList.toggle("sheet-low",h<=H*0.24)}
  g.addEventListener("pointerdown",e=>{dr=1;y0=e.clientY;h0=sh.offsetHeight;sh.classList.add("dragging");g.setPointerCapture(e.pointerId)});
- g.addEventListener("pointermove",e=>{
-  if(!dr)return;
-  const nh=Math.max(54,Math.min(cd.offsetHeight*.72,h0+y0-e.clientY));
-  sh.style.setProperty("--sh",nh+"px");
-  syncSheetState(nh);
- });
- const end=e=>{
-  if(!dr)return;dr=0;sh.classList.remove("dragging");
-  const H=cd.offsetHeight,c=sh.offsetHeight,tap=Math.abs(e.clientY-y0)<5;
-  const sn=[54, H*.36, H*.66];
-  const target=tap?(c>H*.25?54:H*.36):sn.reduce((a,b)=>Math.abs(b-c)<Math.abs(a-c)?b:a);
-  sh.style.setProperty("--sh",target+"px");
-  syncSheetState(target);
- };
+ g.addEventListener("pointermove",e=>{if(!dr)return;const nh=Math.max(54,Math.min(cd.offsetHeight*.72,h0+y0-e.clientY));sh.style.setProperty("--sh",nh+"px");syncSheetState(nh)});
+ const end=e=>{if(!dr)return;dr=0;sh.classList.remove("dragging");const H=cd.offsetHeight,c=sh.offsetHeight,tap=Math.abs(e.clientY-y0)<5,sn=[54,H*.36,H*.66],target=tap?(c>H*.25?54:H*.36):sn.reduce((a,b)=>Math.abs(b-c)<Math.abs(a-c)?b:a);sh.style.setProperty("--sh",target+"px");syncSheetState(target)};
  g.addEventListener("pointerup",end);g.addEventListener("pointercancel",end);
 })();
 
+/* RENDER LOBBY 3 SLOT */
 let WARGA_MEMBERS=[];
-function updateMyUsnBadge(){
+function renderHub(){
  const badge=$("myUsnBadge");
- if(!badge)return;
- badge.textContent=S.p1?`🆔 Akunmu terdeteksi: @${S.p1}`:"⚠️ @username belum terdeteksi (pasang @username Telegram dulu)";
-}
+ if(badge) badge.textContent=MY_USN?`🆔 @${MY_USN} • ${PAIRS.length}/${MAX_SLOTS} Slot Terisi`:`⚠️ @username belum terdeteksi`;
 
-function renderWargaList(){
- updateMyUsnBadge();
- const wrap=$("wargaList"),lbl=$("wargaListLabel");
- const others=WARGA_MEMBERS.filter(m=>{
-  const usn=normUsn(m.username||m.usn);
-  return usn && usn !== normUsn(S.p1);
+ // Render 3 Kartu Slot
+ const grid=$("slotsGrid");
+ let cardsHtml="";
+ for(let i=0;i<MAX_SLOTS;i++){
+  if(i<PAIRS.length){
+   const p=PAIRS[i];
+   const q1=(p.g1?.gap||0)>=5&&(p.g1?.msg||0)>=2, q2=(p.g2?.gap||0)>=5&&(p.g2?.msg||0)>=2;
+   const stTxt=(q1&&q2)?"🔥 Nyala Hari Ini":(q1||q2?"⏳ Nunggu Partner":"💤 Belum Setor");
+   cardsHtml+=`<div class="slot-card active" data-open-slot="${i}">
+    <div class="sc-left">
+     <div class="sc-ico">🔥</div>
+     <div class="sc-info">
+      <b>Slot ${i+1}: @${p.partnerUsername}</b>
+      <small>${p.streak||0} Hari Nyala • ${stTxt}</small>
+     </div>
+    </div>
+    <span class="sc-act">Lihat Api ›</span>
+   </div>`;
+  }else if(i<PAIRS.length+OUTGOING.length){
+   const out=OUTGOING[i-PAIRS.length];
+   cardsHtml+=`<div class="slot-card pending">
+    <div class="sc-left">
+     <div class="sc-ico">⏳</div>
+     <div class="sc-info">
+      <b>Slot ${i+1}: @${out.targetUsername}</b>
+      <small>Menunggu dia klik Terima / ACC</small>
+     </div>
+    </div>
+    <button class="sc-act danger" data-cancel-to="${out.targetUsername}">Batal</button>
+   </div>`;
+  }else{
+   cardsHtml+=`<div class="slot-card empty" data-focus-input="1">
+    <div class="sc-left">
+     <div class="sc-ico">+</div>
+     <div class="sc-info">
+      <b>Slot ${i+1}: Kosong</b>
+      <small>Tap untuk ajak teman di bawah</small>
+     </div>
+    </div>
+    <span class="sc-act sec">Ajak</span>
+   </div>`;
+  }
+ }
+ grid.innerHTML=cardsHtml;
+
+ grid.querySelectorAll("[data-open-slot]").forEach(el=>{
+  el.onclick=()=>openStageForSlot(Number(el.dataset.openSlot));
  });
+ grid.querySelectorAll("[data-cancel-to]").forEach(btn=>{
+  btn.onclick=async(e)=>{
+   e.stopPropagation();
+   const target=btn.dataset.cancelTo;
+   OUTGOING=OUTGOING.filter(x=>normUsn(x.targetUsername)!==target);
+   renderHub();
+   await sendActionToServer({type:"SPARK_INVITE_CANCEL",targetUsername:target});
+   toast("Ajakan dibatalkan");
+  };
+ });
+ grid.querySelectorAll("[data-focus-input]").forEach(el=>{
+  el.onclick=()=>{$("partnerInput").focus();hap()};
+ });
+
+ // Undangan Masuk
+ const incWrap=$("incomingListWrap");
+ incWrap.innerHTML=INCOMING.map(inv=>{
+  const u=normUsn(inv.fromUsername);
+  return `<div class="pg-box">
+   <h3>📩 Ajakan Spark dari @${u}</h3>
+   <p>Terima ajakan untuk menyalakan api bersama di slot kosongmu.</p>
+   <div class="pg-box-act">
+    <button class="pg-btn" data-acc-from="${u}">Terima & Nyalakan 🔥</button>
+    <button class="pg-btn danger" data-dec-from="${u}">Tolak</button>
+   </div>
+  </div>`;
+ }).join("");
+
+ incWrap.querySelectorAll("[data-acc-from]").forEach(btn=>{
+  btn.onclick=async()=>{
+   const from=btn.dataset.accFrom;
+   if(PAIRS.length>=MAX_SLOTS)return toast("Slot penuh! Maksimal 3 partner.");
+   INCOMING=INCOMING.filter(x=>normUsn(x.fromUsername)!==from);
+   if(!PAIRS.some(x=>normUsn(x.partnerUsername)===from)){
+    PAIRS.push({partnerUsername:from,streak:0,xp:0,g1:{gap:0,msg:0},g2:{gap:0,msg:0}});
+   }
+   await sendActionToServer({type:"SPARK_INVITE_ACCEPT",fromUsername:from,byUsername:MY_USN});
+   renderHub();
+   toast(`🔥 Sah! Terhubung dengan @${from}!`);
+  };
+ });
+ incWrap.querySelectorAll("[data-dec-from]").forEach(btn=>{
+  btn.onclick=async()=>{
+   const from=btn.dataset.decFrom;
+   INCOMING=INCOMING.filter(x=>normUsn(x.fromUsername)!==from);
+   renderHub();
+   await sendActionToServer({type:"SPARK_INVITE_DECLINE",fromUsername:from,byUsername:MY_USN});
+   toast(`Ajakan dari @${from} ditolak`);
+  };
+ });
+
+ // Sembunyikan form input jika 3 slot sudah penuh
+ const totalUsed=PAIRS.length+OUTGOING.length;
+ $("inviteFormWrap").hidden = totalUsed >= MAX_SLOTS;
+
+ // Daftar Warga Markas
+ const wrap=$("wargaList"),lbl=$("wargaListLabel");
+ const existingSet=new Set([normUsn(MY_USN),...PAIRS.map(p=>normUsn(p.partnerUsername)),...OUTGOING.map(o=>normUsn(o.targetUsername))]);
+ const others=WARGA_MEMBERS.filter(m=>{const usn=normUsn(m.username||m.usn);return usn&&!existingSet.has(usn)});
  if(!others.length){
-  lbl.textContent="Info Deteksi";
-  wrap.innerHTML=`<div class="pg-rules">Ketik <b>@username</b> Telegram partnermu (contoh: <b>@kenknow</b>) lalu klik <b>Kirim Ajakan</b>. Nama tampilan biasa tidak dipakai untuk deteksi.</div>`;
+  lbl.textContent="Cara Ajak Teman";
+  wrap.innerHTML=`<div class="pg-rules">Ketik <b>@username</b> temanmu di kolom atas (contoh: <b>@kenknow</b>) lalu klik <b>Kirim Ajakan</b>.</div>`;
   return;
  }
  lbl.textContent=`Pilih @Username Warga Markas (${others.length})`;
  wrap.innerHTML=others.slice(0,25).map(m=>{
-  const usn=normUsn(m.username||m.usn);
-  const dispName=m.name?` (${m.name})`:"";
-  const rank=m.rank||m.title||"Warga Punk";
+  const usn=normUsn(m.username||m.usn),dispName=m.name?` (${m.name})`:"",rank=m.rank||m.title||"Warga Punk";
   return `<div class="pg-user"><div class="pg-user-info"><b>@${usn}${dispName}</b><small>${rank}</small></div><button class="pg-invite" data-usn="${usn}">Ajak @${usn}</button></div>`;
  }).join("");
- wrap.querySelectorAll("[data-usn]").forEach(btn=>{
-  btn.onclick=()=>sendInvite(btn.dataset.usn);
- });
+ wrap.querySelectorAll("[data-usn]").forEach(btn=>{btn.onclick=()=>sendInvite(btn.dataset.usn)});
 }
 
-function applyServerSparkState(sb){
- if(!sb){
-  if(S.paired || S.pairStatus!=="none"){
-   S.paired=false; S.pairStatus="none"; S.pendingUser=""; S.p2="";
-   showPairGate();
-   save();
+function applyServerPayload(u){
+ if(!u)return;
+ const detUsn=normUsn(u.username||u.usn);if(detUsn) MY_USN=detUsn;
+ if(Array.isArray(u.sparkBuddies)){
+  PAIRS=u.sparkBuddies.filter(x=>x.status==="paired"&&x.partnerUsername).map(x=>({
+   partnerUsername:normUsn(x.partnerUsername),streak:Number(x.streak)||0,xp:Number(x.xp)||0,g1:x.g1||{gap:0,msg:0},g2:x.g2||{gap:0,msg:0}
+  }));
+  INCOMING=u.sparkBuddies.filter(x=>x.status==="incoming"&&x.fromUsername).map(x=>({fromUsername:normUsn(x.fromUsername)}));
+  OUTGOING=u.sparkBuddies.filter(x=>x.status==="outgoing"&&x.targetUsername).map(x=>({targetUsername:normUsn(x.targetUsername)}));
+ }else if("sparkBuddy" in u){
+  const sb=u.sparkBuddy;
+  if(!sb){PAIRS=[];INCOMING=[];OUTGOING=[];}
+  else{
+   const pUsn=normUsn(sb.partnerUsername||sb.partnerName);
+   if(sb.status==="paired"&&pUsn){PAIRS=[{partnerUsername:pUsn,streak:Number(sb.streak)||0,xp:Number(sb.xp)||0,g1:sb.g1||{gap:0,msg:0},g2:sb.g2||{gap:0,msg:0}}];INCOMING=[];OUTGOING=[];}
+   else if(sb.status==="incoming"&&sb.fromUsername){PAIRS=[];INCOMING=[{fromUsername:normUsn(sb.fromUsername)}];OUTGOING=[];}
+   else if(sb.status==="outgoing"&&sb.targetUsername){PAIRS=[];INCOMING=[];OUTGOING=[{targetUsername:normUsn(sb.targetUsername)}];}
   }
-  return;
  }
- const pUsn=normUsn(sb.partnerUsername || sb.partnerName);
- if(sb.status==="paired" && pUsn){
-  S.paired=true; S.pairStatus="paired"; S.pendingUser=""; S.p2=pUsn;
+}
+
+function syncUIState(){
+ if(PAIRS.length===0) VIEW_MODE="hub";
+ if(VIEW_MODE==="hub"){
+  $("pairGate").hidden=false;
+  renderHub();
+ }else{
   $("pairGate").hidden=true;
- }else if(sb.status==="incoming" && sb.fromUsername){
-  S.paired=false; S.pairStatus="incoming"; S.pendingUser=normUsn(sb.fromUsername);
-  showPairGate();
- }else if(sb.status==="outgoing" && sb.targetUsername){
-  S.paired=false; S.pairStatus="outgoing"; S.pendingUser=normUsn(sb.targetUsername);
-  showPairGate();
+  loadActivePairIntoStage();
+  draw();
  }
- if(typeof sb.streak==="number") S.days=sb.streak;
- if(typeof sb.xp==="number") S.xp=sb.xp;
- if(sb.g1) S.g1=sb.g1;
- if(sb.g2) S.g2=sb.g2;
  save();
 }
 
 async function sendActionToServer(actionObj){
- const me=normUsn(S.p1);
- const fullPayload=Object.assign({}, actionObj, {
-  fromUsername: actionObj.fromUsername || me,
-  byUsername: me
- });
-
+ const me=normUsn(MY_USN);
+ const fullPayload=Object.assign({},actionObj,{fromUsername:actionObj.fromUsername||me,byUsername:me});
  if(DIRECT_API){
   try{
-   const res=await fetch(DIRECT_API + "/api/spark/action", {
-    method:"POST",
-    headers:{
-     "Content-Type":"application/json",
-     "Authorization":"tma " + DIRECT_TMA
-    },
-    body:JSON.stringify(fullPayload)
-   });
+   const res=await fetch(DIRECT_API+"/api/spark/action",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"tma "+DIRECT_TMA},body:JSON.stringify(fullPayload)});
    const data=await res.json().catch(()=>({}));
-   if(!res.ok){
-    toast("⚠️ Server Error (" + res.status + "): " + (data.error || data.message || "Gagal"));
-    return null;
-   }
-   if(!data.ok && data.message){
-    toast("⚠️ " + data.message);
-   }else if(data.ok && actionObj.type==="SPARK_INVITE_SEND"){
-    toast("✅ Ajakan masuk ke server untuk @" + normUsn(actionObj.targetUsername) + "!");
-   }
-   if("sparkBuddy" in data){
-    applyServerSparkState(data.sparkBuddy);
-    draw();
-   }
-   window.parent && window.parent.postMessage(Object.assign({}, fullPayload, {_directHandled:true}), "*");
+   if(!res.ok){toast("⚠️ Server Error ("+res.status+")");return null;}
+   if(!data.ok&&data.message) toast("⚠️ "+data.message);
+   else if(data.ok&&actionObj.type==="SPARK_INVITE_SEND") toast("✅ Ajakan terkirim ke @"+normUsn(actionObj.targetUsername)+"!");
+   if(data&&("sparkBuddies" in data||"sparkBuddy" in data)){applyServerPayload(data);syncUIState();}
+   window.parent&&window.parent.postMessage(Object.assign({},fullPayload,{_directHandled:true}),"*");
    return data;
-  }catch(err){
-   toast("⚠️ Gagal konek server: " + err.message);
-   return null;
-  }
+  }catch(err){toast("⚠️ Gagal konek server");return null;}
  }else{
-  toast("⚠️ API_URL kosong! Buka Mini App lewat tombol bot /start dulu.");
-  window.parent && window.parent.postMessage(fullPayload, "*");
-  return null;
+  window.parent&&window.parent.postMessage(fullPayload,"*");return null;
  }
 }
 
 async function pollServerStatusDirect(){
- const me=normUsn(S.p1);
- if(!DIRECT_API || !me) return;
+ const me=normUsn(MY_USN);if(!DIRECT_API||!me)return;
  try{
-  const res=await fetch(DIRECT_API + "/api/spark/status?username=" + encodeURIComponent(me) + "&_t=" + Date.now(), {
-   headers:{ "Authorization":"tma " + DIRECT_TMA }
-  });
-  if(!res.ok) return;
+  const res=await fetch(DIRECT_API+"/api/spark/status?username="+encodeURIComponent(me)+"&_t="+Date.now(),{headers:{"Authorization":"tma "+DIRECT_TMA}});
+  if(!res.ok)return;
   const data=await res.json();
-  if(data && typeof data === "object" && "sparkBuddy" in data){
-   applyServerSparkState(data.sparkBuddy);
-   updateMyUsnBadge();
-   draw();
-  }
+  if(data&&typeof data==="object"&&("sparkBuddies" in data||"sparkBuddy" in data)){applyServerPayload(data);syncUIState();}
  }catch(_){}
 }
 
 async function sendInvite(rawUsn){
  const usn=normUsn(rawUsn);
- if(!usn || usn.length<3)return toast("Masukkan @username valid (min 3 karakter)!");
+ if(!usn||usn.length<3)return toast("Masukkan @username valid!");
  if(!/^[a-z0-9_]{3,32}$/.test(usn))return toast("Format @username hanya huruf, angka, atau _");
- if(S.p1 && usn===normUsn(S.p1))return toast("Nggak bisa konek sama @username sendiri!");
+ if(MY_USN&&usn===normUsn(MY_USN))return toast("Nggak bisa konek sama diri sendiri!");
+ if(PAIRS.length+OUTGOING.length>=MAX_SLOTS)return toast("Maksimal 3 partner sekaligus!");
+ if(PAIRS.some(p=>normUsn(p.partnerUsername)===usn))return toast(`Sudah terhubung dengan @${usn}!`);
+ if(OUTGOING.some(o=>normUsn(o.targetUsername)===usn))return toast(`Ajakan ke @${usn} sudah dikirim!`);
 
- if(WARGA_MEMBERS.length){
-  const found=WARGA_MEMBERS.find(m=>normUsn(m.username||m.usn)===usn);
-  if(!found)return toast(`@${usn} tidak ditemukan di daftar @username grup!`);
- }
-
- S.paired=false;
- S.pairStatus="outgoing";
- S.pendingUser=usn;
- save();
- updatePairGateUI();
- await sendActionToServer({type:"SPARK_INVITE_SEND",fromUsername:normUsn(S.p1),targetUsername:usn});
-}
-
-function finalizePair(partnerUsn){
- const usn=normUsn(partnerUsn);
- S.paired=true;
- S.pairStatus="paired";
- S.pendingUser="";
- S.p2=usn;
- S.emo="Happy";
- $("pairGate").hidden=true;
- draw();ui();save();
- toast(`🔥 Sah! Terhubung 2 pihak dengan @${usn}!`);
-}
-
-function updatePairGateUI(){
- $("incomingBox").hidden = S.pairStatus!=="incoming";
- $("outgoingBox").hidden = S.pairStatus!=="outgoing";
- $("inviteFormWrap").hidden = (S.pairStatus==="incoming" || S.pairStatus==="outgoing");
- if(S.pairStatus==="incoming") $("incFromUser").textContent=fmtUsn(S.pendingUser);
- if(S.pairStatus==="outgoing") $("outToUser").textContent=fmtUsn(S.pendingUser);
- renderWargaList();
-}
-
-function showPairGate(){
- $("pairGate").hidden=false;
- updatePairGateUI();
+ OUTGOING.push({targetUsername:usn});
+ $("partnerInput").value="";
+ renderHub();save();
+ await sendActionToServer({type:"SPARK_INVITE_SEND",fromUsername:normUsn(MY_USN),targetUsername:usn});
 }
 
 $("partnerConnectBtn").onclick=()=>sendInvite($("partnerInput").value);
 $("partnerInput").addEventListener("keydown",e=>{if(e.key==="Enter")sendInvite($("partnerInput").value)});
-
-$("cancelInviteBtn").onclick=async()=>{
- const target=S.pendingUser;
- S.pairStatus="none";S.pendingUser="";save();updatePairGateUI();
- await sendActionToServer({type:"SPARK_INVITE_CANCEL",targetUsername:target});
- toast("Ajakan dibatalkan");
-};
-
-$("acceptInviteBtn").onclick=async()=>{
- const from=S.pendingUser;
- finalizePair(from);
- await sendActionToServer({type:"SPARK_INVITE_ACCEPT",fromUsername:from,byUsername:normUsn(S.p1)});
-};
-
-$("declineInviteBtn").onclick=async()=>{
- const from=S.pendingUser;
- S.pairStatus="none";S.pendingUser="";save();updatePairGateUI();
- await sendActionToServer({type:"SPARK_INVITE_DECLINE",fromUsername:from,byUsername:normUsn(S.p1)});
- toast(`Ajakan dari @${from} ditolak`);
-};
-
 $("shot").onclick=shot;$("ci").onclick=checkin;$("undo").onclick=undo;
-load();
 
+/* BOOT SEQUENCE */
+load();
 const auto=autoDetectIdentity();
-if(auto.usn) S.p1=auto.usn;
+if(auto.usn) MY_USN=auto.usn;
 if(auto.members.length) WARGA_MEMBERS=auto.members;
 
 seedSeen();tabsInit();
-if(!S.paired||!S.p2){showPairGate()}else{$("pairGate").hidden=true}
-draw();ui();requestAnimationFrame(step);
+VIEW_MODE="hub"; // Selalu buka Lobby 3 Slot terlebih dahulu!
+syncUIState();
+ui();
+requestAnimationFrame(step);
+
+requestAnimationFrame(()=>{
+ setTimeout(()=>{const bl=$("bootLoader");if(bl){bl.classList.add("hide");setTimeout(()=>bl.remove(),250);}},150);
+});
 
 let syncDone=false;
-window.addEventListener("message", (ev) => {
- if(!ev.data || ev.data.type !== "PUNK_SYNC") return;
+window.addEventListener("message",(ev)=>{
+ if(!ev.data||ev.data.type!=="PUNK_SYNC")return;
  syncDone=true;
  if(ev.data.apiBase) DIRECT_API=String(ev.data.apiBase).replace(/\/+$/,"");
  if(ev.data.initData) DIRECT_TMA=String(ev.data.initData);
- const u = ev.data.user;
- if(u){
-  const myUsn = normUsn(u.username || u.usn);
-  if(myUsn) S.p1 = myUsn;
- }
- if(Array.isArray(ev.data.members)){
-  WARGA_MEMBERS = ev.data.members;
-  if(!S.paired) renderWargaList();
- }
- if(u && "sparkBuddy" in u){
-  applyServerSparkState(u.sparkBuddy);
- }
- updateMyUsnBadge();
- draw();
+ if(ev.data.user) applyServerPayload(ev.data.user);
+ if(Array.isArray(ev.data.members)) WARGA_MEMBERS=ev.data.members;
+ syncUIState();
 });
 
 pollServerStatusDirect();
-setInterval(pollServerStatusDirect, 3500);
-
+setInterval(pollServerStatusDirect,3500);
 let syncTries=0;
-const syncTimer=setInterval(()=>{
- if(syncDone || syncTries>=10){ clearInterval(syncTimer); return; }
- syncTries++;
- window.parent && window.parent.postMessage({type:"SPARK_REQUEST_SYNC"},"*");
-}, 600);
-window.parent && window.parent.postMessage({type:"SPARK_REQUEST_SYNC"},"*");
+const syncTimer=setInterval(()=>{if(syncDone||syncTries>=10){clearInterval(syncTimer);return;}syncTries++;window.parent&&window.parent.postMessage({type:"SPARK_REQUEST_SYNC"},"*");},600);
+window.parent&&window.parent.postMessage({type:"SPARK_REQUEST_SYNC"},"*");
 </script></body></html>
