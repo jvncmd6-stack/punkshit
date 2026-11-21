@@ -12,6 +12,7 @@ import { socialExtraRouter } from './src/api/socialExtraRoutes.js';
 import { gameRouter } from './src/api/gameRoutes.js';
 import { socialRouter } from './src/api/socialRoutes.js';
 import { kotakBirthdayRouter } from './src/api/kotakBirthdayRoutes.js';
+import { sparkArenaRouter } from './src/api/sparkArenaRoutes.js';
 import { escHtml } from './src/services/syncEngine.js';
 import * as botMod from './src/bot/index.js';
 
@@ -170,6 +171,7 @@ app.use('/api', gameRouter);
 app.use('/api', socialRouter);
 app.use('/api', socialExtraRouter);
 app.use('/api', kotakBirthdayRouter);
+app.use('/api', sparkArenaRouter)
 
 // Anti-Spam Cooldown khusus aksi yang mengirim pesan bot ke Grup/Channel
 const socialCooldowns = new Map();
