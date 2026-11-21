@@ -34,11 +34,11 @@ window.PunkCore = (function () {
   function rankInfo(streak) {
     var n = Number(streak) || 0;
     if (n >= 60) return { title: '👑 Fosil Punkshit', bonus: 15 };
-    if (n >= 30) return { title: '🔥 Biang Kerok', bonus: 10 };
-    if (n >= 14) return { title: '🧨 Tukang Rusuh', bonus: 7 };
-    if (n >= 7)  return { title: '☕ Warga Tetap', bonus: 5 };
-    if (n >= 4)  return { title: '🚬 Anak Gang', bonus: 3 };
-    return { title: '🌱 Mayat Baru', bonus: 2 };
+    if (n >= 30) return { title: '⚡ Pentolan Punkshit', bonus: 10 };
+    if (n >= 14) return { title: '🔥 Biang Kerok', bonus: 7 };
+    if (n >= 7)  return { title: '☕ Tukang Nongki', bonus: 5 };
+    if (n >= 4)  return { title: '🚬 Anak Titipan', bonus: 3 };
+    return { title: '🌱 Anak Bawang', bonus: 2 };
   }
 
   function ico(id) {
