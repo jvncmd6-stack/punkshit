@@ -3,6 +3,7 @@
   var C = window.PunkCore;
   var S = C.S;
 
+  ${window.renderArenaSparkCoopSlot ? window.renderArenaSparkCoopSlot() : ''}
   function renderGamesTab() {
     var st = A.state;
     var fq = st.fishQuota;
