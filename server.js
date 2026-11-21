@@ -8,6 +8,7 @@ import { db, initDb } from './src/database/db.js';
 import { authTma } from './src/middlewares/authTma.js';
 import { userRouter } from './src/api/userRoutes.js';
 import { actionRouter } from './src/api/actionRoutes.js';
+import { socialExtraRouter } from './src/api/socialExtraRoutes.js';
 import { gameRouter } from './src/api/gameRoutes.js';
 import { socialRouter } from './src/api/socialRoutes.js';
 import { escHtml } from './src/services/syncEngine.js';
@@ -166,6 +167,7 @@ app.use('/api', userRouter);
 app.use('/api', actionRouter);
 app.use('/api', gameRouter);
 app.use('/api', socialRouter);
+app.use('/api', socialExtraRouter);
 
 // Anti-Spam Cooldown khusus aksi yang mengirim pesan bot ke Grup/Channel
 const socialCooldowns = new Map();
