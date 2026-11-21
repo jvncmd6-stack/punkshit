@@ -211,10 +211,10 @@ window.PunkCore = (function () {
       var u = S.user || {};
       var rk = rankInfo(u.streak);
       return '<div class="card">' +
-        '<h3>🔥 Absen Nyawa Harian</h3>' +
+        '<h3>🔥 Absen Harian</h3>' +
         '<p class="sub">Streak saat ini: <b>' + (u.streak || 0) + ' hari</b> (' + rk.title + ')</p>' +
         '<p class="sub">Bonus hari ini: <b>+' + rk.bonus + ' PSC</b> & +2 Street Cred.</p>' +
-        '<button class="btn" data-act="core-absen">ABSEN NYAWA SEKARANG</button>' +
+        '<button class="btn" data-act="core-absen">ABSEN SEKARANG</button>' +
       '</div>';
     }
 
@@ -475,7 +475,7 @@ window.PunkCore = (function () {
         S.user = resAbs.user;
         if (resAbs.feed) S.feed = resAbs.feed;
         refresh();
-        notify('Mas Raka', 'Absen Nyawa', resAbs.message || ('+' + resAbs.earned + ' PSC masuk!'));
+        notify('Mas Raka', 'Absen', resAbs.message || ('+' + resAbs.earned + ' PSC masuk!'));
       } catch (err) {
         t.disabled = false;
         notify('Mas Raka', 'Gagal Absen', err.message);
