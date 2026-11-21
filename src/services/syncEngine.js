@@ -122,9 +122,29 @@ export function getOnlineUsers() {
   return rows.map(formatUser);
 }
 
-export async function broadcastToTelegram({ target = 'group', text, buttonText = '🪪 BUKA MARKAS', startParam = '', feedText = '' }) {
+export async function broadcastToTelegram({ target = 'group', text = '', buttonText = '🪪 BUKA MARKAS', startParam = '', feedText = '' }) {
+  // Tetap simpan ke feed internal Mini App
   if (feedText) addFeed(feedText);
-  if (!botInstance) return;
+  if (!botInstance || !text) return;
+
+  const upperText = text.toUpperCase();
+
+  // 1. Blokir spam Absen & Sapaan Markas agar tidak dikirim ke grup maupun channel
+  if (
+    upperText.includes('MASIH HIDUP TERNYATA') ||
+    upperText.includes('ABSEN HARI KE-') ||
+    upperText.includes('SAPAAN MARKAS')
+  ) {
+    return;
+  }
+
+  // 2. Kotak Rahasia / Confess / Titip Pesan / Cerita Random -> Paksa ke Channel saja
+  let finalTarget = target;
+  if (upperText.includes('KOTAK RAHASIA') || upperText.includes('CONFESS')) {
+    finalTarget = 'channel';
+  } else if (upperText.includes('PENGUMUMAN MARKAS')) {
+    finalTarget = 'group';
+  }
 
   const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
     ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
@@ -149,6 +169,6 @@ export async function broadcastToTelegram({ target = 'group', text, buttonText =
     }
   };
 
-  if (target === 'group' || target === 'both') await sendSafe(ENV.GROUP_ID);
-  if (target === 'channel' || target === 'both') await sendSafe(ENV.CHANNEL_ID);
+  if (finalTarget === 'group' || finalTarget === 'both') await sendSafe(ENV.GROUP_ID);
+  if (finalTarget === 'channel' || finalTarget === 'both') await sendSafe(ENV.CHANNEL_ID);
 }
