@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import { execSync } from 'child_process';
+import fs from 'fs';
+import multer from 'multer';
 import { db } from '../database/db.js';
 import { ENV } from '../config/env.js';
 import { requireUser } from '../middlewares/authTma.js';
@@ -7,6 +10,7 @@ import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
 import { broadcastToTelegram, getCatalog, escHtml } from '../services/syncEngine.js';
 
 export const adminRouter = Router();
+const uploadRestore = multer({ dest: '/tmp' });
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS audit_logs (
@@ -23,6 +27,12 @@ function isAdminUser(user) {
   const ownerIds = (ENV.OWNER_IDS || []).map(String);
   if (ownerIds.includes(String(user.id))) return true;
   return user.role === 'owner' || user.role === 'admin' || user.role === 'moderator';
+}
+
+function isOwnerOnly(req) {
+  const uid = String(req.tgUser?.id || req.dbUser?.id || req.query.ownerId || '');
+  const ownerIds = (ENV.OWNER_IDS || []).map(String);
+  return Boolean(uid && ownerIds.includes(uid));
 }
 
 function logAudit(actorId, action, detail) {
@@ -251,4 +261,98 @@ adminRouter.post('/admin/roles', requireUser, (req, res) => {
   logAudit(req.dbUser.id, 'SET ROLE', `${targetUser.name} -> ${role}`);
 
   res.json({ ok: true });
+});
+
+// ============================================================
+// MIGRASI SERVER: 1-KLIK BACKUP & RESTORE (KHUSUS OWNER_IDS)
+// ============================================================
+
+// GET /api/admin/backup?ownerId=123456789 -> Unduh arsip .tar.gz berisi Database + Uploads
+adminRouter.get('/admin/backup', (req, res) => {
+  if (!isOwnerOnly(req)) {
+    return res.status(403).json({ error: 'Akses ditolak. Khusus Owner Markas!' });
+  }
+
+  try {
+    // Pastikan WAL SQLite di-flush ke file utama sebelum dibungkus
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (_) {}
+
+    const tmpFile = `/tmp/punkshit_backup_${Date.now()}.tar.gz`;
+    execSync(`tar -czf "${tmpFile}" -C "${ENV.DATA_DIR}" .`);
+
+    const filename = `punkshit_backup_${new Date().toISOString().slice(0, 10)}.tar.gz`;
+    res.download(tmpFile, filename, () => {
+      try { fs.unlinkSync(tmpFile); } catch (_) {}
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal membuat arsip backup: ' + err.message });
+  }
+});
+
+// GET /api/admin/restore-ui?ownerId=123456789 -> Halaman upload browser tanpa perlu terminal/curl
+adminRouter.get('/admin/restore-ui', (req, res) => {
+  if (!isOwnerOnly(req)) {
+    return res.status(403).send('Akses ditolak. Khusus Owner Markas!');
+  }
+
+  const ownerId = escHtml(String(req.query.ownerId || ''));
+  res.send(`<!doctype html>
+  <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Restore Database PUNKSHIT.OS</title>
+  <style>
+    body{font-family:system-ui,sans-serif;background:#0b0f19;color:#f8fafc;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}
+    .box{background:#111827;border:1px solid #334155;border-radius:16px;padding:24px;max-width:400px;width:100%}
+    h2{margin:0 0 8px;font-size:18px;color:#38bdf8}
+    p{font-size:13px;color:#94a3b8;line-height:1.5;margin:0 0 16px}
+    input[type=file]{width:100%;margin-bottom:14px;color:#cbd5e1}
+    button{width:100%;padding:12px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+    #msg{margin-top:12px;font-size:13px;color:#facc15}
+  </style></head><body>
+  <div class="box">
+    <h2>Restore Data PUNKSHIT.OS</h2>
+    <p>Pilih file <b>punkshit_backup_YYYY-MM-DD.tar.gz</b> dari server lama. Server akan otomatis restart setelah selesai.</p>
+    <input type="file" id="f" accept=".gz,.tar.gz,application/gzip">
+    <button onclick="go()">UPLOAD & RESTORE SEKARANG</button>
+    <div id="msg"></div>
+  </div>
+  <script>
+    async function go(){
+      const file = document.getElementById('f').files[0];
+      const msg = document.getElementById('msg');
+      if(!file){ msg.textContent = 'Pilih file .tar.gz dulu!'; return; }
+      msg.textContent = 'Mengupload & mengekstrak data...';
+      const fd = new FormData();
+      fd.append('backup', file);
+      try {
+        const r = await fetch('/api/admin/restore?ownerId=${ownerId}', { method: 'POST', body: fd });
+        const d = await r.json();
+        msg.textContent = d.message || d.error || 'Selesai!';
+      } catch(e){ msg.textContent = 'Error: ' + e.message; }
+    }
+  </script></body></html>`);
+});
+
+// POST /api/admin/restore?ownerId=123456789 -> Ekstrak backup ke DATA_DIR & restart otomatis
+adminRouter.post('/admin/restore', uploadRestore.single('backup'), (req, res) => {
+  if (!isOwnerOnly(req)) {
+    return res.status(403).json({ error: 'Akses ditolak. Khusus Owner Markas!' });
+  }
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'File backup (.tar.gz) belum dipilih.' });
+    }
+
+    execSync(`tar -xzf "${req.file.path}" -C "${ENV.DATA_DIR}"`);
+    try { fs.unlinkSync(req.file.path); } catch (_) {}
+
+    res.json({
+      ok: true,
+      message: 'Restore berhasil! Server restart otomatis dalam 2 detik...'
+    });
+
+    setTimeout(() => process.exit(0), 2000);
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal restore: ' + err.message });
+  }
 });
