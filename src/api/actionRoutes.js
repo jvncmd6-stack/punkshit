@@ -115,7 +115,7 @@ actionRouter.post('/sawer', requireUser, async (req, res) => {
   res.json({ user: formatUser(updated) });
 });
 
-// POST /api/shop/buy -> Beli item dari Lapak Rongsok (Gift, Discord Border, Card Skin)
+// POST /api/shop/buy -> Beli item dari Lapak Rongsok (Hanya notif ke PC Bot Pembeli, tidak ke Grup/CH)
 actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   const u = req.dbUser;
   const itemId = String(req.body?.itemId || '');
@@ -142,15 +142,25 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   });
   tx();
 
-  await broadcastToTelegram({
-    target: 'group',
-    text: `🛒 <b>PURCHASE COMPLETE!</b>\n<b>${escHtml(u.name)}</b> baru memborong <b>${escHtml(item.name)}</b> dari Lapak Rongsok. Gaya bertambah!`,
-    buttonText: '🛒 CEK LAPAK',
-    startParam: 'lapak',
-    feedText: `${u.name} baru beli ${item.name} dari Lapak Rongsok.`
-  });
-
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
+
+  // Kirim struk pembelian hanya ke PC Bot pembeli
+  const bot = getBot();
+  if (bot && u.id) {
+    const dmText =
+      `🛒 <b>PURCHASE COMPLETE!</b>\n\n` +
+      `• Item: <b>${escHtml(item.name)}</b> (Lapak Rongsok)\n` +
+      `• Harga: <b>-${item.price} PSC</b>\n` +
+      `• Sisa Saldo: <b>${updated.psc} PSC</b>\n\n` +
+      `Gaya bertambah! Item sudah masuk ke Gudang Barang lu.`;
+
+    const kb = ENV.MINIAPP_LINK
+      ? new InlineKeyboard().url('🛒 BUKA LAPAK RONGSOK', `${ENV.MINIAPP_LINK}?startapp=lapak`)
+      : undefined;
+
+    bot.api.sendMessage(u.id, dmText, { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
+  }
+
   const inv = db.prepare('SELECT id, item_id AS itemId, acquired_at AS acquiredAt FROM inventory WHERE user_id = ? ORDER BY id DESC').all(u.id);
   res.json({ user: formatUser(updated), inv, catalog: getCatalog() });
 });
