@@ -38,7 +38,8 @@
       username: usn,
       name: u.name || tgUser.first_name || usn || 'Warga',
       rank: u.rank || u.role || 'Warga Markas',
-      sparkBuddy: u.sparkBuddy || null
+      sparkBuddy: u.sparkBuddy || null,
+      sparkBuddies: Array.isArray(u.sparkBuddies) ? u.sparkBuddies : null
     };
   }
 
@@ -69,9 +70,15 @@
         var stData = await API.get(
           '/api/spark/status?username=' + encodeURIComponent(userPayload.username) + '&_t=' + Date.now()
         );
-        if (stData && typeof stData === 'object' && 'sparkBuddy' in stData) {
-          userPayload.sparkBuddy = stData.sparkBuddy || null;
-          if (S.user) S.user.sparkBuddy = stData.sparkBuddy || null;
+        if (stData && typeof stData === 'object') {
+          if ('sparkBuddies' in stData) {
+            userPayload.sparkBuddies = stData.sparkBuddies || [];
+            if (S.user) S.user.sparkBuddies = stData.sparkBuddies || [];
+          }
+          if ('sparkBuddy' in stData) {
+            userPayload.sparkBuddy = stData.sparkBuddy || null;
+            if (S.user) S.user.sparkBuddy = stData.sparkBuddy || null;
+          }
         }
       }
 
@@ -105,7 +112,10 @@
         if (!resp.ok && resp.message && C.notify) {
           C.notify('Spark Buddies', 'Info', resp.message);
         }
-        if (S.user) S.user.sparkBuddy = resp.sparkBuddy || null;
+        if (S.user) {
+          if ('sparkBuddies' in resp) S.user.sparkBuddies = resp.sparkBuddies || [];
+          if ('sparkBuddy' in resp) S.user.sparkBuddy = resp.sparkBuddy || null;
+        }
         syncSparkData();
       }
     } catch (err) {
@@ -174,7 +184,7 @@
     var apiBase = getApiBase();
     var initData = getInitData();
     var qs =
-      '?v=12&_ts=' + Date.now() +
+      '?v=20&_ts=' + Date.now() +
       (me.username ? '&usn=' + encodeURIComponent(me.username) : '') +
       (apiBase ? '&api=' + encodeURIComponent(apiBase) : '') +
       (initData ? '&tma=' + encodeURIComponent(initData) : '');
