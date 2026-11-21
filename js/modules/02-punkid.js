@@ -169,6 +169,36 @@
     });
   }
 
+  function getPinnedList(u) {
+    if (Array.isArray(u.pinnedGifts)) return u.pinnedGifts;
+    return u.pinnedGiftId ? [u.pinnedGiftId] : [];
+  }
+
+  function renderPinnedGiftsShowcase(u) {
+    var ids = getPinnedList(u);
+    if (!ids.length) return '';
+
+    var badges = ids.map(function (gid) {
+      var it = C.findItem(gid);
+      if (!it) return '';
+      return (
+        '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 6px;' +
+                    'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:999px">' +
+          C.renderItemVisual(it, 24, false) +
+          '<span style="font-size:11.5px;font-weight:600;color:#f5f5f7">' + C.esc(it.name) + '</span>' +
+        '</div>'
+      );
+    }).filter(Boolean);
+
+    if (!badges.length) return '';
+
+    return (
+      '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px">' +
+        badges.join('') +
+      '</div>'
+    );
+  }
+
   function renderPunkCard(u) {
     var dg = (u.memberNo || 'PSK-0001').replace('PSK-', '');
     var rk = C.rankInfo(u.streak);
@@ -234,6 +264,8 @@
 
     var gifts = groupInventoryByType('gift');
     var borders = groupInventoryByType('border');
+    var skins = groupInventoryByType('skin');
+    var pinnedIds = getPinnedList(u);
 
     var roleBadge = (u.role && u.role !== 'member')
       ? '<span class="role-tag">' + C.esc(u.role) + '</span>'
@@ -247,6 +279,7 @@
           '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
           '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + rk.title + '</div>' +
           (u.bio ? '<p class="bio">' + C.esc(u.bio) + '</p>' : '') +
+          renderPinnedGiftsShowcase(u) +
           (u.spotifyUrl ? renderSpotifyCard(u.spotifyUrl) : '') +
           '<div style="display:flex;gap:8px;margin-top:10px">' +
             '<button class="btn b2" style="margin-top:0;flex:1" data-act="pid-edit">Edit Profil & Banner</button>' +
@@ -266,7 +299,22 @@
       '<h3 class="gh">KARTU PUNKID (TAP UNTUK PUTAR)</h3>' +
       renderPunkCard(u) +
 
-      '<h3 class="gh">AVATAR BORDER · TAP PASANG / COPOT</h3>' +
+      '<h3 class="gh">CARD SKIN · TAP PASANG / LEPAS</h3>' +
+      (skins.length
+        ? '<div class="hs" style="margin-bottom:14px">' +
+            '<button data-act="pid-equip-skin" data-id="" class="' + (!u.equippedSkinId ? 'on' : '') + '"><div style="height:56px;display:grid;place-items:center;font-size:20px">🪪</div>Default</button>' +
+            skins.map(function (entry) {
+              var it = entry.item;
+              var active = u.equippedSkinId === it.id;
+              return '<button data-act="pid-equip-skin" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' +
+                C.renderItemVisual(it, 56, false) +
+                C.esc(it.name) +
+              '</button>';
+            }).join('') +
+          '</div>'
+        : '<div class="grp" style="margin-bottom:14px"><div class="rw"><small>Belum punya Card Skin (Chrome / Sultan Gold). Beli di Lapak Rongsok!</small></div></div>') +
+
+      '<h3 class="gh">AVATAR BORDER · TAP PASANG / LEPAS</h3>' +
       (borders.length
         ? '<div class="hs" style="margin-bottom:14px">' +
             '<button data-act="pid-equip-border" data-id="" class="' + (!u.equippedBorderId ? 'on' : '') + '"><div style="height:56px;display:grid;place-items:center;font-size:20px">🚫</div>Lepas</button>' +
@@ -282,13 +330,13 @@
           '</div>'
         : '<div class="grp" style="margin-bottom:14px"><div class="rw"><small>Belum punya Avatar Border. Beli di Lapak Rongsok!</small></div></div>') +
 
-      '<h3 class="gh">KOLEKSI GIFT PROFIL · TAP PASANG / COPOT</h3>' +
+      '<h3 class="gh">KOLEKSI GIFT PROFIL · BISA PASANG LEBIH DARI 1 (' + pinnedIds.length + '/6)</h3>' +
       (gifts.length
         ? '<div class="hs">' +
-            '<button data-act="pid-pin-gift" data-id="" class="' + (!u.pinnedGiftId ? 'on' : '') + '"><div style="height:58px;display:grid;place-items:center;font-size:20px">🚫</div>Lepas</button>' +
+            '<button data-act="pid-pin-gift" data-id="" class="' + (!pinnedIds.length ? 'on' : '') + '"><div style="height:58px;display:grid;place-items:center;font-size:20px">🚫</div>Lepas Semua</button>' +
             gifts.map(function (entry) {
               var it = entry.item;
-              var active = u.pinnedGiftId === it.id;
+              var active = pinnedIds.indexOf(it.id) !== -1;
               var qtyTag = entry.count > 1 ? ' (x' + entry.count + ')' : '';
               return '<button data-act="pid-pin-gift" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' +
                 C.renderItemVisual(it, 58, false) +
@@ -457,24 +505,40 @@
       } catch (err) {
         C.notify('Mas Raka', 'Error', err.message);
       }
-    } else if (act === 'pid-equip-border') {
-      var borderId = t.getAttribute('data-id') || null;
+    } else if (act === 'pid-equip-skin') {
+      var rawSkinId = t.getAttribute('data-id') || '';
+      var nextSkin = (!rawSkinId || S.user.equippedSkinId === rawSkinId) ? null : rawSkinId;
       try {
-        var res = await API.post('/api/profile/equip', { type: 'border', itemId: borderId });
+        var res = await API.post('/api/profile/equip', { type: 'skin', itemId: nextSkin });
         if (res.user) S.user = res.user;
         C.refresh();
-        C.notify('Mas Raka', 'Avatar Border', borderId ? 'Border terpasang ke foto profil!' : 'Border dilepas.');
+        C.notify('Mas Raka', 'Card Skin', nextSkin ? 'Card Skin terpasang ke kartu PunkID!' : 'Card Skin dilepas (kembali default).');
+      } catch (err) {
+        C.notify('Mas Raka', 'Error', err.message);
+      }
+    } else if (act === 'pid-equip-border') {
+      var rawBorderId = t.getAttribute('data-id') || '';
+      var nextBorder = (!rawBorderId || S.user.equippedBorderId === rawBorderId) ? null : rawBorderId;
+      try {
+        var res = await API.post('/api/profile/equip', { type: 'border', itemId: nextBorder });
+        if (res.user) S.user = res.user;
+        C.refresh();
+        C.notify('Mas Raka', 'Avatar Border', nextBorder ? 'Border terpasang ke foto profil!' : 'Border dilepas.');
       } catch (err) {
         C.notify('Mas Raka', 'Error', err.message);
       }
     } else if (act === 'pid-pin-gift') {
       var rawGiftId = t.getAttribute('data-id') || '';
-      var nextPin = (!rawGiftId || S.user.pinnedGiftId === rawGiftId) ? null : rawGiftId;
+      var beforeList = getPinnedList(S.user);
+      var wasPinned = rawGiftId && beforeList.indexOf(rawGiftId) !== -1;
       try {
-        var res = await API.post('/api/profile/equip', { type: 'pin', itemId: nextPin });
+        var res = await API.post('/api/profile/equip', { type: 'pin', itemId: rawGiftId || null });
         if (res.user) S.user = res.user;
         C.refresh();
-        C.notify('Mas Raka', 'Gift Profil', nextPin ? 'Gift terpasang di foto profil!' : 'Gift dilepas dari profil.');
+        var msg = !rawGiftId
+          ? 'Semua gift dilepas dari profil.'
+          : (wasPinned ? 'Gift dilepas dari profil.' : 'Gift dipasang ke profil! (' + getPinnedList(S.user).length + '/6)');
+        C.notify('Mas Raka', 'Gift Profil', msg);
       } catch (err) {
         C.notify('Mas Raka', 'Error', err.message);
       }
