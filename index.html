@@ -1,171 +1,252 @@
-(function () {
-  var C = window.PunkCore;
-  var API = window.PunkAPI;
-  var S = C.S;
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0a0f1c">
+  <title>PUNKSHIT.OS — The Underground Digital Hangout</title>
+  <link rel="manifest" href="./manifest.json">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="./css/theme.css?v=8">
+  <link rel="stylesheet" href="./css/animations.css?v=8">
+  <link rel="stylesheet" href="./css/components.css?v=8">
+</head>
+<body>
+  <div class="phone" id="ph">
+    <!-- Wallpaper & Dynamic Island -->
+    <div class="wall"></div>
+    <div class="isl"></div>
 
-  var lbCache = { category: 'streak', list: [] };
+    <!-- iOS Status Bar -->
+    <div class="sb">
+      <b id="clk">9:41</b>
+      <span>
+        <span id="sync-dot" class="sync-dot" title="Status Koneksi Server"></span>
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" width="3" height="12" rx="1"/></svg>
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"><path d="M1.5 4.2a10 10 0 0114 0M4 7a6.4 6.4 0 019 0"/><circle cx="8.5" cy="10" r="1.2" fill="#fff"/></svg>
+        <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="22" height="12" rx="3.8" fill="none" stroke="#fff" opacity=".4"/><rect x="2" y="2" width="19" height="9" rx="2.5" fill="#fff"/><path d="M24 4.5v4c1-.3 1.8-1.1 1.8-2s-.8-1.7-1.8-2z" fill="#fff" opacity=".5"/></svg>
+      </span>
+    </div>
 
-  // Halaman Misi Rusuh (Daily & Weekly Missions)
-  function renderMisi() {
-    var u = S.user;
-    var missions = S.missions && S.missions.length ? S.missions : [
-      { id: 'd_absen', period: 'daily', title: 'Absen Hari Ini', rewardPsc: 2, rewardCred: 5, done: Boolean(u.absenToday), claimed: Boolean(u.absenToday) },
-      { id: 'd_game', period: 'daily', title: 'Main 1x di Arena Gabut', rewardPsc: 5, rewardCred: 5, done: false, claimed: false },
-      { id: 'd_poll', period: 'daily', title: 'Ikut Voting Sidang Warga', rewardPsc: 5, rewardCred: 5, done: false, claimed: false },
-      { id: 'd_quiz', period: 'daily', title: 'Selesaikan Punk Trivia / Quiz', rewardPsc: 5, rewardCred: 5, done: false, claimed: false },
-      { id: 'w_absen5', period: 'weekly', title: 'Absen 5 Hari Minggu Ini', rewardPsc: 25, rewardCred: 20, done: false, claimed: false },
-      { id: 'w_game3', period: 'weekly', title: 'Main 3 Jenis Mini-Game', rewardPsc: 20, rewardCred: 15, done: false, claimed: false }
-    ];
+    <!-- Mas Raka Live Notification Banner -->
+    <div class="ban glass" id="ban"></div>
 
-    var daily = missions.filter(function (m) { return m.period === 'daily'; });
-    var weekly = missions.filter(function (m) { return m.period === 'weekly'; });
+    <!-- Home Screen -->
+    <main class="home" id="home">
+      <div class="wd">
+        <div class="w glass" data-act="app" data-id="kas" role="button" tabindex="0">
+          <small>DOMPET PSC</small>
+          <b id="wp">0</b>
+          <p id="ws">Streak 0 hari</p>
+        </div>
+        <div class="w glass" data-act="app" data-id="warga" role="button" tabindex="0">
+          <small>MASIH HIDUP</small>
+          <div class="faces" id="wf"></div>
+          <p id="wc">Memuat warga...</p>
+        </div>
+      </div>
 
-    function rowMission(m) {
-      var btnHtml = '';
-      if (m.claimed) {
-        btnHtml = '<button class="pill" disabled>SELESAI</button>';
-      } else if (m.done) {
-        btnHtml = '<button class="pill" data-act="prog-claim" data-id="' + C.esc(m.id) + '">KLAIM +' + m.rewardPsc + '</button>';
-      } else {
-        btnHtml = '<span style="font-size:12px;color:var(--yel);font-weight:700">+' + m.rewardPsc + ' PSC</span>';
-      }
-      return (
-        '<div class="rw">' +
-          '<div><b>' + C.esc(m.title) + '</b><small>Reward: +' + m.rewardPsc + ' PSC · +' + (m.rewardCred || 0) + ' Street Cred</small></div>' +
-          btnHtml +
-        '</div>'
-      );
-    }
+      <!-- App Icons Grid -->
+      <div class="grid" id="grid"></div>
 
-    return (
-      '<div class="grp" style="margin-bottom:14px;background:linear-gradient(135deg,#FF453A26,#101827)">' +
-        '<div class="rw">' +
-          '<div><b>Street Cred Lo: ' + (u.cred || 0) + ' Poin</b><small>Reputasi tongkrongan (tidak bisa dijual/ditransfer)</small></div>' +
-          '<span style="font-size:24px">🔥</span>' +
-        '</div>' +
-      '</div>' +
+      <button class="srch glass" data-act="search">⌕ Cari Warga atau Fitur...</button>
+      <div class="dots"><i></i><i></i></div>
 
-      '<h3 class="gh">DAILY MISSIONS (RESET 00.00 WIB)</h3>' +
-      '<div class="grp">' + daily.map(rowMission).join('') + '</div>' +
+      <!-- Bottom Dock -->
+      <nav class="dock glass" id="dock"></nav>
+    </main>
 
-      '<h3 class="gh">WEEKLY MISSIONS (RESET SENIN)</h3>' +
-      '<div class="grp">' + weekly.map(rowMission).join('') + '</div>'
-    );
-  }
+    <!-- Fullscreen App Container -->
+    <section class="av" id="av">
+      <div class="nav" id="nav">
+        <button class="bk" data-act="close">
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="#4d9bff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2L2 10l8 8"/></svg>
+          Home
+        </button>
+        <span class="nt" id="nt"></span>
+        <div id="nav-extra"></div>
+      </div>
+      <div class="sc" id="sc">
+        <h1 class="lt" id="lt"></h1>
+        <div id="bd"></div>
+      </div>
+    </section>
 
-  // Halaman Hall of Fame (Leaderboard & Achievement Badges)
-  function renderFame() {
-    var tab = S.curTab.fame || 'lb';
-    var cats = [
-      { id: 'streak', label: '🔥 Terajin' },
-      { id: 'cred', label: '⭐ Main Character' },
-      { id: 'psc', label: '💰 Sultan PSC' },
-      { id: 'best', label: '🦴 Fosil' }
-    ];
+    <!-- Modal Bottom Sheet -->
+    <div class="scrim" id="scr" data-act="shut"></div>
+    <section class="sh" id="sh" role="dialog" aria-modal="true"></section>
 
-    var headerTabs =
-      '<div class="tabs">' +
-        '<button class="tab' + (tab === 'lb' ? ' on' : '') + '" data-act="fame-tab" data-tab="lb">🏆 Leaderboard</button>' +
-        '<button class="tab' + (tab === 'ach' ? ' on' : '') + '" data-act="fame-tab" data-tab="ach">🎖️ Achievement</button>' +
-      '</div>';
+    <!-- Home Indicator -->
+    <div class="hi"></div>
+  </div>
 
-    if (tab === 'ach') {
-      var u = S.user;
-      var badges = [
-        { icon: '🌱', name: 'First Contact', desc: 'Absen pertama kali di markas', ok: (u.best || 0) >= 1 },
-        { icon: '☕', name: 'Regular Customer', desc: 'Capai streak 7 hari berturut-turut', ok: (u.best || 0) >= 7 },
-        { icon: '🔥', name: 'Never Missing', desc: 'Capai streak 30 hari berturut-turut', ok: (u.best || 0) >= 30 },
-        { icon: '🦴', name: 'Certified Fossil', desc: 'Capai streak 60 hari berturut-turut', ok: (u.best || 0) >= 60 },
-        { icon: '💸', name: 'Generous Soul', desc: 'Berbagi PSC lewat saweran atau gift', ok: Boolean(u.hasShared) },
-        { icon: '🎣', name: 'Lele Hunter', desc: 'Kumpulkan tangkapan di Mancing Galatama', ok: (u.fishCount || 0) >= 10 }
-      ];
+  <!-- Core & Config -->
+  <script src="./js/config.js?v=13"></script>
+  <script>
+    window.PUNK_CONFIG = window.PUNK_CONFIG || { API_URL: '', SPARK_API_URL: '', ICONS: {}, BASE_GRID: [], DOCK: [] };
+  </script>
+  <script src="./js/api.js?v=8"></script>
+  <script src="./js/core.js?v=14"></script>
 
-      return headerTabs + '<div class="grp">' + badges.map(function (b) {
-        return (
-          '<div class="rw" style="opacity:' + (b.ok ? '1' : '.5') + '">' +
-            '<div style="display:flex;align-items:center;gap:12px">' +
-              '<span style="font-size:26px">' + b.icon + '</span>' +
-              '<div><b>' + C.esc(b.name) + '</b><small>' + C.esc(b.desc) + '</small></div>' +
-            '</div>' +
-            '<span class="pill" style="background:' + (b.ok ? '#34C75933;color:#6df0a0' : '#ffffff14;color:var(--mut)') + '">' + (b.ok ? 'UNLOCKED' : 'LOCKED') + '</span>' +
-          '</div>'
+  <!-- 11 Modul Utama + Ruang Dalang -->
+  <script src="./js/modules/01-markas.js?v=14"></script>
+  <script src="./js/modules/02-punkid.js?v=8"></script>
+  <script src="./js/modules/03-progression.js?v=14"></script>
+  <script src="./js/modules/04-kas.js?v=8"></script>
+  <script src="./js/modules/05-arena.js?v=14"></script>
+  <script src="./js/modules/06-warga.js?v=8"></script>
+  <script src="./js/modules/07-kalender.js?v=8"></script>
+  <script src="./js/modules/08-lapak.js?v=8"></script>
+  <script src="./js/modules/09-museum.js?v=8"></script>
+  <script src="./js/modules/10-dalang.js?v=8"></script>
+  <script src="./js/modules/11-spark.js?v=13"></script>
+
+  <!-- JEMBATAN OTOMATIS PUNKSHIT.OS <-> SPARK BUDDIES -->
+  <script>
+    (function initSparkBridge() {
+      const cleanUsn = (v) => String(v || "").trim().replace(/^@+/, "").toLowerCase();
+      const getSparkApi = () => (window.PUNK_CONFIG?.SPARK_API_URL || localStorage.getItem("psk_spark_api") || "").replace(/\/$/, "");
+
+      function resolveCurrentUser() {
+        const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
+        const coreS = window.PunkCore?.S || {};
+        const stateUser = coreS.user || window.STATE?.user || window.PUNK?.user || window.CURRENT_USER || {};
+        let storedUser = {};
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (/punk|user|warga|auth/i.test(k)) {
+              const parsed = JSON.parse(localStorage.getItem(k));
+              if (parsed && typeof parsed === "object") {
+                if (parsed.username || parsed.usn) storedUser = parsed;
+                else if (parsed.user && (parsed.user.username || parsed.user.usn)) storedUser = parsed.user;
+              }
+            }
+          }
+        } catch (_) {}
+
+        const username = cleanUsn(
+          tgUser.username || stateUser.username || stateUser.usn || storedUser.username || storedUser.usn
         );
-      }).join('') + '</div>';
-    }
-
-    // Tab Leaderboard
-    var catChips =
-      '<div class="chips" style="margin-bottom:14px">' +
-        cats.map(function (c) {
-          return '<button class="chip' + (lbCache.category === c.id ? ' on' : '') + '" data-act="fame-cat" data-cat="' + c.id + '">' + c.label + '</button>';
-        }).join('') +
-      '</div>';
-
-    var listHtml = '';
-    if (!lbCache.list.length) {
-      listHtml = '<div class="grp"><div class="rw"><small>Memuat klasemen warga...</small></div></div>';
-      loadLeaderboard(lbCache.category);
-    } else {
-      listHtml = '<div class="grp">' + lbCache.list.map(function (w, idx) {
-        var val = lbCache.category === 'psc' ? (w.psc + ' PSC')
-                : lbCache.category === 'cred' ? (w.cred + ' Cred')
-                : lbCache.category === 'best' ? (w.best + ' Hari')
-                : (w.streak + ' Hari');
-        var medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '#' + (idx + 1);
-        return (
-          '<div class="rw">' +
-            '<div style="display:flex;align-items:center;gap:10px">' +
-              '<b style="width:26px;text-align:center;color:var(--yel)">' + medal + '</b>' +
-              C.renderAvatar(w, 'mini') +
-              '<div><b>' + C.esc(w.name) + '</b><small>' + C.rankInfo(w.streak).title + '</small></div>' +
-            '</div>' +
-            '<b style="color:var(--gblue);font-size:14px">' + val + '</b>' +
-          '</div>'
-        );
-      }).join('') + '</div>';
-    }
-
-    return headerTabs + catChips + listHtml;
-  }
-
-  async function loadLeaderboard(cat) {
-    lbCache.category = cat;
-    try {
-      var res = await API.get('/api/leaderboard?by=' + encodeURIComponent(cat));
-      lbCache.list = res.list || [];
-      if (S.curApp === 'fame') C.refresh();
-    } catch (e) {}
-  }
-
-  C.Views.misi = renderMisi;
-  C.Views.fame = renderFame;
-
-  document.addEventListener('click', async function (e) {
-    var t = e.target.closest('[data-act]');
-    if (!t) return;
-    var act = t.getAttribute('data-act');
-
-    if (act === 'prog-claim') {
-      var id = t.getAttribute('data-id');
-      t.disabled = true;
-      try {
-        var res = await API.post('/api/missions/claim', { missionId: id });
-        S.user = res.user;
-        if (res.missions) S.missions = res.missions;
-        C.notify('Mas Raka', 'Mission Passed', res.message || 'Reward misi berhasil masuk ke dompet!');
-        C.refresh();
-      } catch (err) {
-        t.disabled = false;
-        C.notify('Mas Raka', 'Gagal', err.message);
+        const name = tgUser.first_name || stateUser.name || storedUser.name || username || "Warga";
+        return {
+          id: tgUser.id || stateUser.id || storedUser.id || null,
+          username,
+          name,
+          rank: stateUser.rank || storedUser.rank || "Warga Markas",
+          sparkBuddy: stateUser.sparkBuddy || storedUser.sparkBuddy || null
+        };
       }
-    } else if (act === 'fame-tab') {
-      S.curTab.fame = t.getAttribute('data-tab');
-      C.refresh();
-    } else if (act === 'fame-cat') {
-      var cat = t.getAttribute('data-cat');
-      lbCache.list = [];
-      loadLeaderboard(cat);
-      C.refresh();
-    }
-  });
-})();
+
+      async function resolveMembers() {
+        const coreS = window.PunkCore?.S || {};
+        const rawList =
+          coreS.members ||
+          coreS.warga ||
+          window.STATE?.members ||
+          window.STATE?.warga ||
+          window.WARGA ||
+          window.PUNK?.members ||
+          [];
+
+        let list = Array.isArray(rawList) ? rawList : Object.values(rawList || {});
+
+        if (!list.length) {
+          try {
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (/warga|member|cache/i.test(k)) {
+                const parsed = JSON.parse(localStorage.getItem(k));
+                const arr = Array.isArray(parsed) ? parsed : (parsed?.members || parsed?.warga || []);
+                if (Array.isArray(arr) && arr.length) { list = arr; break; }
+              }
+            }
+          } catch (_) {}
+        }
+
+        const sparkBase = getSparkApi();
+        if (!list.length && sparkBase) {
+          try {
+            const res = await fetch(sparkBase + "/api/spark/warga").catch(() => null);
+            if (res && res.ok) {
+              const data = await res.json();
+              list = Array.isArray(data) ? data : (data.members || data.warga || []);
+            }
+          } catch (_) {}
+        }
+
+        return list
+          .map((m) => ({
+            id: m.id || m.telegram_id || null,
+            username: cleanUsn(m.username || m.usn || m.tg_username),
+            name: m.name || m.first_name || m.display_name || "",
+            rank: m.rank || m.role || m.title || "Warga Punk"
+          }))
+          .filter((m) => m.username);
+      }
+
+      async function pushSyncToSpark(targetWin) {
+        const user = resolveCurrentUser();
+        const members = await resolveMembers();
+        const sparkBase = getSparkApi();
+
+        if (user.username && sparkBase) {
+          try {
+            const stRes = await fetch(sparkBase + "/api/spark/status?username=" + encodeURIComponent(user.username)).catch(() => null);
+            if (stRes && stRes.ok) {
+              const stData = await stRes.json();
+              if (stData && stData.sparkBuddy) user.sparkBuddy = stData.sparkBuddy;
+            }
+          } catch (_) {}
+        }
+
+        const payload = { type: "PUNK_SYNC", user, members };
+
+        if (targetWin && typeof targetWin.postMessage === "function") {
+          targetWin.postMessage(payload, "*");
+        }
+        document.querySelectorAll("iframe").forEach((ifr) => {
+          try { ifr.contentWindow && ifr.contentWindow.postMessage(payload, "*"); } catch (_) {}
+        });
+      }
+
+      window.addEventListener("message", async (ev) => {
+        const d = ev.data;
+        if (!d || typeof d !== "object") return;
+
+        if (d.type === "SPARK_REQUEST_SYNC") {
+          await pushSyncToSpark(ev.source);
+        }
+
+        if (["SPARK_INVITE_SEND", "SPARK_INVITE_ACCEPT", "SPARK_INVITE_DECLINE", "SPARK_INVITE_CANCEL", "SPARK_UNPAIR"].includes(d.type)) {
+          const sparkBase = getSparkApi();
+          if (sparkBase) {
+            fetch(sparkBase + "/api/spark/action", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...d,
+                initData: window.Telegram?.WebApp?.initData || ""
+              })
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .then(() => pushSyncToSpark(ev.source))
+              .catch(() => {});
+          }
+        }
+      });
+
+      const bd = document.getElementById("bd");
+      if (bd) {
+        new MutationObserver(() => {
+          const ifr = bd.querySelector("iframe");
+          if (ifr) {
+            ifr.addEventListener("load", () => pushSyncToSpark(ifr.contentWindow));
+            setTimeout(() => pushSyncToSpark(ifr.contentWindow), 300);
+          }
+        }).observe(bd, { childList: true, subtree: true });
+      }
+    })();
+  </script>
+</body>
+</html>
