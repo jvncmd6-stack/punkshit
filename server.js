@@ -104,20 +104,26 @@ app.use((req, res, next) => {
   next();
 });
 
-// 2. Penguncian CORS sesuai domain Mini App / Railway
+// 2. Penguncian CORS sesuai domain Mini App (GitHub Pages / Vercel / Custom)
+const rawCors = (process.env.CORS_ORIGINS || '').trim();
 const allowedOrigins = [
-  ...(process.env.CORS_ORIGINS || '').split(','),
+  ...rawCors.split(','),
   ENV.WEBAPP_URL || '',
   'https://web.telegram.org'
-].map(s => s.trim().replace(/\/+$/, '')).filter(Boolean);
+].map(s => s.trim().replace(/\/+$/, '')).filter(s => s && s !== '*');
 
 app.use(cors({
   origin(origin, cb) {
-    // Izinkan request tanpa origin (Telegram WebView / server-to-server) atau yang ada di whitelist
-    if (!origin || !allowedOrigins.length) return cb(null, true);
+    if (!origin || rawCors === '*' || !allowedOrigins.length) return cb(null, true);
     const cleanOrigin = origin.replace(/\/+$/, '');
-    if (allowedOrigins.includes(cleanOrigin)) return cb(null, true);
-    return cb(new Error('Origin tidak diizinkan oleh kebijakan CORS.'));
+    if (
+      allowedOrigins.includes(cleanOrigin) ||
+      cleanOrigin.endsWith('.github.io') ||
+      cleanOrigin.endsWith('.vercel.app')
+    ) {
+      return cb(null, true);
+    }
+    return cb(new Error('Origin tidak diizinkan oleh kebijakan CORS: ' + cleanOrigin));
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
