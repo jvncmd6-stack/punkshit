@@ -22,6 +22,21 @@ export function escHtml(s = '') {
   return String(s).replace(/[&<>]/g, c => ({ '&': '&', '<': '<', '>': '>' }[c]));
 }
 
+export function parsePinnedGifts(raw) {
+  if (!raw) return [];
+  const str = String(raw).trim();
+  if (!str) return [];
+  if (str.startsWith('[')) {
+    try {
+      const arr = JSON.parse(str);
+      return Array.isArray(arr) ? arr.map(String).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [str];
+}
+
 export async function syncTelegramAvatar(userId, tgUserObj = null) {
   const uid = String(userId);
   if (tgUserObj && tgUserObj.username !== undefined) {
@@ -65,6 +80,8 @@ export function formatUser(row) {
     if (bItem) equippedBorderUrl = bItem.image_url || '';
   }
 
+  const pinnedGifts = parsePinnedGifts(row.pinned_gift_id);
+
   const sixHours = 6 * 3600 * 1000;
   const activePresence = (Date.now() - (row.presence_at || 0) < sixHours)
     ? row.presence
@@ -91,7 +108,8 @@ export function formatUser(row) {
     equippedBorderId: row.equipped_border_id,
     equippedBorderUrl,
     equippedSkinId: row.equipped_skin_id,
-    pinnedGiftId: row.pinned_gift_id,
+    pinnedGiftId: pinnedGifts[0] || '',
+    pinnedGifts,
     fishToday: row.fish_date === today ? row.fish_today : 0,
     fishCount: row.fish_count,
     scratchedToday: row.scratched_date === today,
