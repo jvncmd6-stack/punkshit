@@ -70,9 +70,35 @@ socialRouter.get('/rules-help', (req, res) => {
   const pasalRow = db.prepare("SELECT value FROM bot_settings WHERE key = 'pasal_text'").get();
   const helpRow = db.prepare("SELECT value FROM bot_settings WHERE key = 'help_text'").get();
 
+  const defaultPasal = [
+    '📜 PASAL & ATURAN PUNKSHIT.OS',
+    '',
+    '01. ATURAN TONGKRONGAN',
+    '1. Toxic dan bercanda bebas sewajarnya. Dilarang membawa SARA, menghina personal, atau melewati batas.',
+    '2. Dilarang keras membuat CDC (Circle Dalam Circle), kubu-kubuan, atau memecah solidaritas grup.',
+    '3. Dilarang pilih-pilih teman, sengaja mengabaikan, atau mengucilkan sesama member.',
+    '4. Wajib saling menghargai. Bercanda boleh, tapi tetap tahu batas dan jangan gampang memancing konflik.',
+    '',
+    '02. AKTIVITAS & KETERTIBAN',
+    '1. Dilarang numnam atau pasif total. Member tidak aktif akan dikeluarkan melalui cleaning berkala.',
+    '2. Member yang ingin keluar wajib izin atau pamit kepada pengurus terlebih dahulu.',
+    '3. Seluruh member wajib subscribe channel resmi dan aktif menggunakan bot PUNKSHIT.OS.',
+    '4. Dilarang membuat drama, menyebarkan konflik, atau mengganggu kenyamanan tongkrongan.',
+    '5. Setiap pelanggaran akan dikenakan teguran, peringatan, hingga dikeluarkan dari grup sesuai tingkat pelanggaran.'
+  ].join('\n');
+
+  const defaultHelp = [
+    '🆘 PUSAT BANTUAN PUNKSHIT.OS',
+    '',
+    '1. 🪪 Cetak identitas PunkID melalui menu utama WebApp.',
+    '2. 🎧 Request lagu Spotify melalui Radio Gang atau kirim MP3 ke PC Bot Mas Raka.',
+    '3. 🛒 Jual-beli barang dan jasa melalui Lapak Punkshit menggunakan PSC.',
+    '4. 🎮 Mainkan mini-game di Arena Gabut untuk mengumpulkan Arcade XP, naik level, dan klaim hadiah Arcade Pass.'
+  ].join('\n');
+
   res.json({
-    pasal: pasalRow ? pasalRow.value : '1. Saling hargai sesama warga markas.\n2. Dilarang spam link judi, scam, atau SARA.\n3. Gunakan fitur Radio Gang dengan tertib saat OS.',
-    help: helpRow ? helpRow.value : '• Cetak PunkID di menu utama.\n• Request lagu Spotify lewat Radio Gang atau kirim MP3 langsung ke PC Bot Mas Raka.'
+    pasal: pasalRow ? pasalRow.value : defaultPasal,
+    help: helpRow ? helpRow.value : defaultHelp
   });
 });
 
@@ -529,3 +555,4 @@ socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, re
     res.status(400).json({ error: err.message || 'Gagal memproses file.' });
   }
 });
+```[cite: 1]
