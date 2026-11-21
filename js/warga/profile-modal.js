@@ -116,6 +116,46 @@
     );
   }
 
+  function openTransferPscSheet(targetUid, targetName) {
+    var myBal = S.user ? (S.user.psc || 0) : 0;
+    C.sheet(
+      '<h2>💸 Transfer PSC</h2>' +
+      '<p class="sub">Kirim saldo PSC ke <b>' + C.esc(targetName) + '</b> (Saldo kamu: <b>' + myBal + ' PSC</b>).</p>' +
+      '<label>NOMINAL PSC (MIN. 10)</label>' +
+      '<input id="tf-amt" type="number" min="10" max="5000" value="50">' +
+      '<label>PESAN / CATATAN (OPSIONAL)</label>' +
+      '<input id="tf-note" maxlength="60" placeholder="Buat jajan di Lapak Rongsok...">' +
+      '<button class="btn" data-act="wg-tf-submit" data-uid="' + C.esc(targetUid) + '">KIRIM PSC SEKARANG</button>'
+    );
+  }
+
+  function openSendGiftSheet(targetUid, targetName) {
+    var inv = S.inv || [];
+    if (!inv.length) {
+      return C.sheet(
+        '<h2>🎁 Kirim Gift</h2>' +
+        '<p class="sub">Gudang barang kamu masih kosong. Beli item dulu di Lapak Rongsok!</p>' +
+        '<button class="btn b2" data-act="shut">TUTUP</button>'
+      );
+    }
+
+    var optionsHtml = inv.map(function (entry) {
+      var it = C.findItem(entry.itemId);
+      var label = it ? (it.name + ' [' + (it.rarity || 'Rare') + ']') : entry.itemId;
+      return '<option value="' + entry.id + '">' + C.esc(label) + '</option>';
+    }).join('');
+
+    C.sheet(
+      '<h2>🎁 Kirim Gift ke ' + C.esc(targetName) + '</h2>' +
+      '<p class="sub">Pilih item dari gudang kamu untuk dihadiahkan (dapat +2 Street Cred!).</p>' +
+      '<label>PILIH ITEM DARI GUDANG</label>' +
+      '<select id="gf-inv-id">' + optionsHtml + '</select>' +
+      '<label>UCAPAN HADIAH (OPSIONAL)</label>' +
+      '<input id="gf-note" maxlength="60" placeholder="Hadiah spesial buat lo...">' +
+      '<button class="btn" data-act="wg-gift-submit" data-uid="' + C.esc(targetUid) + '">KIRIM HADIAH</button>'
+    );
+  }
+
   window.openWargaProfile = async function (targetIdOrUsn) {
     if (!targetIdOrUsn) return;
     if (S.user && (String(S.user.id) === String(targetIdOrUsn) || (S.user.username && S.user.username.toLowerCase() === String(targetIdOrUsn).toLowerCase()))) {
@@ -136,7 +176,7 @@
       var roleBadge = (u.role && u.role !== 'member') ? '<span class="role-tag">' + C.esc(u.role) + '</span>' : '';
 
       var sparkBtn = u.username
-        ? '<button class="btn b2" style="margin:0;flex:1" data-act="wg-spark-invite" data-usn="' + C.esc(u.username) + '">🔥 Ajak Spark</button>'
+        ? '<button class="btn b2" style="margin:0" data-act="wg-spark-invite" data-usn="' + C.esc(u.username) + '">🔥 Spark</button>'
         : '';
 
       C.sheet(
@@ -152,9 +192,11 @@
           '</div>' +
         '</div>' +
         renderPublicCard(u, res.itemCount) +
-        '<div style="display:flex;gap:8px;margin-top:10px">' +
-          '<button class="btn" style="margin:0;flex:1" data-act="wg-sapa" data-uid="' + C.esc(u.id) + '" data-name="' + C.esc(u.name) + '">👋 Sapa di Grup</button>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">' +
+          '<button class="btn" style="margin:0" data-act="wg-sapa" data-uid="' + C.esc(u.id) + '" data-name="' + C.esc(u.name) + '">👋 Sapa</button>' +
           sparkBtn +
+          '<button class="btn b2" style="margin:0" data-act="wg-tf-open" data-uid="' + C.esc(u.id) + '" data-name="' + C.esc(u.name) + '">💸 Transfer PSC</button>' +
+          '<button class="btn b2" style="margin:0" data-act="wg-gift-open" data-uid="' + C.esc(u.id) + '" data-name="' + C.esc(u.name) + '">🎁 Kirim Gift</button>' +
         '</div>'
       );
     } catch (err) {
@@ -165,4 +207,47 @@
       );
     }
   };
+
+  document.addEventListener('click', async function (e) {
+    var t = e.target.closest('[data-act]');
+    if (!t) return;
+    var act = t.getAttribute('data-act');
+
+    if (act === 'wg-tf-open') {
+      openTransferPscSheet(t.getAttribute('data-uid'), t.getAttribute('data-name'));
+    } else if (act === 'wg-tf-submit') {
+      var uid = t.getAttribute('data-uid');
+      var amt = Number(document.getElementById('tf-amt').value) || 0;
+      var note = (document.getElementById('tf-note').value || '').trim();
+      t.disabled = true;
+      try {
+        var res = await API.post('/api/social/transfer-psc', { targetUserId: uid, amount: amt, note: note });
+        if (res.user) S.user = res.user;
+        C.shut();
+        C.refresh();
+        C.notify('Mas Raka', 'Transfer Berhasil', res.message);
+      } catch (err) {
+        t.disabled = false;
+        C.notify('Mas Raka', 'Gagal Transfer', err.message);
+      }
+    } else if (act === 'wg-gift-open') {
+      openSendGiftSheet(t.getAttribute('data-uid'), t.getAttribute('data-name'));
+    } else if (act === 'wg-gift-submit') {
+      var gUid = t.getAttribute('data-uid');
+      var invId = Number(document.getElementById('gf-inv-id').value);
+      var gNote = (document.getElementById('gf-note').value || '').trim();
+      t.disabled = true;
+      try {
+        var gRes = await API.post('/api/social/send-gift', { targetUserId: gUid, invId: invId, note: gNote });
+        if (gRes.user) S.user = gRes.user;
+        if (gRes.inv) S.inv = gRes.inv;
+        C.shut();
+        C.refresh();
+        C.notify('Mas Raka', 'Gift Terkirim!', gRes.message);
+      } catch (err) {
+        t.disabled = false;
+        C.notify('Mas Raka', 'Gagal Kirim', err.message);
+      }
+    }
+  });
 })();
