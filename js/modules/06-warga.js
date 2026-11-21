@@ -21,6 +21,7 @@
         '<button class="chip" data-act="app" data-id="kotak">📮 Kotak Rahasia</button>' +
         '<button class="chip" data-act="app" data-id="sidang">🗳️ Sidang Warga</button>' +
         '<button class="chip" data-act="app" data-id="radio">🎧 Radio Gang</button>' +
+        '<button class="chip" data-act="app" data-id="klasemen">🏆 Klasemen</button>' +
       '</div>' +
 
       '<h3 class="gh">SIAPA YANG MASIH HIDUP? (' + list.length + ')</h3>' +
