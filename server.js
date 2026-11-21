@@ -161,6 +161,40 @@ app.use('/api', actionRouter);
 app.use('/api', gameRouter);
 app.use('/api', socialRouter);
 
+// Anti-Spam Cooldown khusus aksi yang mengirim pesan bot ke Grup/Channel
+const socialCooldowns = new Map();
+function socialBotCooldown(req, res, next) {
+  if (req.method !== 'POST') return next();
+
+  const rules = {
+    '/social/greet': { sec: 45, label: 'Sapa warga' },
+    '/radio': { sec: 90, label: 'Request lagu' },
+    '/wanted': { sec: 120, label: 'Pasang Wanted Board' },
+    '/menfess': { sec: 60, label: 'Kirim Menfess' }
+  };
+
+  const rule = rules[req.path];
+  if (!rule) return next();
+
+  const uid = String(req.tgUser?.id || req.dbUser?.id || req.ip || 'anon');
+  const key = `${uid}:${req.path}`;
+  const now = Date.now();
+  const until = socialCooldowns.get(key) || 0;
+
+  if (now < until) {
+    const left = Math.ceil((until - now) / 1000);
+    return res.status(429).json({
+      error: `Sabar bro, tunggu ${left} detik lagi sebelum ${rule.label} ulang biar grup nggak banjir!`
+    });
+  }
+
+  socialCooldowns.set(key, now + rule.sec * 1000);
+  next();
+}
+
+app.use('/api', socialBotCooldown);
+app.use('/api', socialRouter);
+
 // === ENDPOINT SPARK BUDDIES (MAX 3 SLOTS) ===
 app.get('/api/spark/status', (req, res) => {
   const authUser = req.tgUser || req.dbUser || req.user || {};
