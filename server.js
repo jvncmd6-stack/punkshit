@@ -94,12 +94,58 @@ export function getSparkStateForUser(username) {
 }
 
 const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+// 1. Security Headers dasar
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+// 2. Penguncian CORS sesuai domain Mini App / Railway
+const allowedOrigins = [
+  ...(process.env.CORS_ORIGINS || '').split(','),
+  ENV.WEBAPP_URL || '',
+  'https://web.telegram.org'
+].map(s => s.trim().replace(/\/+$/, '')).filter(Boolean);
 
 app.use(cors({
-  origin: '*',
+  origin(origin, cb) {
+    // Izinkan request tanpa origin (Telegram WebView / server-to-server) atau yang ada di whitelist
+    if (!origin || !allowedOrigins.length) return cb(null, true);
+    const cleanOrigin = origin.replace(/\/+$/, '');
+    if (allowedOrigins.includes(cleanOrigin)) return cb(null, true);
+    return cb(new Error('Origin tidak diizinkan oleh kebijakan CORS.'));
+  },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// 3. Anti-Spam Rate Limiter ringan tanpa dependency tambahan (maks 90 req / menit per IP)
+const rateBuckets = new Map();
+function apiRateLimit(req, res, next) {
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  let bucket = rateBuckets.get(ip);
+  if (!bucket || now > bucket.resetAt) {
+    bucket = { count: 1, resetAt: now + 60 * 1000 };
+    rateBuckets.set(ip, bucket);
+    return next();
+  }
+  bucket.count += 1;
+  if (bucket.count > 90) {
+    return res.status(429).json({ error: 'Terlalu banyak request, santai dulu bro!' });
+  }
+  next();
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, b] of rateBuckets.entries()) {
+    if (now > b.resetAt) rateBuckets.delete(ip);
+  }
+}, 5 * 60 * 1000);
 
 app.use(express.json({ limit: '5mb' }));
 app.use('/uploads', express.static(ENV.UPLOAD_DIR));
@@ -108,6 +154,7 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', service: 'PUNKSHIT.OS API', time: Date.now() });
 });
 
+app.use('/api', apiRateLimit);
 app.use('/api', authTma);
 app.use('/api', userRouter);
 app.use('/api', actionRouter);
@@ -116,7 +163,8 @@ app.use('/api', socialRouter);
 
 // === ENDPOINT SPARK BUDDIES (MAX 3 SLOTS) ===
 app.get('/api/spark/status', (req, res) => {
-  const authUser = req.user || req.tgUser || res.locals?.user || {};
+  const authUser = req.tgUser || req.dbUser || req.user || {};
+  // Prioritaskan username resmi dari token Telegram yang sudah terverifikasi
   const usn = cleanUsn(authUser.username || req.query.username);
   if (!usn) return res.json({ sparkBuddies: [], sparkBuddy: null });
   const list = getSparkListForUser(usn);
@@ -130,9 +178,11 @@ app.post('/api/spark/action', async (req, res) => {
   try {
     const body = req.body || {};
     const action = body.type || '';
-    const authUser = req.user || req.tgUser || res.locals?.user || {};
+    const authUser = req.tgUser || req.dbUser || req.user || {};
 
-    const actor = cleanUsn(authUser.username || body.byUsername || body.fromUsername);
+    // Anti-spoofing: jika token Telegram tersedia, wajib pakai username dari token Telegram
+    const verifiedUsn = cleanUsn(authUser.username);
+    const actor = verifiedUsn || cleanUsn(body.byUsername || body.fromUsername);
     const target = (action === 'SPARK_INVITE_ACCEPT' || action === 'SPARK_INVITE_DECLINE')
       ? cleanUsn(body.fromUsername || body.targetUsername)
       : cleanUsn(body.targetUsername || body.fromUsername);
@@ -152,7 +202,6 @@ app.post('/api/spark/action', async (req, res) => {
         });
       }
 
-      // Cek apakah pasangan ini sudah terhubung / pending
       const samePair = db.prepare(`
         SELECT 1 FROM spark_pairs
         WHERE ((user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?))
@@ -169,7 +218,6 @@ app.post('/api/spark/action', async (req, res) => {
         });
       }
 
-      // Cek slot pengirim (maks 3 aktif/outgoing)
       const actorCount = db.prepare(`
         SELECT COUNT(*) AS cnt FROM spark_pairs
         WHERE (user1 = ? AND status IN ('pending', 'paired'))
@@ -186,7 +234,6 @@ app.post('/api/spark/action', async (req, res) => {
         });
       }
 
-      // Cek slot partner (maks 3 paired)
       const targetPairedCount = db.prepare(`
         SELECT COUNT(*) AS cnt FROM spark_pairs
         WHERE (user1 = ? OR user2 = ?) AND status = 'paired'
@@ -207,7 +254,6 @@ app.post('/api/spark/action', async (req, res) => {
         VALUES (?, ?, 'pending', 0, 0, '', ?)
       `).run(actor, target, Date.now());
 
-      // Kirim notifikasi lewat bot Mas Raka (Grammy)
       const bot = typeof botMod.getBotInstance === 'function' ? botMod.getBotInstance() : null;
       if (bot) {
         const targetRow = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(target);
@@ -261,7 +307,6 @@ app.post('/api/spark/action', async (req, res) => {
         });
       }
 
-      // Pastikan penerima tidak melebihi 3 partner aktif
       const actorPairedCount = db.prepare(`
         SELECT COUNT(*) AS cnt FROM spark_pairs
         WHERE (user1 = ? OR user2 = ?) AND status = 'paired'
