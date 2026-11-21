@@ -151,6 +151,23 @@
     if (!t) return;
     var act = t.getAttribute('data-act');
 
+    if (act === 'wg-view') {
+  if (window.openWargaProfile) window.openWargaProfile(t.getAttribute('data-uid'));
+} else if (act === 'wg-spark-invite') {
+  var targetUsn = t.getAttribute('data-usn');
+  t.disabled = true;
+  try {
+    var spRes = await API.post('/api/spark/action', {
+      type: 'SPARK_INVITE_SEND',
+      targetUsername: targetUsn
+    });
+    C.notify('Mas Raka', 'Spark Buddies', spRes.message || ('Ajakan Spark dikirim ke @' + targetUsn + '!'));
+  } catch (err) {
+    t.disabled = false;
+    C.notify('Mas Raka', 'Info', err.message);
+  }
+}
+    
     if (act === 'wg-sapa') {
       var targetId = t.getAttribute('data-uid');
       var targetName = t.getAttribute('data-name');
