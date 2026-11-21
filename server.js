@@ -156,24 +156,7 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-app.use(express.json({ limit: '5mb' }));
-app.use('/uploads', express.static(ENV.UPLOAD_DIR));
-
-app.get('/', (req, res) => {
-  res.json({ status: 'ok', service: 'PUNKSHIT.OS API', time: Date.now() });
-});
-
-app.use('/api', apiRateLimit);
-app.use('/api', authTma);
-app.use('/api', userRouter);
-app.use('/api', actionRouter);
-app.use('/api', gameRouter);
-app.use('/api', socialRouter);
-app.use('/api', socialExtraRouter);
-app.use('/api', kotakBirthdayRouter);
-app.use('/api', sparkArenaRouter)
-
-// Anti-Spam Cooldown khusus aksi yang mengirim pesan bot ke Grup/Channel
+// 4. Anti-Spam Cooldown khusus aksi yang mengirim pesan bot ke Grup/Channel
 const socialCooldowns = new Map();
 function socialBotCooldown(req, res, next) {
   if (req.method !== 'POST') return next();
@@ -204,13 +187,27 @@ function socialBotCooldown(req, res, next) {
   next();
 }
 
+app.use(express.json({ limit: '5mb' }));
+app.use('/uploads', express.static(ENV.UPLOAD_DIR));
+
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', service: 'PUNKSHIT.OS API', time: Date.now() });
+});
+
+app.use('/api', apiRateLimit);
+app.use('/api', authTma);
+app.use('/api', userRouter);
+app.use('/api', actionRouter);
+app.use('/api', gameRouter);
 app.use('/api', socialBotCooldown);
 app.use('/api', socialRouter);
+app.use('/api', socialExtraRouter);
+app.use('/api', kotakBirthdayRouter);
+app.use('/api', sparkArenaRouter);
 
 // === ENDPOINT SPARK BUDDIES (MAX 3 SLOTS) ===
 app.get('/api/spark/status', (req, res) => {
   const authUser = req.tgUser || req.dbUser || req.user || {};
-  // Prioritaskan username resmi dari token Telegram yang sudah terverifikasi
   const usn = cleanUsn(authUser.username || req.query.username);
   if (!usn) return res.json({ sparkBuddies: [], sparkBuddy: null });
   const list = getSparkListForUser(usn);
@@ -226,7 +223,6 @@ app.post('/api/spark/action', async (req, res) => {
     const action = body.type || '';
     const authUser = req.tgUser || req.dbUser || req.user || {};
 
-    // Anti-spoofing: jika token Telegram tersedia, wajib pakai username dari token Telegram
     const verifiedUsn = cleanUsn(authUser.username);
     const actor = verifiedUsn || cleanUsn(body.byUsername || body.fromUsername);
     const target = (action === 'SPARK_INVITE_ACCEPT' || action === 'SPARK_INVITE_DECLINE')
