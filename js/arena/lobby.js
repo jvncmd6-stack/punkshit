@@ -3,7 +3,6 @@
   var C = window.PunkCore;
   var S = C.S;
 
-  ${window.renderArenaSparkCoopSlot ? window.renderArenaSparkCoopSlot() : ''}
   function renderGamesTab() {
     var st = A.state;
     var fq = st.fishQuota;
@@ -193,11 +192,15 @@
         '<button class="tab' + (st.tab === 'rank' ? ' on' : '') + '" data-act="ar-tab" data-tab="rank">🏆 Rank</button>' +
       '</div>';
 
+    var coopSlot = typeof window.renderArenaSparkCoopSlot === 'function'
+      ? window.renderArenaSparkCoopSlot()
+      : '';
+
     var content = '';
-    if (st.tab === 'games') content = renderGamesTab();
-    else if (st.tab === 'quest') content = renderQuestAndPassTab();
-    else if (st.tab === 'bag') content = renderCollectionTab();
-    else if (st.tab === 'rank') content = renderRankTab();
+    if (st.tab === 'games') content = coopSlot + renderGamesTab();
+    else if (st.tab === 'quest') content = coopSlot + renderQuestAndPassTab();
+    else if (st.tab === 'bag') content = coopSlot + renderCollectionTab();
+    else if (st.tab === 'rank') content = coopSlot + renderRankTab();
 
     return headerCard + navTabs + content;
   };
