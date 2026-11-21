@@ -29,14 +29,14 @@
           ? list.map(function (w) {
               var roleTag = (w.role && w.role !== 'member') ? ' <span class="role-tag">' + C.esc(w.role) + '</span>' : '';
               return (
-                '<div class="rw">' +
-                  '<div style="display:flex;align-items:center;gap:11px">' +
-                    C.renderAvatar(w, 'mini') +
-                    '<div><b>' + C.esc(w.name) + roleTag + '</b><small>' + C.esc(w.presence || '☕ Nongki Dulu') + ' · ' + C.rankInfo(w.streak).title + '</small></div>' +
-                  '</div>' +
-                  '<button class="pill" data-act="wg-sapa" data-uid="' + C.esc(w.id) + '" data-name="' + C.esc(w.name) + '">👋 Sapa</button>' +
-                '</div>'
-              );
+  '<div class="rw">' +
+    '<div data-act="wg-view" data-uid="' + C.esc(w.id) + '" style="display:flex;align-items:center;gap:11px;flex:1;cursor:pointer">' +
+      C.renderAvatar(w, 'mini') +
+      '<div><b>' + C.esc(w.name) + roleTag + '</b><small>' + C.esc(w.presence || '☕ Nongki Dulu') + ' · ' + C.rankInfo(w.streak).title + '</small></div>' +
+    '</div>' +
+    '<button class="pill" data-act="wg-sapa" data-uid="' + C.esc(w.id) + '" data-name="' + C.esc(w.name) + '">👋 Sapa</button>' +
+  '</div>'
+);
             }).join('')
           : '<div class="rw"><small>Belum ada warga lain yang terdeteksi aktif.</small></div>') +
       '</div>'
