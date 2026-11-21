@@ -154,7 +154,6 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
     <p>Ajakan terkirim ke <b id="outToUser">@username</b>. Api baru menyala setelah dia menyetujui ajakanmu.</p>
     <div class="pg-box-act">
       <button class="pg-btn danger" id="cancelInviteBtn">Batalkan Ajakan</button>
-      <button class="pg-btn sec" id="simAcceptBtn" title="Simulasi jika partner menerima">Simulasi Partner ACC ✓</button>
     </div>
   </div>
 
@@ -239,60 +238,64 @@ const DN={Polos:"Tanpa"};
 const normUsn = raw => String(raw||"").trim().replace(/^@+/,"").replace(/\s+/g,"").toLowerCase();
 const fmtUsn = u => u ? "@"+normUsn(u) : "";
 
-// AUTO-DETEKSI @USERNAME MULTI-SUMBER (Telegram WebApp, Parent Window, URL, LocalStorage)
+let DIRECT_API = "";
+let DIRECT_TMA = "";
+
 function autoDetectIdentity(){
  let detectedUsn="";
  let detectedMembers=[];
 
- // 1. Cek URL Query Params (?usn=...&members=...)
  try{
   const qp=new URLSearchParams(location.search);
   if(qp.get("usn")) detectedUsn=normUsn(qp.get("usn"));
+  if(qp.get("api")) DIRECT_API=String(qp.get("api")).replace(/\/+$/,"");
+  if(qp.get("tma")) DIRECT_TMA=String(qp.get("tma"));
   if(qp.get("members")){
    const m=JSON.parse(qp.get("members"));
    if(Array.isArray(m)) detectedMembers=m;
   }
  }catch(_){}
 
- // 2. Cek Telegram WebApp di iframe & parent window
  try{
-  const tgSelf=window.Telegram?.WebApp?.initDataUnsafe?.user;
-  const tgParent=window.parent?.Telegram?.WebApp?.initDataUnsafe?.user;
-  const u=tgSelf||tgParent;
+  const tgSelf=window.Telegram?.WebApp;
+  const tgParent=window.parent?.Telegram?.WebApp;
+  const u=tgSelf?.initDataUnsafe?.user || tgParent?.initDataUnsafe?.user;
   if(u&&u.username) detectedUsn=normUsn(u.username);
+  if(!DIRECT_TMA) DIRECT_TMA = tgSelf?.initData || tgParent?.initData || "";
  }catch(_){}
 
- // 3. Cek State Global Parent (Same-Origin PUNKSHIT.OS)
  try{
   const p=window.parent;
   if(p&&p!==window){
-   const pu=p.STATE?.user||p.PUNK?.user||p.CURRENT_USER;
+   if(!DIRECT_API && p.PUNK_CONFIG?.API_URL) DIRECT_API=String(p.PUNK_CONFIG.API_URL).replace(/\/+$/,"");
+   const pu=p.PunkCore?.S?.user||p.STATE?.user||p.PUNK?.user||p.CURRENT_USER;
    if(pu&&(pu.username||pu.usn)) detectedUsn=normUsn(pu.username||pu.usn);
-   const pm=p.STATE?.members||p.STATE?.warga||p.WARGA||p.PUNK?.members;
+   const pm=p.PunkCore?.S?.members||p.STATE?.members||p.STATE?.warga||p.WARGA||p.PUNK?.members;
    if(Array.isArray(pm)&&pm.length) detectedMembers=pm;
   }
  }catch(_){}
 
- // 4. Cek LocalStorage milik PUNKSHIT.OS
- if(!detectedUsn||!detectedMembers.length){
-  try{
-   for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i);
-    if(k==="punkshit.spark.v3") continue;
-    const raw=localStorage.getItem(k);
-    if(!raw||raw[0]!=="{"&&raw[0]!=="[") continue;
-    const obj=JSON.parse(raw);
-    if(!detectedUsn){
-     const u=obj?.username||obj?.usn||obj?.user?.username||obj?.user?.usn;
-     if(u) detectedUsn=normUsn(u);
-    }
-    if(!detectedMembers.length){
-     const arr=Array.isArray(obj)?obj:(obj?.members||obj?.warga);
-     if(Array.isArray(arr)&&arr.length&&arr[0]&&(arr[0].username||arr[0].usn)) detectedMembers=arr;
-    }
+ try{
+  if(!DIRECT_API){
+   const lsApi=localStorage.getItem("psk_api_url");
+   if(lsApi) DIRECT_API=String(lsApi).replace(/\/+$/,"");
+  }
+  for(let i=0;i<localStorage.length;i++){
+   const k=localStorage.key(i);
+   if(k==="punkshit.spark.v3") continue;
+   const raw=localStorage.getItem(k);
+   if(!raw||(raw[0]!=="{"&&raw[0]!=="[")) continue;
+   const obj=JSON.parse(raw);
+   if(!detectedUsn){
+    const u=obj?.username||obj?.usn||obj?.user?.username||obj?.user?.usn;
+    if(u) detectedUsn=normUsn(u);
    }
-  }catch(_){}
- }
+   if(!detectedMembers.length){
+    const arr=Array.isArray(obj)?obj:(obj?.members||obj?.warga);
+    if(Array.isArray(arr)&&arr.length&&arr[0]&&(arr[0].username||arr[0].usn)) detectedMembers=arr;
+   }
+  }
+ }catch(_){}
 
  return {usn:detectedUsn,members:detectedMembers};
 }
@@ -397,7 +400,7 @@ function draw(pv){
  const bolt=(x,y,k,r)=>`<polygon points="0,0 20,0 12,26 28,26 -4,66 4,34 -10,34" transform="translate(${x} ${y}) rotate(${r}) scale(${k})" fill="url(#bg2)" ${st3(3)}/>`;
  if(H=="Jambul Petir")h+=bolt(124,-14,.9,-12)+bolt(190,-20,1,10)+bolt(158,0,.7,0);
  if(H=="Jepit Petir")h+=`<g>${bolt(84,112,.55,-20)}${bolt(98,134,.42,-30)}</g>`;
- if(H=="Pita Besar")h+=`<g transform="translate(112 92) rotate(-18)"><path d="M0 0C-24-26-44-8-38 14C-30 28-10 16 0 0Z" fill="#ff5fb0" ${st3(3.5)}/><path d="M0 0C24-26 44-8 38 14C30 28 10 16 0 0Z" fill="#ff5fb0" ${st3(3.5)}/><circle r="8" fill="#e0338a" ${st3(3)}/></g>`;
+ if(H=="Pita Besar")h+=`<g transform="translate(112 92) rotate(-18)"><path d="M0 0C-24-26-44-8-38 14C-30 28-10 16 0 0Z" fill="#ff5fb0" ${st3(3.5)}/><path d="M0 0C24-26 44-8 38 14C30 28-10 16 0 0Z" fill="#ff5fb0" ${st3(3.5)}/><circle r="8" fill="#e0338a" ${st3(3)}/></g>`;
  if(H=="Bucket")h+=`<path d="M64 136C58 76 100 58 150 58C200 58 242 76 236 136Z" fill="#d9c58a" ${st3(4)}/><path d="M50 136Q150 112 250 136Q250 160 150 164Q50 160 50 136Z" fill="#b9a46a" ${st3(4)}/>`;
  if(H=="Mohawk")h+=`<path d="M104 114L116 24L134 78L150 6L168 78L186 24L196 114Z" fill="#ff3d78" ${st3(4)}/>`;
  if(H=="Telinga Kucing")h+=`<path d="M80 120L66 46L126 92Z" fill="url(#bd)" ${st3(4)}/><path d="M220 120L234 46L174 92Z" fill="url(#bd)" ${st3(4)}/>`;
@@ -473,7 +476,7 @@ function ui(){
   `<button class="reset" id="unpairBtn">Putuskan / Ganti Partner (${fmtUsn(S.p2)})</button>`;
   $("unpairBtn").onclick=()=>{
     if(confirm(`Putuskan koneksi Spark Buddies dengan ${fmtUsn(S.p2)}?`)){
-      window.parent && window.parent.postMessage({type:"SPARK_UNPAIR",targetUsername:S.p2},"*");
+      sendActionToServer({type:"SPARK_UNPAIR",targetUsername:S.p2});
       S.paired=false;S.pairStatus="none";S.pendingUser="";S.p2="";S.days=0;S.g1={gap:0,msg:0};S.g2={gap:0,msg:0};
       save();showPairGate();
     }
@@ -498,7 +501,7 @@ Waiting:{br:.012,bf:1.3,h:0,hi:0,sw:3.5,sf:.3,sh:0,dy:0,ln:0,up:0,wv:0,sp:.9},
 Worried:{br:.012,bf:5,h:0,hi:0,sw:0,sf:1,sh:1.5,dy:2,ln:0,up:.08,wv:3,sp:3},
 Dancing:{br:.02,bf:2,h:12,hi:.67,sw:6,sf:.75,sh:0,dy:0,ln:0,up:1,wv:10,sp:1.8},
 Crying:{br:.02,bf:1.8,h:0,hi:0,sw:1,sf:.9,sh:0,dy:4,ln:0,up:0,wv:0,sp:.8},
-Celebrating:{br:.02,bf:3,h:38,hi:.85,sw:5,sf:1.2,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.5},
+Celebrating:{br:.02,bf:3,h:38,hi:.85,sw:5,sf1.2,sh:0,dy:0,ln:0,up:1,wv:14,sp:2.5},
 Sleepy:{br:.03,bf:.8,h:0,hi:0,sw:0,sf:1,sh:0,dy:6,ln:6,up:0,wv:0,sp:.45},
 Love:{br:.025,bf:2,h:10,hi:1.8,sw:4,sf:.6,sh:0,dy:0,ln:0,up:.5,wv:3,sp:1.2},
 Angry:{br:.015,bf:5,h:0,hi:0,sw:0,sf:1,sh:1.1,dy:5,ln:0,up:0,wv:0,sp:2.6},
@@ -549,7 +552,7 @@ function doSave(){try{localStorage.setItem(K,JSON.stringify({S:{...S,emo:EB||S.e
 function save(){clearTimeout(svT);svT=setTimeout(doSave,250)}
 function load(){try{const d=JSON.parse(localStorage.getItem(K));if(!d||!d.S)return;Object.assign(S,d.S,{extra:new Set(d.S.extra||[])});if(!TH[S.theme])S.theme="Api";if(!E[S.emo])S.emo="Happy";if(d.nm)$("nm").textContent=String(d.nm).slice(0,14);tab=Math.min(TABS.length-1,+d.tab||0);gf=d.gf||"Semua";if(d.seen){SEEN=new Set(d.seen);SEED=0}}catch(_){}}
 addEventListener("pagehide",doSave);document.addEventListener("visibilitychange",()=>document.hidden&&doSave());
-function toast(m){const e=$("toast");e.textContent=m;e.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>e.classList.remove("on"),2100)}
+function toast(m){const e=$("toast");e.textContent=m;e.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>e.classList.remove("on"),2600)}
 function bump(){if(y===0&&cr<=0){vy=Math.sqrt(2*G*22);qv-=.6}burst()}
 function burst(){if(RM)return;for(let i=0;i<8;i++){const e=document.createElement("i"),a=i/8*6.283+Math.random()*.5,r=70+Math.random()*50;e.className="spk";e.style.setProperty("--x",Math.cos(a)*r+"px");e.style.setProperty("--y",Math.sin(a)*r*.8-20+"px");if(i%2)e.style.background="var(--ac)";stg.appendChild(e);setTimeout(()=>e.remove(),700)}}
 
@@ -652,7 +655,7 @@ let WARGA_MEMBERS=[];
 function updateMyUsnBadge(){
  const badge=$("myUsnBadge");
  if(!badge)return;
- badge.textContent=S.p1?`🆔 Akunmu terdeteksi: @${S.p1}`:"⚠️ @username belum terdeteksi (ketik manual partner di bawah)";
+ badge.textContent=S.p1?`🆔 Akunmu terdeteksi: @${S.p1}`:"⚠️ @username belum terdeteksi (pasang @username Telegram dulu)";
 }
 
 function renderWargaList(){
@@ -679,7 +682,95 @@ function renderWargaList(){
  });
 }
 
-function sendInvite(rawUsn){
+function applyServerSparkState(sb){
+ if(!sb){
+  if(S.paired || S.pairStatus!=="none"){
+   S.paired=false; S.pairStatus="none"; S.pendingUser=""; S.p2="";
+   showPairGate();
+   save();
+  }
+  return;
+ }
+ const pUsn=normUsn(sb.partnerUsername || sb.partnerName);
+ if(sb.status==="paired" && pUsn){
+  S.paired=true; S.pairStatus="paired"; S.pendingUser=""; S.p2=pUsn;
+  $("pairGate").hidden=true;
+ }else if(sb.status==="incoming" && sb.fromUsername){
+  S.paired=false; S.pairStatus="incoming"; S.pendingUser=normUsn(sb.fromUsername);
+  showPairGate();
+ }else if(sb.status==="outgoing" && sb.targetUsername){
+  S.paired=false; S.pairStatus="outgoing"; S.pendingUser=normUsn(sb.targetUsername);
+  showPairGate();
+ }
+ if(typeof sb.streak==="number") S.days=sb.streak;
+ if(typeof sb.xp==="number") S.xp=sb.xp;
+ if(sb.g1) S.g1=sb.g1;
+ if(sb.g2) S.g2=sb.g2;
+ save();
+}
+
+async function sendActionToServer(actionObj){
+ const me=normUsn(S.p1);
+ const fullPayload=Object.assign({}, actionObj, {
+  fromUsername: actionObj.fromUsername || me,
+  byUsername: me
+ });
+
+ if(DIRECT_API){
+  try{
+   const res=await fetch(DIRECT_API + "/api/spark/action", {
+    method:"POST",
+    headers:{
+     "Content-Type":"application/json",
+     "Authorization":"tma " + DIRECT_TMA
+    },
+    body:JSON.stringify(fullPayload)
+   });
+   const data=await res.json().catch(()=>({}));
+   if(!res.ok){
+    toast("⚠️ Server Error (" + res.status + "): " + (data.error || data.message || "Gagal"));
+    return null;
+   }
+   if(!data.ok && data.message){
+    toast("⚠️ " + data.message);
+   }else if(data.ok && actionObj.type==="SPARK_INVITE_SEND"){
+    toast("✅ Ajakan masuk ke server untuk @" + normUsn(actionObj.targetUsername) + "!");
+   }
+   if("sparkBuddy" in data){
+    applyServerSparkState(data.sparkBuddy);
+    draw();
+   }
+   window.parent && window.parent.postMessage(Object.assign({}, fullPayload, {_directHandled:true}), "*");
+   return data;
+  }catch(err){
+   toast("⚠️ Gagal konek server: " + err.message);
+   return null;
+  }
+ }else{
+  toast("⚠️ API_URL kosong! Buka Mini App lewat tombol bot /start dulu.");
+  window.parent && window.parent.postMessage(fullPayload, "*");
+  return null;
+ }
+}
+
+async function pollServerStatusDirect(){
+ const me=normUsn(S.p1);
+ if(!DIRECT_API || !me) return;
+ try{
+  const res=await fetch(DIRECT_API + "/api/spark/status?username=" + encodeURIComponent(me) + "&_t=" + Date.now(), {
+   headers:{ "Authorization":"tma " + DIRECT_TMA }
+  });
+  if(!res.ok) return;
+  const data=await res.json();
+  if(data && typeof data === "object" && "sparkBuddy" in data){
+   applyServerSparkState(data.sparkBuddy);
+   updateMyUsnBadge();
+   draw();
+  }
+ }catch(_){}
+}
+
+async function sendInvite(rawUsn){
  const usn=normUsn(rawUsn);
  if(!usn || usn.length<3)return toast("Masukkan @username valid (min 3 karakter)!");
  if(!/^[a-z0-9_]{3,32}$/.test(usn))return toast("Format @username hanya huruf, angka, atau _");
@@ -695,8 +786,7 @@ function sendInvite(rawUsn){
  S.pendingUser=usn;
  save();
  updatePairGateUI();
- window.parent && window.parent.postMessage({type:"SPARK_INVITE_SEND",fromUsername:normUsn(S.p1),targetUsername:usn},"*");
- toast(`📩 Ajakan terkirim ke @${usn}, menunggu dia ACC!`);
+ await sendActionToServer({type:"SPARK_INVITE_SEND",fromUsername:normUsn(S.p1),targetUsername:usn});
 }
 
 function finalizePair(partnerUsn){
@@ -728,31 +818,29 @@ function showPairGate(){
 $("partnerConnectBtn").onclick=()=>sendInvite($("partnerInput").value);
 $("partnerInput").addEventListener("keydown",e=>{if(e.key==="Enter")sendInvite($("partnerInput").value)});
 
-$("cancelInviteBtn").onclick=()=>{
- window.parent && window.parent.postMessage({type:"SPARK_INVITE_CANCEL",targetUsername:S.pendingUser},"*");
+$("cancelInviteBtn").onclick=async()=>{
+ const target=S.pendingUser;
  S.pairStatus="none";S.pendingUser="";save();updatePairGateUI();
+ await sendActionToServer({type:"SPARK_INVITE_CANCEL",targetUsername:target});
  toast("Ajakan dibatalkan");
 };
 
-$("simAcceptBtn").onclick=()=>finalizePair(S.pendingUser);
-
-$("acceptInviteBtn").onclick=()=>{
+$("acceptInviteBtn").onclick=async()=>{
  const from=S.pendingUser;
- window.parent && window.parent.postMessage({type:"SPARK_INVITE_ACCEPT",fromUsername:from,byUsername:normUsn(S.p1)},"*");
  finalizePair(from);
+ await sendActionToServer({type:"SPARK_INVITE_ACCEPT",fromUsername:from,byUsername:normUsn(S.p1)});
 };
 
-$("declineInviteBtn").onclick=()=>{
+$("declineInviteBtn").onclick=async()=>{
  const from=S.pendingUser;
- window.parent && window.parent.postMessage({type:"SPARK_INVITE_DECLINE",fromUsername:from,byUsername:normUsn(S.p1)},"*");
  S.pairStatus="none";S.pendingUser="";save();updatePairGateUI();
+ await sendActionToServer({type:"SPARK_INVITE_DECLINE",fromUsername:from,byUsername:normUsn(S.p1)});
  toast(`Ajakan dari @${from} ditolak`);
 };
 
 $("shot").onclick=shot;$("ci").onclick=checkin;$("undo").onclick=undo;
 load();
 
-// Jalankan auto-deteksi @username langsung saat boot
 const auto=autoDetectIdentity();
 if(auto.usn) S.p1=auto.usn;
 if(auto.members.length) WARGA_MEMBERS=auto.members;
@@ -761,11 +849,12 @@ seedSeen();tabsInit();
 if(!S.paired||!S.p2){showPairGate()}else{$("pairGate").hidden=true}
 draw();ui();requestAnimationFrame(step);
 
-// Sinkronisasi dari PUNKSHIT.OS + Retry Polling jika parent telat merespons
 let syncDone=false;
 window.addEventListener("message", (ev) => {
  if(!ev.data || ev.data.type !== "PUNK_SYNC") return;
  syncDone=true;
+ if(ev.data.apiBase) DIRECT_API=String(ev.data.apiBase).replace(/\/+$/,"");
+ if(ev.data.initData) DIRECT_TMA=String(ev.data.initData);
  const u = ev.data.user;
  if(u){
   const myUsn = normUsn(u.username || u.usn);
@@ -775,27 +864,15 @@ window.addEventListener("message", (ev) => {
   WARGA_MEMBERS = ev.data.members;
   if(!S.paired) renderWargaList();
  }
- if(u && u.sparkBuddy){
-  const sb = u.sparkBuddy;
-  const pUsn = normUsn(sb.partnerUsername || sb.partnerName);
-  if(sb.status === "paired" && pUsn){
-   S.paired=true; S.pairStatus="paired"; S.pendingUser=""; S.p2=pUsn;
-   $("pairGate").hidden=true;
-  } else if(sb.status === "incoming" && sb.fromUsername){
-   S.paired=false; S.pairStatus="incoming"; S.pendingUser=normUsn(sb.fromUsername);
-   showPairGate();
-  } else if(sb.status === "outgoing" && sb.targetUsername){
-   S.paired=false; S.pairStatus="outgoing"; S.pendingUser=normUsn(sb.targetUsername);
-   showPairGate();
-  }
-  if(typeof sb.streak==="number") S.days=sb.streak;
-  if(typeof sb.xp==="number") S.xp=sb.xp;
-  if(sb.g1) S.g1=sb.g1;
-  if(sb.g2) S.g2=sb.g2;
+ if(u && "sparkBuddy" in u){
+  applyServerSparkState(u.sparkBuddy);
  }
  updateMyUsnBadge();
  draw();
 });
+
+pollServerStatusDirect();
+setInterval(pollServerStatusDirect, 3500);
 
 let syncTries=0;
 const syncTimer=setInterval(()=>{
