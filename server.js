@@ -13,7 +13,7 @@ import { gameRouter } from './src/api/gameRoutes.js';
 import { socialRouter } from './src/api/socialRoutes.js';
 import { kotakBirthdayRouter } from './src/api/kotakBirthdayRoutes.js';
 import { sparkArenaRouter } from './src/api/sparkArenaRoutes.js';
-import { escHtml } from './src/services/syncEngine.js';
+import { escHtml, buildMiniAppUrl } from './src/services/syncEngine.js';
 import * as botMod from './src/bot/index.js';
 
 fs.mkdirSync(ENV.DATA_DIR, { recursive: true });
@@ -147,7 +147,7 @@ app.use(cors({
     return cb(new Error('Origin tidak diizinkan oleh kebijakan CORS: ' + cleanOrigin));
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-telegram-init-data']
 }));
 
 // 3. Anti-Spam Rate Limiter ringan (maks 90 req / menit per IP)
@@ -318,8 +318,9 @@ app.post('/api/spark/action', async (req, res) => {
       if (bot) {
         const targetRow = db.prepare('SELECT id FROM users WHERE LOWER(username) = LOWER(?)').get(target);
         const kb = new InlineKeyboard();
-        if (ENV.MINIAPP_LINK) {
-          kb.url('🔥 Buka Spark Buddies', `${ENV.MINIAPP_LINK}?startapp=spark`).row();
+        const sparkUrl = buildMiniAppUrl('spark');
+        if (sparkUrl) {
+          kb.url('🔥 Buka Spark Buddies', sparkUrl).row();
         }
         kb.text('✅ ACC Ajakan', `spark_acc:${actor}:${target}`)
           .text('❌ Tolak', `spark_dec:${actor}:${target}`);
