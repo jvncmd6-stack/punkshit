@@ -177,26 +177,39 @@ export function initDb() {
     );
   `);
 
-  // Seed 5 Gift bawaan & 2 Card Skin jika tabel items masih kosong
-  const count = db.prepare('SELECT COUNT(*) AS c FROM items').get().c;
-  if (count === 0) {
-    const ins = db.prepare(`
-      INSERT INTO items (id, type, name, price, rarity, stock, desc, colors, svg_path, skin_class, created_at)
-      VALUES (@id, @type, @name, @price, @rarity, -1, @desc, @colors, @svg_path, @skin_class, @created_at)
-    `);
-    const now = Date.now();
-    const defaults = [
-      { id: 'heart', type: 'gift', name: 'Chrome Heart', price: 50, rarity: 'Rare', desc: 'Hati krom buat yang spesial.', colors: JSON.stringify(['#cfeaff', '#176BFF']), svg_path: 'M50 88C18 64 8 46 8 33a21 21 0 0142-5 21 21 0 0142 5c0 13-10 31-42 55z', skin_class: '', created_at: now },
-      { id: 'bolt', type: 'gift', name: 'Neon Bolt', price: 80, rarity: 'Rare', desc: 'Kilat buat yang selalu on fire.', colors: JSON.stringify(['#fff7a0', '#ffb800']), svg_path: 'M60 4L18 56h27l-7 40 44-56H55z', skin_class: '', created_at: now },
-      { id: 'star', type: 'gift', name: 'Punk Star', price: 120, rarity: 'Epic', desc: 'Bintang jalanan, bersinar di gang.', colors: JSON.stringify(['#ffb3e6', '#9a3cff']), svg_path: 'M50 6l13 28 30 3-22 21 7 30-28-16-28 16 7-30L7 37l30-3z', skin_class: '', created_at: now },
-      { id: 'fish', type: 'gift', name: 'Golden Punkfish', price: 300, rarity: 'Legendary', desc: 'Ikan emas langka. Main character luck.', colors: JSON.stringify(['#fff3b0', '#e09a00']), svg_path: 'M5 50C22 22 52 20 70 43l23-19v52L70 57C52 80 22 78 5 50z', skin_class: '', created_at: now },
-      { id: 'crown', type: 'gift', name: 'Fosil Crown', price: 500, rarity: 'Legendary', desc: 'Mahkota buat fosil sejati markas.', colors: JSON.stringify(['#c8f7ff', '#1e8ab8']), svg_path: 'M8 80V28l24 24 18-34 18 34 24-24v52z', skin_class: '', created_at: now },
-      { id: 'skin-chrome', type: 'skin', name: 'Chrome Edition Card', price: 200, rarity: 'Epic', desc: 'Lapisan metalik krom untuk kartu PunkID.', colors: JSON.stringify(['#e0e8f5', '#6c7a96']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-chrome', created_at: now },
-      { id: 'skin-gold', type: 'skin', name: 'Sultan Gold Card', price: 450, rarity: 'Legendary', desc: 'Kartu emas khusus donatur & sepuh markas.', colors: JSON.stringify(['#ffe879', '#b87b00']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-gold', created_at: now }
-    ];
-    const tx = db.transaction(list => { for (const item of list) ins.run(item); });
-    tx(defaults);
-  }
+  // Seed & tambahkan item bawaan (Gift, Avatar Border, & Card Skin) dengan INSERT OR IGNORE
+  const ins = db.prepare(`
+    INSERT OR IGNORE INTO items (id, type, name, price, rarity, stock, desc, colors, svg_path, skin_class, created_at)
+    VALUES (@id, @type, @name, @price, @rarity, -1, @desc, @colors, @svg_path, @skin_class, @created_at)
+  `);
+  const now = Date.now();
+  const ringSvg = 'M50 4a46 46 0 100 92 46 46 0 000-92zm0 13a33 33 0 110 66 33 33 0 010-66z';
+
+  const defaults = [
+    // 5 Gift Bawaan
+    { id: 'heart', type: 'gift', name: 'Chrome Heart', price: 50, rarity: 'Rare', desc: 'Hati krom buat yang spesial.', colors: JSON.stringify(['#cfeaff', '#176BFF']), svg_path: 'M50 88C18 64 8 46 8 33a21 21 0 0142-5 21 21 0 0142 5c0 13-10 31-42 55z', skin_class: '', created_at: now },
+    { id: 'bolt', type: 'gift', name: 'Neon Bolt', price: 80, rarity: 'Rare', desc: 'Kilat buat yang selalu on fire.', colors: JSON.stringify(['#fff7a0', '#ffb800']), svg_path: 'M60 4L18 56h27l-7 40 44-56H55z', skin_class: '', created_at: now },
+    { id: 'star', type: 'gift', name: 'Punk Star', price: 120, rarity: 'Epic', desc: 'Bintang jalanan, bersinar di gang.', colors: JSON.stringify(['#ffb3e6', '#9a3cff']), svg_path: 'M50 6l13 28 30 3-22 21 7 30-28-16-28 16 7-30L7 37l30-3z', skin_class: '', created_at: now },
+    { id: 'fish', type: 'gift', name: 'Golden Punkfish', price: 300, rarity: 'Legendary', desc: 'Ikan emas langka. Main character luck.', colors: JSON.stringify(['#fff3b0', '#e09a00']), svg_path: 'M5 50C22 22 52 20 70 43l23-19v52L70 57C52 80 22 78 5 50z', skin_class: '', created_at: now },
+    { id: 'crown', type: 'gift', name: 'Fosil Crown', price: 500, rarity: 'Legendary', desc: 'Mahkota buat fosil sejati markas.', colors: JSON.stringify(['#c8f7ff', '#1e8ab8']), svg_path: 'M8 80V28l24 24 18-34 18 34 24-24v52z', skin_class: '', created_at: now },
+
+    // 5 Avatar Border (Bisa dipasang & dilepas di profil avatar)
+    { id: 'border-cyber', type: 'border', name: 'Cyber Blue Aura', price: 120, rarity: 'Rare', desc: 'Bingkai neon biru elektrik menyala di sekitar avatar.', colors: JSON.stringify(['#8FC7FF', '#176BFF']), svg_path: ringSvg, skin_class: 'border-cyber', created_at: now },
+    { id: 'border-toxic', type: 'border', name: 'Toxic Slime Ring', price: 160, rarity: 'Rare', desc: 'Aura hijau radioaktif khas anak malam markas.', colors: JSON.stringify(['#9effa9', '#16a34a']), svg_path: ringSvg, skin_class: 'border-toxic', created_at: now },
+    { id: 'border-crimson', type: 'border', name: 'Crimson Inferno', price: 220, rarity: 'Epic', desc: 'Cincin bara merah menyala buat yang lagi on fire.', colors: JSON.stringify(['#ff9e9e', '#dc2626']), svg_path: ringSvg, skin_class: 'border-crimson', created_at: now },
+    { id: 'border-violet', type: 'border', name: 'Phantom Violet', price: 280, rarity: 'Epic', desc: 'Bingkai ungu mistis berputar untuk karakter misterius.', colors: JSON.stringify(['#e5b8ff', '#7c3aed']), svg_path: ringSvg, skin_class: 'border-violet', created_at: now },
+    { id: 'border-gold', type: 'border', name: 'Solar Gold Halo', price: 420, rarity: 'Legendary', desc: 'Halo emas sultan dengan kilau mewah di foto profil.', colors: JSON.stringify(['#fff3a0', '#eab308']), svg_path: ringSvg, skin_class: 'border-gold', created_at: now },
+
+    // 5 Card Skin (Bisa dipasang & dilepas di kartu PunkID)
+    { id: 'skin-obsidian', type: 'skin', name: 'Midnight Obsidian Card', price: 150, rarity: 'Rare', desc: 'Lapisan hitam matte elegan dengan aksen karbon.', colors: JSON.stringify(['#475569', '#090d16']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-obsidian', created_at: now },
+    { id: 'skin-chrome', type: 'skin', name: 'Chrome Edition Card', price: 200, rarity: 'Epic', desc: 'Lapisan metalik krom untuk kartu PunkID.', colors: JSON.stringify(['#e0e8f5', '#6c7a96']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-chrome', created_at: now },
+    { id: 'skin-neon', type: 'skin', name: 'Cyber Neon Card', price: 260, rarity: 'Epic', desc: 'Kartu cyberpunk gradasi biru-ungu bercahaya.', colors: JSON.stringify(['#38bdf8', '#7e22ce']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-neon', created_at: now },
+    { id: 'skin-crimson', type: 'skin', name: 'Blood Crimson Card', price: 320, rarity: 'Epic', desc: 'Kartu merah gelap berkarisma khusus pentolan gang.', colors: JSON.stringify(['#f87171', '#7f1d1d']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-crimson', created_at: now },
+    { id: 'skin-gold', type: 'skin', name: 'Sultan Gold Card', price: 450, rarity: 'Legendary', desc: 'Kartu emas khusus donatur & sepuh markas.', colors: JSON.stringify(['#ffe879', '#b87b00']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-gold', created_at: now }
+  ];
+
+  const tx = db.transaction(list => { for (const item of list) ins.run(item); });
+  tx(defaults);
 }
 
 export function addFeed(text) {
