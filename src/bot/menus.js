@@ -9,7 +9,7 @@ export const DEFAULT_GREET =
 
 export const DEFAULT_BYE =
   'Yah, {name} ({username}) cabut dari markas.\n\n' +
-  'Yaudah deh, akses PunkID resmi ditutup. Sisa warga di tongkrongan sekarang {count} orang.';
+  'Yaudah deh, akses PunkID resmi ditutup & dihapus. Sisa warga di tongkrongan sekarang {count} orang.';
 
 export const DEFAULT_PASAL =
   '📜 <b>PASAL & ATURAN TONGKRONGAN</b>\n\n' +
@@ -179,7 +179,7 @@ export function renderTutorMiniAppText(page = 'overview') {
       '<b>🪪 Kartu PunkID 2 Sisi & Gudang Gift</b>\n' +
       '• <b>Tap Kartu:</b> Memutar kartu untuk lihat sisi belakang (Bio, Lagu Spotify, & Koleksi).\n' +
       '• <b>Border & Skin:</b> Klik <i>Equip</i> di Gudang untuk menghias avatar & kartu.\n' +
-      '• <b>Fungsi Gift / Collectible:</b> Bisa di-<b>Pin</b> agar tampil di kartu PunkID, atau dikirim ulang ke warga lain sebagai kado.\n' +
+      '• <b>Fungsi Gift / Collectible:</b> Bisa di-<b>Pin</b> (maks. 6 gift) agar tampil di kartu PunkID, atau dikirim ke warga lain sebagai hadiah.\n' +
       '• <b>Ulang Tahun:</b> Klaim kado <b>+150 PSC & +5 Cred</b> di menu Warga tepat di hari-H!' +
       '</blockquote>'
     );
@@ -192,7 +192,7 @@ export function renderTutorMiniAppText(page = 'overview') {
       '<b>💳 Dompet PSC & Street Cred</b>\n' +
       '• <b>PSC:</b> Mata uang belanja & saweran antarwarga.\n' +
       '• <b>Street Cred:</b> Poin reputasi dari rajin absen, kirim hadiah, & ikut event.\n' +
-      '• <b>Transfer & Gift:</b> Buka profil warga → pilih <b>Transfer PSC</b> atau <b>Kirim Gift</b> dari gudang (pengirim gift dapat <b>+2 Cred</b> & diumumkan ke grup).' +
+      '• <b>Transfer & Gift:</b> Buka profil warga → pilih <b>Transfer PSC</b> atau <b>Kirim Gift</b> dari gudang (pengirim gift dapat <b>+2 Cred</b> & notif masuk langsung ke PC penerima).' +
       '</blockquote>\n\n' +
       '<blockquote>' +
       '<b>🛒 Lapak Rongsok vs Lapak Warga</b>\n' +
@@ -217,7 +217,7 @@ export function renderTutorMiniAppText(page = 'overview') {
       '</blockquote>\n\n' +
       '<blockquote>' +
       '<b>👥 Fitur Sosial Menu Warga</b>\n' +
-      '• <b>Daftar Warga:</b> Intip kartu PunkID, <b>👋 Sapa</b> ke grup, atau kirim hadiah.\n' +
+      '• <b>Daftar Warga:</b> Intip kartu PunkID, <b>👋 Sapa</b> (notif via PC), atau kirim hadiah.\n' +
       '• <b>🔎 Wanted Board:</b> Cari tim mabar/voice (auto-post grup, hangus <b>24 jam</b>).\n' +
       '• <b>📮 Kotak Rahasia:</b> Kirim Menfess anonim & balas arsipnya (arsip hangus <b>7 hari</b>).\n' +
       '• <b>🗳️ Sidang & 🎧 Radio:</b> Ikut voting polling & request lagu OS.\n' +
@@ -292,19 +292,20 @@ export function renderAdminCmdText() {
   const byeMedia = getSetting('bye_media', '');
 
   return (
-    '⚙️ <b>COMMAND ADMIN — EKONOMI, GREET & SYSTEM</b>\n\n' +
+    '⚙️ <b>COMMAND ADMIN — EKONOMI, WARGA & SYSTEM</b>\n\n' +
     '<blockquote>' +
     `• Grup ID: <code>${escHtml(ENV.GROUP_ID || 'Kosong')}</code>\n` +
     `• Channel ID: <code>${escHtml(ENV.CHANNEL_ID || 'Kosong')}</code>\n` +
     `• Gudang Musik: <b>${wh ? 'Terhubung' : 'Belum Diset'}</b>\n` +
     `• Media Greet: <b>${greetMedia ? greetMedia.split(':')[0].toUpperCase() : 'Kosong'}</b> | Bye: <b>${byeMedia ? byeMedia.split(':')[0].toUpperCase() : 'Kosong'}</b>` +
     '</blockquote>\n\n' +
-    '<b>Top Up / Give Koin PSC & Role:</b>\n' +
+    '<b>Top Up PSC, Role & Hapus Warga:</b>\n' +
     '• <code>/givepsc @username 500</code> — Kirim/top up koin PSC\n' +
     '• <code>/givepsc 500</code> — Reply pesan warga di grup untuk give koin\n' +
     '• <code>/givepsc @username -200</code> — Potong koin PSC warga\n' +
     '• <code>/cekpsc @username</code> — Cek saldo & role warga\n' +
-    '• <code>/setrole @username admin</code> — Atur role (admin/moderator/member)\n\n' +
+    '• <code>/setrole @username admin</code> — Atur role (admin/moderator/member)\n' +
+    '• <code>/delwarga @username</code> — Hapus data PunkID warga (otomatis terhapus saat keluar/di-kick)\n\n' +
     '<b>Kelola Radio Gang:</b>\n' +
     '• <code>/done 12</code> | <code>/clearradio</code> — Tandai selesai / kosongkan antrean\n\n' +
     '<b>Atur Sambutan Masuk (Greet) & Keluar (Bye):</b>\n' +
