@@ -86,7 +86,6 @@ socialExtraRouter.post('/social/transfer-psc', requireUser, async (req, res) => 
   const senderTag = sender.username ? ` (@${escHtml(sender.username)})` : '';
   const receiverTag = receiver.username ? ` (@${escHtml(receiver.username)})` : '';
 
-  // Notif pribadi ke Penerima PSC
   await notifyPrivateUser(
     receiver.id,
     `💸 <b>TRANSFER PSC MASUK!</b>\n\n` +
@@ -97,7 +96,6 @@ socialExtraRouter.post('/social/transfer-psc', requireUser, async (req, res) => 
     { buttonText: '🪪 CEK DOMPET', startParam: 'home' }
   );
 
-  // Struk pribadi ke Pengirim PSC
   await notifyPrivateUser(
     sender.id,
     `💸 <b>TRANSFER PSC BERHASIL!</b>\n\n` +
@@ -115,12 +113,13 @@ socialExtraRouter.post('/social/transfer-psc', requireUser, async (req, res) => 
   });
 });
 
-// 3. POST /api/social/send-gift -> Kirim item dari Gudang Barang ke warga lain (Notif PC ke Penerima & Pengirim)
+// 3. POST /api/social/send-gift -> Kirim item dari Gudang Barang ke warga lain (Mendukung Mode Anonim)
 socialExtraRouter.post('/social/send-gift', requireUser, async (req, res) => {
   const sender = req.dbUser;
   const targetId = String(req.body?.targetUserId || '').trim();
   const invId = Number(req.body?.invId);
   const note = String(req.body?.note || '').trim().slice(0, 60);
+  const isAnon = Boolean(req.body?.anonymous);
 
   if (!targetId || targetId === String(sender.id)) {
     return res.status(400).json({ error: 'Target penerima tidak valid.' });
@@ -166,16 +165,19 @@ socialExtraRouter.post('/social/send-gift', requireUser, async (req, res) => {
   });
   transferTx();
 
-  addFeed(`${sender.name} ngasih hadiah "${itemMeta.name}" ke ${receiver.name}.`);
+  const publicSender = isAnon ? 'Warga Misterius' : sender.name;
+  addFeed(`${publicSender} ngasih hadiah "${itemMeta.name}" ke ${receiver.name}.`);
 
-  const senderTag = sender.username ? ` (@${escHtml(sender.username)})` : '';
+  const senderDisplay = isAnon
+    ? '🕵️ <b>Warga Misterius</b> <i>(Secret Admirer / Anonim)</i>'
+    : `<b>${escHtml(sender.name)}</b>${sender.username ? ` (@${escHtml(sender.username)})` : ''}`;
   const receiverTag = receiver.username ? ` (@${escHtml(receiver.username)})` : '';
 
   // Notif pribadi ke Penerima Gift
   await notifyPrivateUser(
     receiver.id,
     `🎁 <b>KAMU DAPAT HADIAH DARI WARGA!</b>\n\n` +
-    `• Dari: <b>${escHtml(sender.name)}</b>${senderTag}\n` +
+    `• Dari: ${senderDisplay}\n` +
     `• Item: <b>${escHtml(itemMeta.name)}</b> (${escHtml(itemMeta.rarity)})\n` +
     (note ? `• Pesan: <i>"${escHtml(note)}"</i>\n` : '') +
     `\nItem sudah masuk ke Gudang Barang kamu. Buka PunkID untuk <b>Pin</b> ke kartu!`,
@@ -185,9 +187,10 @@ socialExtraRouter.post('/social/send-gift', requireUser, async (req, res) => {
   // Struk pribadi ke Pengirim Gift
   await notifyPrivateUser(
     sender.id,
-    `🎁 <b>HADIAH TERKIRIM!</b>\n\n` +
+    `🎁 <b>HADIAH ${isAnon ? 'ANONIM ' : ''}TERKIRIM!</b>\n\n` +
     `• Penerima: <b>${escHtml(receiver.name)}</b>${receiverTag}\n` +
     `• Item: <b>${escHtml(itemMeta.name)}</b> (${escHtml(itemMeta.rarity)})\n` +
+    `• Mode: <b>${isAnon ? '🕵️ Anonim (Identitas Disembunyikan)' : '👤 Terbuka'}</b>\n` +
     `• Bonus Reputasi: <b>+2 Street Cred</b>`,
     { buttonText: '🪪 BUKA PUNKSHIT.OS', startParam: 'gue' }
   );
@@ -199,7 +202,7 @@ socialExtraRouter.post('/social/send-gift', requireUser, async (req, res) => {
 
   res.json({
     ok: true,
-    message: `Hadiah "${itemMeta.name}" resmi terkirim ke ${receiver.name}!`,
+    message: `Hadiah "${itemMeta.name}" resmi terkirim${isAnon ? ' secara anonim' : ''} ke ${receiver.name}!`,
     user: formatUser(updatedSender),
     inv: updatedInv
   });
