@@ -20,7 +20,7 @@ function calcAbsenBonus(streak) {
   return base + (streak % 7 === 0 ? 25 : 0);
 }
 
-// POST /api/absen -> Absen Nyawa harian (Hanya masuk log aktivitas WebApp, tanpa spam Grup)
+// POST /api/absen -> Absen Nyawa harian
 actionRouter.post('/absen', requireUser, async (req, res) => {
   const u = req.dbUser;
   const today = todayWib();
@@ -150,12 +150,13 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   res.json({ user: formatUser(updated), inv, catalog: getCatalog() });
 });
 
-// POST /api/gift/send -> Kirim hadiah gift ke warga lain (Hanya notif PC ke Penerima & Pengirim, tanpa spam Grup)
+// POST /api/gift/send -> Kirim hadiah gift ke warga lain (Mendukung Mode Anonim + Hanya notif PC)
 actionRouter.post('/gift/send', requireUser, async (req, res) => {
   const u = req.dbUser;
   const itemId = String(req.body?.itemId || '');
   const toRaw = String(req.body?.toUsername || '').trim().replace(/^@/, '');
   const message = String(req.body?.message || '').trim().slice(0, 70);
+  const isAnon = Boolean(req.body?.anonymous);
 
   const item = db.prepare('SELECT * FROM items WHERE id = ? AND type = ?').get(itemId, 'gift');
   if (!item) return res.status(404).json({ error: 'Gift tidak ditemukan.' });
@@ -174,21 +175,24 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
     db.prepare('UPDATE users SET psc = psc - ?, cred = cred + 3, has_shared = 1 WHERE id = ?').run(item.price, u.id);
     db.prepare('INSERT INTO inventory (user_id, item_id, acquired_at) VALUES (?, ?, ?)').run(recipient.id, item.id, now);
     db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(u.id, 'gift_send', -item.price, `Kirim ${item.name} ke @${recipient.username}`, now);
+      .run(u.id, 'gift_send', -item.price, `Kirim ${item.name} ke @${recipient.username}${isAnon ? ' (Anonim)' : ''}`, now);
   });
   tx();
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
-  addFeed(`${u.name} ngirim ${item.name} ke @${recipient.username}.`);
+  const publicSender = isAnon ? 'Warga Misterius' : u.name;
+  addFeed(`${publicSender} ngirim ${item.name} ke @${recipient.username}.`);
 
-  const senderTag = u.username ? ` (@${escHtml(u.username)})` : '';
+  const senderDisplay = isAnon
+    ? '🕵️ <b>Warga Misterius</b> <i>(Secret Admirer / Anonim)</i>'
+    : `<b>${escHtml(u.name)}</b>${u.username ? ` (@${escHtml(u.username)})` : ''}`;
   const recipTag = recipient.username ? ` (@${escHtml(recipient.username)})` : '';
 
   // Notif khusus ke Penerima Gift
   await notifyPrivateUser(
     recipient.id,
     `🎁 <b>KAMU DAPAT GIFT BARU!</b>\n\n` +
-    `• Dari: <b>${escHtml(u.name)}</b>${senderTag}\n` +
+    `• Dari: ${senderDisplay}\n` +
     `• Hadiah: <b>${escHtml(item.name)}</b>\n` +
     (message ? `• Pesan: <i>"${escHtml(message)}"</i>\n` : '') +
     `\nItem sudah masuk ke Gudang Barang kamu. Buka PunkID untuk <b>Pin</b> ke kartu!`,
@@ -198,9 +202,10 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
   // Struk khusus ke Pengirim Gift
   await notifyPrivateUser(
     u.id,
-    `🎁 <b>GIFT TERKIRIM!</b>\n\n` +
+    `🎁 <b>GIFT ${isAnon ? 'ANONIM ' : ''}TERKIRIM!</b>\n\n` +
     `• Penerima: <b>${escHtml(recipient.name)}</b>${recipTag}\n` +
     `• Item: <b>${escHtml(item.name)}</b> (-${item.price} PSC)\n` +
+    `• Mode: <b>${isAnon ? '🕵️ Anonim (Identitas Disembunyikan)' : '👤 Terbuka'}</b>\n` +
     `• Bonus Reputasi: <b>+3 Street Cred</b>\n` +
     `• Sisa Saldo: <b>${updated.psc} PSC</b>`,
     { buttonText: '🪪 BUKA PUNKSHIT.OS', startParam: 'gue' }
