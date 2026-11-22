@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
 import { formatUser, broadcastToTelegram, escHtml } from '../services/syncEngine.js';
@@ -23,25 +24,31 @@ db.exec(`
 
 function todayWibParts() {
   const now = new Date(Date.now() + 7 * 3600 * 1000);
-  const iso = now.toISOString().slice(0, 10); // YYYY-MM-DD
+  const iso = now.toISOString().slice(0, 10);
   return {
     year: iso.slice(0, 4),
-    mmdd: iso.slice(5, 10) // MM-DD
+    mmdd: iso.slice(5, 10)
   };
 }
 
-// 1. GET /api/menfess/archive -> Ambil Menfess yang sudah disetujui beserta balasan anonimnya
+function isStaffMember(u) {
+  const ownerIds = (ENV.OWNER_IDS || []).map(String);
+  return Boolean((u.role && u.role !== 'member') || ownerIds.includes(String(u.id)));
+}
+
+// 1. GET /api/menfess/archive -> Ambil Menfess aktif (< 7 hari) beserta balasan anonimnya
 kotakBirthdayRouter.get('/menfess/archive', (req, res) => {
   try {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 3600 * 1000;
     let approved = [];
     try {
       approved = db.prepare(`
         SELECT id, category, text, created_at
         FROM menfess
-        WHERE status = 'approved'
+        WHERE status = 'approved' AND created_at >= ?
         ORDER BY created_at DESC
         LIMIT 15
-      `).all();
+      `).all(sevenDaysAgo);
     } catch (_) {}
 
     const repliesStmt = db.prepare(`
@@ -94,16 +101,65 @@ kotakBirthdayRouter.post('/menfess/reply', requireUser, (req, res) => {
   res.json({ ok: true, replies });
 });
 
-// 3. GET /api/birthday/status -> Cek apakah hari ini ulang tahun warga & status klaim kadonya
+// 3. POST /api/menfess/delete -> Hapus 1 arsip Menfess (Khusus Pengurus/Owner)
+kotakBirthdayRouter.post('/menfess/delete', requireUser, (req, res) => {
+  if (!isStaffMember(req.dbUser)) {
+    return res.status(403).json({ error: 'Hanya pengurus/owner yang bisa menghapus arsip Menfess.' });
+  }
+
+  const menfessId = String(req.body?.menfessId || '').trim();
+  if (!menfessId) {
+    return res.status(400).json({ error: 'ID Menfess tidak valid.' });
+  }
+
+  const tx = db.transaction(() => {
+    db.prepare('DELETE FROM menfess_replies WHERE menfess_id = ?').run(menfessId);
+    db.prepare('DELETE FROM menfess WHERE id = ?').run(menfessId);
+  });
+  tx();
+
+  res.json({ ok: true, message: 'Arsip Menfess berhasil dihapus.' });
+});
+
+// 4. POST /api/menfess/clear -> Bersihkan seluruh arsip Menfess (Khusus Pengurus/Owner)
+kotakBirthdayRouter.post('/menfess/clear', requireUser, (req, res) => {
+  if (!isStaffMember(req.dbUser)) {
+    return res.status(403).json({ error: 'Hanya pengurus/owner yang bisa membersihkan arsip Menfess.' });
+  }
+
+  const tx = db.transaction(() => {
+    db.prepare('DELETE FROM menfess_replies').run();
+    db.prepare("DELETE FROM menfess WHERE status = 'approved'").run();
+  });
+  tx();
+
+  res.json({ ok: true, message: 'Seluruh arsip Menfess berhasil dibersihkan!' });
+});
+
+// 5. POST /api/wanted/clear -> Bersihkan seluruh Wanted Board (Khusus Pengurus/Owner)
+kotakBirthdayRouter.post('/wanted/clear', requireUser, (req, res) => {
+  if (!isStaffMember(req.dbUser)) {
+    return res.status(403).json({ error: 'Hanya pengurus/owner yang bisa membersihkan Wanted Board.' });
+  }
+
+  const tx = db.transaction(() => {
+    db.prepare('DELETE FROM wanted_joins').run();
+    db.prepare('DELETE FROM wanted').run();
+  });
+  tx();
+
+  res.json({ ok: true, wanted: [], message: 'Seluruh papan Wanted Board berhasil dibersihkan!' });
+});
+
+// 6. GET /api/birthday/status -> Cek apakah hari ini ulang tahun warga & status klaim kadonya
 kotakBirthdayRouter.get('/birthday/status', requireUser, (req, res) => {
   const u = req.dbUser;
   const { year, mmdd } = todayWibParts();
-  const rawBday = String(u.birthday || '').trim(); // Format tersimpan bisa DD-MM atau MM-DD
+  const rawBday = String(u.birthday || '').trim();
 
   let normalizedMmDd = '';
   if (/^\d{2}-\d{2}$/.test(rawBday)) {
     const parts = rawBday.split('-');
-    // Jika bulan <= 12 dan hari > 12, pasti DD-MM -> ubah ke MM-DD
     if (Number(parts[1]) <= 12 && Number(parts[0]) > 12) {
       normalizedMmDd = `${parts[1]}-${parts[0]}`;
     } else {
@@ -122,7 +178,7 @@ kotakBirthdayRouter.get('/birthday/status', requireUser, (req, res) => {
   });
 });
 
-// 4. POST /api/birthday/claim -> Klaim kado ulang tahun otomatis (+150 PSC & pengumuman grup)
+// 7. POST /api/birthday/claim -> Klaim kado ulang tahun otomatis (+150 PSC & pengumuman grup)
 kotakBirthdayRouter.post('/birthday/claim', requireUser, async (req, res) => {
   const u = req.dbUser;
   const { year, mmdd } = todayWibParts();
