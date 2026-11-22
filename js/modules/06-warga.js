@@ -49,14 +49,28 @@
     );
   }
 
-  // 2. Halaman Wanted Board (Cari Komplotan -> Auto-Post ke Grup)
+  // 2. Halaman Wanted Board (Cari Komplotan -> Auto-Post ke Grup, Auto-Expired 24 Jam)
   function renderWanted() {
     var posts = S.wanted || [];
+    var myId = S.user ? String(S.user.id) : '';
+    var isStaff = Boolean(S.user && S.user.role && S.user.role !== 'member');
+
+    var clearBtn = isStaff
+      ? '<button class="btn b2" style="margin-top:0;margin-bottom:16px" data-act="wg-wanted-clear">🧹 Bersihkan Semua Wanted</button>'
+      : '';
+
     return (
-      '<button class="btn" style="margin-top:0;margin-bottom:16px" data-act="wg-wanted-new">+ Pasang Wanted Board (Kirim ke Grup)</button>' +
+      '<button class="btn" style="margin-top:0;margin-bottom:10px" data-act="wg-wanted-new">+ Pasang Wanted Board (Kirim ke Grup)</button>' +
+      clearBtn +
+      '<p class="bal" style="margin-bottom:12px">Lowongan komplotan otomatis kadaluarsa setelah 24 jam</p>' +
       '<div class="grp">' +
         (posts.length
           ? posts.map(function (p) {
+              var canDel = isStaff || (myId && String(p.authorId) === myId);
+              var delBtn = canDel
+                ? '<button class="pill" style="background:#ef444426;color:#f87171" data-act="wg-wanted-del" data-id="' + C.esc(p.id) + '">🗑️ Hapus</button>'
+                : '';
+
               return (
                 '<div class="rw" style="flex-direction:column;align-items:flex-start">' +
                   '<div style="display:flex;justify-content:space-between;width:100%">' +
@@ -66,7 +80,10 @@
                   '<div style="font-size:14px;margin:4px 0">' + C.esc(p.note) + '</div>' +
                   '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:4px">' +
                     '<small>Oleh: ' + C.esc(p.authorName) + '</small>' +
-                    '<button class="pill" data-act="wg-wanted-join" data-id="' + C.esc(p.id) + '">Gas Bareng</button>' +
+                    '<div style="display:flex;gap:6px">' +
+                      delBtn +
+                      '<button class="pill" data-act="wg-wanted-join" data-id="' + C.esc(p.id) + '">Gas Bareng</button>' +
+                    '</div>' +
                   '</div>' +
                 '</div>'
               );
@@ -84,7 +101,7 @@
 
     return (
       '<div class="grp" style="margin-bottom:16px">' +
-        '<div class="rw"><div><b>📮 Kirim Menfess / Pesan Anonim</b><small>Pesan akan dicek pengurus di Ruang Dalang sebelum tayang di Channel & Grup.</small></div></div>' +
+        '<div class="rw"><div><b>📮 Kirim Menfess / Pesan Anonim</b><small>Pesan akan dicek pengurus di Ruang Dalang sebelum tayang di Channel & Arsip.</small></div></div>' +
       '</div>' +
       '<label>KATEGORI PESAN</label>' +
       '<select id="mf-cat">' +
@@ -199,7 +216,10 @@
         '<input id="wt-slots" type="number" min="2" max="10" value="3">' +
         '<label>CATATAN</label>' +
         '<input id="wt-note" maxlength="90" placeholder="Skill bebas, asal jangan AFK pas loading...">' +
-        '<button class="btn" data-act="wg-wanted-submit">POSTING KE GRUP</button>'
+        '<div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:12px">' +
+          '<button class="btn b2" style="margin:0" data-act="shut">BATAL</button>' +
+          '<button class="btn" style="margin:0" data-act="wg-wanted-submit">POSTING KE GRUP</button>' +
+        '</div>'
       );
     } else if (act === 'wg-wanted-submit') {
       var cat = document.getElementById('wt-cat').value;
@@ -225,6 +245,29 @@
         if (res.wanted) S.wanted = res.wanted;
         C.refresh();
         C.notify('Mas Raka', 'Joined!', 'Lo resmi masuk komplotan!');
+      } catch (err) {
+        t.disabled = false;
+        C.notify('Mas Raka', 'Gagal', err.message);
+      }
+    } else if (act === 'wg-wanted-del') {
+      var delWid = t.getAttribute('data-id');
+      t.disabled = true;
+      try {
+        var dRes = await API.post('/api/wanted/delete', { wantedId: delWid });
+        if (dRes.wanted) S.wanted = dRes.wanted;
+        C.refresh();
+        C.notify('Mas Raka', 'Dihapus', 'Wanted Board berhasil dihapus.');
+      } catch (err) {
+        t.disabled = false;
+        C.notify('Mas Raka', 'Gagal', err.message);
+      }
+    } else if (act === 'wg-wanted-clear') {
+      t.disabled = true;
+      try {
+        var cRes = await API.post('/api/wanted/clear', {});
+        S.wanted = cRes.wanted || [];
+        C.refresh();
+        C.notify('Mas Raka', 'Wanted Bersih', cRes.message || 'Semua Wanted Board dibersihkan.');
       } catch (err) {
         t.disabled = false;
         C.notify('Mas Raka', 'Gagal', err.message);
