@@ -43,6 +43,25 @@ db.exec(`
   );
 `);
 
+// Auto-Cleanup data kadaluarsa (Wanted > 24 jam, Arsip Menfess > 7 hari)
+function cleanupExpiredSocialData() {
+  try {
+    const oneDayAgo = Date.now() - 24 * 3600 * 1000;
+    const sevenDaysAgo = Date.now() - 7 * 24 * 3600 * 1000;
+
+    db.prepare('DELETE FROM wanted_joins WHERE wanted_id IN (SELECT id FROM wanted WHERE created_at < ?)').run(oneDayAgo);
+    db.prepare('DELETE FROM wanted WHERE created_at < ?').run(oneDayAgo);
+
+    db.prepare('DELETE FROM menfess_replies WHERE menfess_id IN (SELECT id FROM menfess WHERE created_at < ?)').run(sevenDaysAgo);
+    db.prepare("DELETE FROM menfess WHERE status = 'approved' AND created_at < ?").run(sevenDaysAgo);
+  } catch (err) {
+    console.error('[Auto-Cleanup Error]:', err.message);
+  }
+}
+
+cleanupExpiredSocialData();
+setInterval(cleanupExpiredSocialData, 3 * 3600 * 1000);
+
 const MAX_SPARK_SLOTS = 3;
 
 function todayWib() {
@@ -90,7 +109,6 @@ export function getSparkListForUser(username) {
   });
 }
 
-// Kompatibilitas backward untuk fungsi lama
 export function getSparkStateForUser(username) {
   const list = getSparkListForUser(username);
   return list.length ? list[0] : null;
@@ -107,7 +125,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 2. Penguncian CORS sesuai domain Mini App (GitHub Pages / Vercel / Custom)
+// 2. Penguncian CORS sesuai domain Mini App
 const rawCors = (process.env.CORS_ORIGINS || '').trim();
 const allowedOrigins = [
   ...rawCors.split(','),
@@ -132,7 +150,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// 3. Anti-Spam Rate Limiter ringan tanpa dependency tambahan (maks 90 req / menit per IP)
+// 3. Anti-Spam Rate Limiter ringan (maks 90 req / menit per IP)
 const rateBuckets = new Map();
 function apiRateLimit(req, res, next) {
   const ip = req.ip || req.socket?.remoteAddress || 'unknown';
@@ -156,7 +174,7 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// 4. Anti-Spam Cooldown khusus aksi yang mengirim pesan bot ke Grup/Channel
+// 4. Anti-Spam Cooldown khusus aksi broadcast ke Grup/Channel
 const socialCooldowns = new Map();
 function socialBotCooldown(req, res, next) {
   if (req.method !== 'POST') return next();
