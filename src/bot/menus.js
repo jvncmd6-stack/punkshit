@@ -1,7 +1,7 @@
 import { InlineKeyboard } from 'grammy';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
-import { escHtml } from '../services/syncEngine.js';
+import { escHtml, buildMiniAppUrl } from '../services/syncEngine.js';
 
 export const DEFAULT_GREET =
   'Wih, ada nyawa baru nyasar ke markas. Selamat datang, {mention}.\n\n' +
@@ -84,12 +84,13 @@ export function formatTemplate(tpl, member, totalCount) {
 
 export function buildGreetKeyboard() {
   const kb = new InlineKeyboard();
-  const appLink = ENV.MINIAPP_LINK || '';
+  const homeUrl = buildMiniAppUrl('home');
+  const rulesUrl = buildMiniAppUrl('rules');
   const chUrl = (process.env.CHANNEL_URL || '').trim();
 
-  if (appLink) {
-    kb.url('Buka PunkID & Markas', appLink);
-    kb.url('Pasal & Help', `${appLink}?startapp=rules`);
+  if (homeUrl) {
+    kb.url('Buka PunkID & Markas', homeUrl);
+    kb.url('Pasal & Help', rulesUrl);
   }
   if (chUrl) kb.row().url('Channel Info', chUrl);
   return kb;
@@ -97,7 +98,8 @@ export function buildGreetKeyboard() {
 
 export function buildByeKeyboard() {
   const kb = new InlineKeyboard();
-  if (ENV.MINIAPP_LINK) kb.url('Cek Daftar Warga', `${ENV.MINIAPP_LINK}?startapp=warga`);
+  const wargaUrl = buildMiniAppUrl('warga');
+  if (wargaUrl) kb.url('Cek Daftar Warga', wargaUrl);
   return kb;
 }
 
@@ -118,9 +120,10 @@ export function renderPrivateHomeText(userId) {
 
 export function buildPrivateMenuKeyboard(userId) {
   const kb = new InlineKeyboard();
+  const homeUrl = buildMiniAppUrl('home');
 
-  if (ENV.MINIAPP_LINK) {
-    kb.url('🪪 Buka Mini App PUNKSHIT.OS', ENV.MINIAPP_LINK);
+  if (homeUrl) {
+    kb.url('🪪 Buka Mini App PUNKSHIT.OS', homeUrl);
   }
 
   const groupUrl = (process.env.GROUP_URL || '').trim();
@@ -152,8 +155,9 @@ export function buildTutorKeyboard(activeTab = 'overview', includeBackMenu = tru
     .text(t3, 'pc_tutor_3')
     .text(t4, 'pc_tutor_4');
 
-  if (ENV.MINIAPP_LINK) {
-    kb.row().url('🪪 Buka Mini App PUNKSHIT.OS', ENV.MINIAPP_LINK);
+  const homeUrl = buildMiniAppUrl('home');
+  if (homeUrl) {
+    kb.row().url('🪪 Buka Mini App PUNKSHIT.OS', homeUrl);
   }
   if (includeBackMenu) {
     kb.row().text('📖 Kamus Command', 'pc_kamus').text('« Menu Utama', 'pc_home');
