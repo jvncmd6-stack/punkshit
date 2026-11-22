@@ -12,17 +12,32 @@ export const DEFAULT_BYE =
   'Yaudah deh, akses PunkID resmi ditutup. Sisa warga di tongkrongan sekarang {count} orang.';
 
 export const DEFAULT_PASAL =
-  '<b>PASAL & ATURAN TONGKRONGAN</b>\n\n' +
-  '1. Saling hargai sesama warga markas.\n' +
-  '2. Dilarang spam link judi, scam, atau SARA.\n' +
-  '3. Kalau mau nitip lagu pas OS, pake fitur Radio Gang dengan tertib.\n' +
-  '4. Langgar aturan? Siap-siap disidang warga.';
+  '📜 <b>PASAL & ATURAN TONGKRONGAN</b>\n\n' +
+  '<blockquote>' +
+  '<b>01. ATURAN TONGKRONGAN</b>\n' +
+  '1. Toxic dan bercanda bebas sewajarnya. Dilarang membawa SARA, menghina personal, atau melewati batas.\n' +
+  '2. Dilarang keras membuat CDC (Circle Dalam Circle), kubu-kubuan, atau memecah solidaritas grup.\n' +
+  '3. Dilarang pilih-pilih teman, sengaja mengabaikan, atau mengucilkan sesama member.\n' +
+  '4. Wajib saling menghargai. Bercanda boleh, tapi tetap tahu batas dan jangan gampang memancing konflik.' +
+  '</blockquote>\n\n' +
+  '<blockquote>' +
+  '<b>02. AKTIVITAS & KETERTIBAN</b>\n' +
+  '1. Dilarang numnam atau pasif total. Member tidak aktif akan dikeluarkan melalui cleaning berkala.\n' +
+  '2. Member yang ingin keluar wajib izin atau pamit kepada pengurus terlebih dahulu.\n' +
+  '3. Seluruh member wajib subscribe channel resmi dan aktif menggunakan bot PUNKSHIT.OS.\n' +
+  '4. Dilarang membuat drama, menyebarkan konflik, atau mengganggu kenyamanan tongkrongan.\n' +
+  '5. Setiap pelanggaran akan dikenakan teguran, peringatan, hingga dikeluarkan dari grup sesuai tingkat pelanggaran.' +
+  '</blockquote>';
 
 export const DEFAULT_HELP =
-  '<b>PUSAT BANTUAN (HELP)</b>\n\n' +
-  '• <b>Cetak PunkID:</b> Buka Mini App lewat tombol utama.\n' +
-  '• <b>Nitip Lagu OS:</b> Kirim link Spotify lewat Mini App atau lempar file MP3 langsung ke PC Mas Raka.\n' +
-  '• <b>Panduan Lengkap App:</b> Ketik <code>/tutor</code> atau tekan tombol <b>Tutor Mini App</b>.';
+  '🆘 <b>PUSAT BANTUAN PUNKSHIT.OS</b>\n\n' +
+  '<blockquote>' +
+  '1. 🪪 Cetak identitas PunkID melalui menu utama WebApp.\n' +
+  '2. 🎧 Request lagu Spotify melalui Radio Gang atau kirim MP3 ke PC Bot Mas Raka.\n' +
+  '3. 🛒 Jual-beli barang dan jasa melalui Lapak Punkshit menggunakan PSC.\n' +
+  '4. 🎮 Mainkan mini-game di Arena Gabut untuk mengumpulkan Arcade XP, naik level, dan klaim hadiah Arcade Pass.' +
+  '</blockquote>\n\n' +
+  '<i>Ketik /tutor untuk panduan lengkap setiap aplikasi di Mini App.</i>';
 
 export function getWarehouseId() {
   return (process.env.WAREHOUSE_CHANNEL_ID || '').trim();
@@ -124,52 +139,150 @@ export function buildPrivateMenuKeyboard(userId) {
   return kb;
 }
 
-export function renderTutorMiniAppText() {
+export function buildTutorKeyboard(activeTab = 'overview', includeBackMenu = true) {
+  const t1 = activeTab === '1' ? '• 🪪 PunkID & Gift •' : '🪪 PunkID & Gift';
+  const t2 = activeTab === '2' ? '• 💰 Lapak & Spark •' : '💰 Lapak & Spark';
+  const t3 = activeTab === '3' ? '• 🕹️ Arena & Warga •' : '🕹️ Arena & Warga';
+  const t4 = activeTab === '4' ? '• 🎭 Event & Dalang •' : '🎭 Event & Dalang';
+
+  const kb = new InlineKeyboard()
+    .text(t1, 'pc_tutor_1')
+    .text(t2, 'pc_tutor_2')
+    .row()
+    .text(t3, 'pc_tutor_3')
+    .text(t4, 'pc_tutor_4');
+
+  if (ENV.MINIAPP_LINK) {
+    kb.row().url('🪪 Buka Mini App PUNKSHIT.OS', ENV.MINIAPP_LINK);
+  }
+  if (includeBackMenu) {
+    kb.row().text('📖 Kamus Command', 'pc_kamus').text('« Menu Utama', 'pc_home');
+  }
+  return kb;
+}
+
+export function renderTutorMiniAppText(page = 'overview') {
+  if (page === '1') {
+    return (
+      '🪪 <b>PANDUAN 1/4 · MARKAS, PUNKID & GIFT</b>\n\n' +
+      '<blockquote>' +
+      '<b>🏠 Markas & Absen Harian</b>\n' +
+      '• Tap <b>Absen</b> tiap hari untuk kumpulin <b>PSC</b> & jaga <b>Streak</b>.\n' +
+      '• Ganti <b>Presence</b> (<i>Nongki, Mabar, AFK, Nugas</i>) biar warga tahu statusmu.' +
+      '</blockquote>\n\n' +
+      '<blockquote>' +
+      '<b>🎖️ Title Pangkat vs Role Tag</b>\n' +
+      '• <b>Title (Pangkat):</b> Naik otomatis dari jumlah <b>Streak</b> (<i>Warga Baru → Anak Tongkrongan → Sepuh → Legenda</i>).\n' +
+      '• <b>Role Tag:</b> Badge khusus pengurus (<i>Owner / Admin / Moderator</i>).' +
+      '</blockquote>\n\n' +
+      '<blockquote>' +
+      '<b>🪪 Kartu PunkID 2 Sisi & Gudang Gift</b>\n' +
+      '• <b>Tap Kartu:</b> Memutar kartu untuk lihat sisi belakang (Bio, Lagu Spotify, & Koleksi).\n' +
+      '• <b>Border & Skin:</b> Klik <i>Equip</i> di Gudang untuk menghias avatar & kartu.\n' +
+      '• <b>Fungsi Gift / Collectible:</b> Bisa di-<b>Pin</b> agar tampil di kartu PunkID, atau dikirim ulang ke warga lain sebagai kado.\n' +
+      '• <b>Ulang Tahun:</b> Klaim kado <b>+150 PSC & +5 Cred</b> di menu Warga tepat di hari-H!' +
+      '</blockquote>'
+    );
+  }
+
+  if (page === '2') {
+    return (
+      '💰 <b>PANDUAN 2/4 · EKONOMI, LAPAK & SPARK</b>\n\n' +
+      '<blockquote>' +
+      '<b>💳 Dompet PSC & Street Cred</b>\n' +
+      '• <b>PSC:</b> Mata uang belanja & saweran antarwarga.\n' +
+      '• <b>Street Cred:</b> Poin reputasi dari rajin absen, kirim hadiah, & ikut event.\n' +
+      '• <b>Transfer & Gift:</b> Buka profil warga → pilih <b>Transfer PSC</b> atau <b>Kirim Gift</b> dari gudang (pengirim gift dapat <b>+2 Cred</b> & diumumkan ke grup).' +
+      '</blockquote>\n\n' +
+      '<blockquote>' +
+      '<b>🛒 Lapak Rongsok vs Lapak Warga</b>\n' +
+      '• <b>Lapak Rongsok:</b> Toko resmi (jual <i>Border, Card Skin, & Gift langka</i>).\n' +
+      '• <b>Lapak Warga:</b> Pasar bebas—kamu bisa pasang dagangan/jasa sendiri dan dibayar pakai <b>PSC</b> oleh warga lain.' +
+      '</blockquote>\n\n' +
+      '<blockquote>' +
+      '<b>🔥 Spark Buddies (Maks. 3 Slot)</b>\n' +
+      '• Undang partner lewat <code>@username</code> → partner ACC via bot / <code>/acc</code>.\n' +
+      '• Aktif chat bareng di grup tiap hari untuk menaikkan <b>Spark Streak</b> (+10 XP, bonus +5 XP jika saling reply, & <b>+15% XP</b> di Arena).' +
+      '</blockquote>'
+    );
+  }
+
+  if (page === '3') {
+    return (
+      '🕹️ <b>PANDUAN 3/4 · ARENA & SOSIAL WARGA</b>\n\n' +
+      '<blockquote>' +
+      '<b>🎮 Arena Gabut 2.0 (7 Mini-Games)</b>\n' +
+      '• Mainkan <i>Mancing Galatama, Gosok Nasib, Mesin Rongsok, Reaction Rush, Punk Trivia, Gebuk Siapa,</i> & <i>Adu Ingatan</i>.\n' +
+      '• Jual hasil tangkapan di tab <b>Koleksi</b> jadi <b>PSC</b>, klaim <b>Quest</b> untuk naik level <b>Arcade Pass</b>, & aktifkan <b>Spark Shield</b> jika punya pasangan Spark.' +
+      '</blockquote>\n\n' +
+      '<blockquote>' +
+      '<b>👥 Fitur Sosial Menu Warga</b>\n' +
+      '• <b>Daftar Warga:</b> Intip kartu PunkID, <b>👋 Sapa</b> ke grup, atau kirim hadiah.\n' +
+      '• <b>🔎 Wanted Board:</b> Cari tim mabar/voice (auto-post grup, hangus <b>24 jam</b>).\n' +
+      '• <b>📮 Kotak Rahasia:</b> Kirim Menfess anonim & balas arsipnya (arsip hangus <b>7 hari</b>).\n' +
+      '• <b>🗳️ Sidang & 🎧 Radio:</b> Ikut voting polling & request lagu OS.\n' +
+      '• <b>🏆 Klasemen:</b> Peringkat Top Sultan PSC, Street Cred, & Spark Streak.' +
+      '</blockquote>'
+    );
+  }
+
+  if (page === '4') {
+    return (
+      '🎭 <b>PANDUAN 4/4 · KALENDER, MUSEUM & DALANG</b>\n\n' +
+      '<blockquote>' +
+      '<b>📅 Kalender & Time Capsule</b>\n' +
+      '• <b>Jadwal Event:</b> Cek agenda mabar/OS dan tekan <b>RSVP Hadir</b>.\n' +
+      '• <b>Time Capsule:</b> Tulis pesan untuk masa depan dan kunci dengan tanggal buka (tersegel sampai hari-H tiba).' +
+      '</blockquote>\n\n' +
+      '<blockquote>' +
+      '<b>🏛️ Museum & Buku Pasal</b>\n' +
+      '• <b>Museum Markas:</b> Galeri arsip meme, foto, & momen ikonik tongkrongan.\n' +
+      '• <b>Pasal Aturan:</b> Tata tertib resmi yang wajib dipatuhi warga.' +
+      '</blockquote>\n\n' +
+      '<blockquote>' +
+      '<b>👁️ POV Pengurus (Ruang Dalang)</b>\n' +
+      '• Menu eksklusif <i>Owner / Admin / Moderator</i> di Mini App:\n' +
+      '  – Moderasi ACC / Tolak <b>Menfess</b> masuk.\n' +
+      '  – Buka polling <b>Sidang Warga</b> & tambah jadwal <b>Kalender</b>.\n' +
+      '  – Punya tombol <b>🗑️ Hapus</b> & <b>🧹 Bersihkan</b> di Arsip Menfess & Wanted Board.' +
+      '</blockquote>'
+    );
+  }
+
   return (
-    '📱 <b>TUTOR CARA PAKAI SEMUA APP DI PUNKSHIT.OS</b>\n\n' +
-    '<b>1. 🏠 Markas (Beranda & Absen)</b>\n' +
-    '• Tap <b>Absen Harian</b> tiap hari buat jaga <i>Streak</i> & dapat bonus <b>PSC</b>.\n' +
-    '• Ganti status nongkrong (<i>Presence</i>) biar warga lain tahu aktivitas kamu.\n\n' +
-    '<b>2. 🪪 PunkID (Kartu Identitas & Profil)</b>\n' +
-    '• Atur foto sampul (<i>Banner</i>), bio, lagu favorit <b>Spotify</b>, dan tanggal ulang tahun (klaim kado <b>+150 PSC</b> pas hari-H!).\n' +
-    '• Tap kartu PunkID buat memutar bagian belakang kartu & pasang <i>Card Skin</i> atau <i>Border</i> dari gudang.\n\n' +
-    '<b>3. 💰 Dompet PSC (Kas & Riwayat)</b>\n' +
-    '• Cek saldo <b>PSC</b>, riwayat pemasukan/pengeluaran, dan mutasi transfer.\n\n' +
-    '<b>4. 🕹️ Arena Gabut 2.0 (Mini-Games & Pass)</b>\n' +
-    '• Mainkan 7 game gratis (<i>Mancing Galatama, Gosok Nasib, Mesin Rongsok, Reaction Rush, Punk Trivia, Gebuk Siapa, Adu Ingatan</i>) buat kumpulin <b>Arcade XP</b> & <b>PSC</b>.\n' +
-    '• Klaim misi di tab <b>Quest</b>, naikkan level <b>Arcade Pass</b>, jual hasil tangkapan di <b>Koleksi</b>, dan aktifkan <b>Spark Shield</b> jika punya pasangan Spark.\n\n' +
-    '<b>5. 👥 Warga (Sosial, Menfess & Klasemen)</b>\n' +
-    '• Tap profil warga lain untuk <b>Sapa</b>, <b>Transfer PSC</b>, atau <b>Kirim Gift</b> dari gudang.\n' +
-    '• <b>Wanted Board:</b> Cari komplotan mabar/voice (auto-post ke grup, hangus 24 jam).\n' +
-    '• <b>Kotak Rahasia:</b> Kirim Menfess anonim & balas arsip Menfess warga.\n' +
-    '• <b>Sidang Warga & Radio Gang:</b> Ikut voting polling & request lagu OS.\n' +
-    '• <b>Klasemen:</b> Cek top Sultan PSC, Street Cred, & Spark Streak.\n\n' +
-    '<b>6. 🛒 Lapak Rongsok & Lapak Warga</b>\n' +
-    '• Beli <i>Border</i>, <i>Card Skin</i>, & <i>Collectible</i> resmi, atau jual-beli barang/jasa antarwarga pakai PSC.\n\n' +
-    '<b>7. 🔥 Spark Buddies (Maks. 3 Slot)</b>\n' +
-    '• Undang partner lewat username lalu ACC via bot. Rajin ngobrol bareng di grup tiap hari buat naikin <b>Spark Streak</b> & dapat bonus +15% XP di Arena.\n\n' +
-    '<b>8. 📅 Kalender & 🏛️ Museum</b>\n' +
-    '• <b>Kalender:</b> RSVP event markas & simpan <i>Time Capsule</i>.\n' +
-    '• <b>Museum:</b> Upload meme/GIF markas & baca pasal aturan.'
+    '📱 <b>TUTOR MINI APP — PUNKSHIT.OS</b>\n\n' +
+    'Pilih salah satu topik di bawah untuk melihat panduan lengkap sesuai fitur & peran kamu:\n\n' +
+    '<blockquote>' +
+    '• <b>🪪 PunkID & Gift:</b> Absen, Title otomatis, Kartu 2 sisi, Pin Gift, & Kado Ultah.\n' +
+    '• <b>💰 Lapak & Spark:</b> Transfer PSC, Kirim Hadiah, Jualan, & Spark Buddies.\n' +
+    '• <b>🕹️ Arena & Warga:</b> 7 Mini-Games, Wanted Board, Menfess, & Klasemen.\n' +
+    '• <b>🎭 Event & Dalang:</b> Time Capsule, Museum, & akses Pengurus Markas.' +
+    '</blockquote>'
   );
 }
 
 export function renderKamusText() {
   return (
     '📖 <b>KAMUS COMMAND WARGA — MAS RAKA</b>\n\n' +
-    '<b>1. Menu Utama & Bantuan:</b>\n' +
+    '<blockquote>' +
+    '<b>1. Menu Utama & Panduan:</b>\n' +
     '• <code>/start</code> — Buka menu utama markas\n' +
-    '• <code>/tutor</code> — Panduan cara pakai semua app di Mini App\n' +
+    '• <code>/tutor</code> — Panduan lengkap semua fitur Mini App\n' +
     '• <code>/pasal</code> — Baca pasal & aturan tongkrongan\n' +
     '• <code>/help</code> — Pusat bantuan warga\n' +
-    '• <code>/myid</code> — Cek Telegram ID akun kamu\n\n' +
-    '<b>2. Spark Buddies & Ekonomi:</b>\n' +
+    '• <code>/myid</code> — Cek Telegram ID akun kamu' +
+    '</blockquote>\n\n' +
+    '<blockquote>' +
+    '<b>2. Spark Buddies & Dompet:</b>\n' +
     '• <code>/spark</code> — Buka menu Spark Buddies\n' +
-    '• <code>/acc</code> — Terima ajakan Spark Buddies yang masuk\n' +
-    '• <code>/cekpsc</code> — Cek saldo PSC & Street Cred kamu\n\n' +
+    '• <code>/acc</code> — Terima ajakan Spark yang masuk\n' +
+    '• <code>/cekpsc</code> — Cek saldo PSC & Street Cred' +
+    '</blockquote>\n\n' +
+    '<blockquote>' +
     '<b>3. Radio Gang (OS):</b>\n' +
     '• <code>/antrean</code> — Cek daftar titipan lagu OS\n' +
-    '• <code>/req Judul | Link</code> — Nitip lagu Spotify ke antrean'
+    '• <code>/req Judul | Link</code> — Nitip lagu Spotify' +
+    '</blockquote>'
   );
 }
 
