@@ -1,7 +1,7 @@
 import { InlineKeyboard } from 'grammy';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
-import { escHtml, notifyPrivateUser } from '../services/syncEngine.js';
+import { escHtml, notifyPrivateUser, buildMiniAppUrl } from '../services/syncEngine.js';
 import {
   DEFAULT_GREET,
   DEFAULT_BYE,
@@ -157,7 +157,8 @@ export function registerBotHandlers(bot) {
       });
     } else {
       const kb = new InlineKeyboard();
-      if (ENV.MINIAPP_LINK) kb.url('🪪 Buka PUNKSHIT.OS', ENV.MINIAPP_LINK);
+      const appUrl = buildMiniAppUrl('home');
+      if (appUrl) kb.url('🪪 Buka PUNKSHIT.OS', appUrl);
       await ctx.reply(
         '🪪 <b>PUNKSHIT.OS — MARKAS ONLINE</b>\n' +
         'Wih, nongol juga. Tap tombol di bawah buat buka Mini App:',
@@ -196,7 +197,8 @@ export function registerBotHandlers(bot) {
   // 3. Spark Buddies Commands
   bot.command('spark', async (ctx) => {
     const kb = new InlineKeyboard();
-    if (ENV.MINIAPP_LINK) kb.url('🔥 Buka Spark Buddies', `${ENV.MINIAPP_LINK}?startapp=spark`);
+    const sparkUrl = buildMiniAppUrl('spark');
+    if (sparkUrl) kb.url('🔥 Buka Spark Buddies', sparkUrl);
     await ctx.reply(
       '🔥 <b>SPARK BUDDIES</b>\nNyalain api bareng partner markas kamu! Tap tombol di bawah:',
       { parse_mode: 'HTML', reply_markup: kb }
@@ -416,7 +418,8 @@ export function registerBotHandlers(bot) {
 
   bot.command('antrean', async (ctx) => {
     const kb = new InlineKeyboard();
-    if (ENV.MINIAPP_LINK) kb.url('Nitip Lagu di Mini App', `${ENV.MINIAPP_LINK}?startapp=radio`);
+    const radioUrl = buildMiniAppUrl('radio');
+    if (radioUrl) kb.url('Nitip Lagu di Mini App', radioUrl);
     if (isBotAdmin(ctx.from.id)) kb.row().text('🔄 Refresh', 'pc_radio_queue').text('🗑️ Kosongkan', 'pc_radio_clear');
     if (ctx.chat.type === 'private') kb.row().text('« Menu Utama', 'pc_home');
     await ctx.reply(renderRadioQueueText(), { parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: kb });
