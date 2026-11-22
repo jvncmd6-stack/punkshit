@@ -43,13 +43,17 @@ export function buildMiniAppUrl(startParam = '') {
     ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
     : (process.env.API_URL || '').trim();
 
-  const payload = railwayApi
-    ? `${startParam || 'home'}__${Buffer.from(railwayApi).toString('base64url')}`
-    : startParam;
+  // Ambil subdomain-nya saja agar total parameter startapp selalu < 64 karakter (limit Telegram)
+  const slugMatch = railwayApi.match(/^https?:\/\/([a-zA-Z0-9-]+)\.up\.railway\.app/i);
+  let payload = startParam || 'home';
 
-  return payload
-    ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(payload)}`
-    : ENV.MINIAPP_LINK;
+  if (slugMatch) {
+    payload = `${payload}__r_${slugMatch[1]}`;
+  } else if (railwayApi) {
+    payload = `${payload}__${Buffer.from(railwayApi).toString('base64url')}`;
+  }
+
+  return `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(payload)}`;
 }
 
 // Kirim notif personal khusus ke PC Bot penerima (tidak spam ke Grup/Channel)
