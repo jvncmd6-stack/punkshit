@@ -141,57 +141,6 @@ export function getOnlineUsers() {
 }
 
 export async function broadcastToTelegram({ target = 'group', text = '', buttonText = '🪪 BUKA MARKAS', startParam = '', feedText = '' }) {
-  // Tetap simpan ke feed internal Mini App
-  if (feedText) addFeed(feedText);
-  if (!botInstance || !text) return;
-
-  const upperText = text.toUpperCase();
-
-  // 1. Blokir spam Absen & Sapaan Markas agar tidak dikirim ke grup maupun channel
-  if (
-    upperText.includes('MASIH HIDUP TERNYATA') ||
-    upperText.includes('ABSEN HARI KE-') ||
-    upperText.includes('SAPAAN MARKAS')
-  ) {
-    return;
-  }
-
-  // 2. Kotak Rahasia / Confess / Titip Pesan / Cerita Random -> Paksa ke Channel saja
-  let finalTarget = target;
-  if (upperText.includes('KOTAK RAHASIA') || upperText.includes('CONFESS')) {
-    finalTarget = 'channel';
-  } else if (upperText.includes('PENGUMUMAN MARKAS')) {
-    finalTarget = 'group';
-  }
-
-  const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : (process.env.API_URL || '').trim();
-
-  const payload = railwayApi
-    ? `${startParam || 'home'}__${Buffer.from(railwayApi).toString('base64url')}`
-    : startParam;
-
-  const url = payload
-    ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(payload)}`
-    : ENV.MINIAPP_LINK;
-
-  const kb = new InlineKeyboard().url(buttonText, url);
-
-  const sendSafe = async chatId => {
-    if (!chatId) return;
-    try {
-      await botInstance.api.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: kb });
-    } catch (err) {
-      console.error(`[Broadcaster] Gagal kirim ke ${chatId}:`, err.message);
-    }
-  };
-
-  if (finalTarget === 'group' || finalTarget === 'both') await sendSafe(ENV.GROUP_ID);
-  if (finalTarget === 'channel' || finalTarget === 'both') await sendSafe(ENV.CHANNEL_ID);
-}
-export async function broadcastToTelegram({ target = 'group', text = '', buttonText = '🪪 BUKA MARKAS', startParam = '', feedText = '' }) {
-  // Tetap simpan ke feed internal Mini App
   if (feedText) addFeed(feedText);
   if (!botInstance || !text) return;
 
@@ -214,7 +163,7 @@ export async function broadcastToTelegram({ target = 'group', text = '', buttonT
   if (upperText.includes('KOTAK RAHASIA') || upperText.includes('CONFESS')) {
     finalTarget = 'confess';
   } else if (upperText.includes('PENGUMUMAN MARKAS')) {
-    finalTarget = 'both'; // Kirim ke Grup + Channel Pengumuman
+    finalTarget = 'both';
   }
 
   const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
