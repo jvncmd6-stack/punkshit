@@ -17,6 +17,7 @@ import {
   buildByeKeyboard,
   renderPrivateHomeText,
   buildPrivateMenuKeyboard,
+  buildTutorKeyboard,
   renderTutorMiniAppText,
   renderKamusText,
   renderAdminCmdText,
@@ -135,16 +136,17 @@ export function registerBotHandlers(bot) {
   });
 
   bot.command('tutor', async (ctx) => {
-    const kb = new InlineKeyboard();
-    if (ENV.MINIAPP_LINK) kb.url('🪪 Buka Mini App PUNKSHIT.OS', ENV.MINIAPP_LINK);
-    if (ctx.chat.type === 'private') kb.row().text('« Kembali ke Menu', 'pc_home');
-    await ctx.reply(renderTutorMiniAppText(), { parse_mode: 'HTML', reply_markup: kb });
+    const isPrivate = ctx.chat.type === 'private';
+    await ctx.reply(renderTutorMiniAppText('overview'), {
+      parse_mode: 'HTML',
+      reply_markup: buildTutorKeyboard('overview', isPrivate)
+    });
   });
 
   bot.command('kamus', async (ctx) => {
     const kb = new InlineKeyboard().text('📱 Tutor Mini App', 'pc_tutor_miniapp');
     if (isBotAdmin(ctx.from.id)) kb.text('⚙️ Command Admin', 'pc_admin_cmd');
-    if (ctx.chat.type === 'private') kb.row().text('« Kembali ke Menu', 'pc_home');
+    if (ctx.chat.type === 'private') kb.row().text('« Menu Utama', 'pc_home');
     await ctx.reply(renderKamusText(), { parse_mode: 'HTML', reply_markup: kb });
   });
 
@@ -357,7 +359,7 @@ export function registerBotHandlers(bot) {
     const kb = new InlineKeyboard();
     if (ENV.MINIAPP_LINK) kb.url('Nitip Lagu di Mini App', `${ENV.MINIAPP_LINK}?startapp=radio`);
     if (isBotAdmin(ctx.from.id)) kb.row().text('🔄 Refresh', 'pc_radio_queue').text('🗑️ Kosongkan', 'pc_radio_clear');
-    if (ctx.chat.type === 'private') kb.row().text('« Kembali ke Menu', 'pc_home');
+    if (ctx.chat.type === 'private') kb.row().text('« Menu Utama', 'pc_home');
     await ctx.reply(renderRadioQueueText(), { parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: kb });
   });
 
@@ -393,7 +395,7 @@ export function registerBotHandlers(bot) {
 
   bot.command('greetinfo', async (ctx) => {
     if (ctx.chat.type !== 'private' || !isBotAdmin(ctx.from.id)) return;
-    const kb = new InlineKeyboard().text('⚙️ Command Admin', 'pc_admin_cmd').row().text('« Kembali ke Menu', 'pc_home');
+    const kb = new InlineKeyboard().text('⚙️ Command Admin', 'pc_admin_cmd').row().text('« Menu Utama', 'pc_home');
     await ctx.reply(renderGreetInfoText(), { parse_mode: 'HTML', reply_markup: kb });
   });
 
@@ -447,6 +449,7 @@ export function registerBotHandlers(bot) {
   bot.on('callback_query:data', async (ctx) => {
     const data = ctx.callbackQuery.data;
     const admin = isBotAdmin(ctx.from.id);
+    const isPrivate = ctx.chat?.type === 'private';
 
     if (data.startsWith('spark_acc:') || data.startsWith('spark_dec:')) {
       const [mode, rawSender, rawTarget] = data.split(':');
@@ -483,18 +486,19 @@ export function registerBotHandlers(bot) {
       return ctx.answerCallbackQuery();
     }
 
-    if (data === 'pc_tutor_miniapp') {
-      const kb = new InlineKeyboard();
-      if (ENV.MINIAPP_LINK) kb.url('🪪 Buka Mini App Sekarang', ENV.MINIAPP_LINK);
-      kb.row().text('📖 Kamus Command', 'pc_kamus').text('« Kembali ke Menu', 'pc_home');
-      await ctx.editMessageText(renderTutorMiniAppText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
+    if (data === 'pc_tutor_miniapp' || data.startsWith('pc_tutor_')) {
+      const page = data === 'pc_tutor_miniapp' ? 'overview' : data.replace('pc_tutor_', '');
+      await ctx.editMessageText(renderTutorMiniAppText(page), {
+        parse_mode: 'HTML',
+        reply_markup: buildTutorKeyboard(page, isPrivate)
+      }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
 
     if (data === 'pc_kamus') {
       const kb = new InlineKeyboard().text('📱 Tutor Mini App', 'pc_tutor_miniapp');
       if (admin) kb.text('⚙️ Command Admin', 'pc_admin_cmd');
-      kb.row().text('« Kembali ke Menu', 'pc_home');
+      kb.row().text('« Menu Utama', 'pc_home');
       await ctx.editMessageText(renderKamusText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
@@ -507,14 +511,14 @@ export function registerBotHandlers(bot) {
         .text('📝 Teks Greet & Bye', 'pc_greet_info')
         .text('📖 Kamus Warga', 'pc_kamus')
         .row()
-        .text('« Kembali ke Menu', 'pc_home');
+        .text('« Menu Utama', 'pc_home');
       await ctx.editMessageText(renderAdminCmdText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
 
     if (data === 'pc_greet_info') {
       if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin.', show_alert: true });
-      const kb = new InlineKeyboard().text('⚙️ Command Admin', 'pc_admin_cmd').row().text('« Kembali ke Menu', 'pc_home');
+      const kb = new InlineKeyboard().text('⚙️ Command Admin', 'pc_admin_cmd').row().text('« Menu Utama', 'pc_home');
       await ctx.editMessageText(renderGreetInfoText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
@@ -522,7 +526,7 @@ export function registerBotHandlers(bot) {
     if (data === 'pc_radio_queue') {
       const kb = new InlineKeyboard().text('🔄 Refresh', 'pc_radio_queue');
       if (admin) kb.text('🗑️ Kosongkan', 'pc_radio_clear');
-      kb.row().text('📱 Tutor Mini App', 'pc_tutor_miniapp').text('« Kembali', 'pc_home');
+      kb.row().text('📱 Tutor Mini App', 'pc_tutor_miniapp').text('« Menu Utama', 'pc_home');
       await ctx.editMessageText(renderRadioQueueText(), {
         parse_mode: 'HTML',
         disable_web_page_preview: true,
@@ -534,7 +538,7 @@ export function registerBotHandlers(bot) {
     if (data === 'pc_radio_clear') {
       if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin.', show_alert: true });
       db.prepare("UPDATE radio_queue SET status = 'played' WHERE status = 'waiting'").run();
-      const kb = new InlineKeyboard().text('🔄 Refresh', 'pc_radio_queue').row().text('« Kembali ke Menu', 'pc_home');
+      const kb = new InlineKeyboard().text('🔄 Refresh', 'pc_radio_queue').row().text('« Menu Utama', 'pc_home');
       await ctx.editMessageText(renderRadioQueueText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery({ text: 'Antrean dikosongin.' });
     }
