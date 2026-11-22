@@ -2,13 +2,13 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { InlineKeyboard } from 'grammy';
 import { ENV } from '../config/env.js';
-import { db } from '../database/db.js';
+import { db, addFeed } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
 import {
   formatUser,
   getCatalog,
   getBot,
-  broadcastToTelegram,
+  notifyPrivateUser,
   escHtml,
   todayWib
 } from '../services/syncEngine.js';
@@ -20,7 +20,7 @@ function calcAbsenBonus(streak) {
   return base + (streak % 7 === 0 ? 25 : 0);
 }
 
-// POST /api/absen -> Absen Nyawa harian + sinkron notifikasi Mas Raka ke Grup
+// POST /api/absen -> Absen Nyawa harian (Hanya masuk log aktivitas WebApp, tanpa spam Grup)
 actionRouter.post('/absen', requireUser, async (req, res) => {
   const u = req.dbUser;
   const today = todayWib();
@@ -47,14 +47,7 @@ actionRouter.post('/absen', requireUser, async (req, res) => {
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
   const feedMsg = `MASIH HIDUP TERNYATA. ${u.name} absen hari ke-${nextStreak} (+${earned} PSC).`;
-
-  await broadcastToTelegram({
-    target: 'group',
-    text: `🔥 <b>MASIH HIDUP TERNYATA.</b>\n<b>${escHtml(u.name)}</b> absen hari ke-<b>${nextStreak}</b> (+${earned} PSC). Konsisten juga, ya.`,
-    buttonText: '🔥 IKUT ABSEN',
-    startParam: 'absen',
-    feedText: feedMsg
-  });
+  addFeed(feedMsg);
 
   const feed = db.prepare('SELECT id, text, created_at AS createdAt FROM feed ORDER BY id DESC LIMIT 12').all();
   res.json({ user: formatUser(updated), earned, message: feedMsg, feed });
@@ -92,7 +85,6 @@ actionRouter.post('/sawer', requireUser, async (req, res) => {
   });
   tx();
 
-  // Kirim pesan saweran interaktif ke Grup Telegram lengkap dengan tombol callback `claim_sw:<id>`
   const bot = getBot();
   if (bot && ENV.GROUP_ID) {
     const modeLabel = mode === 'random' ? 'Bagi Acak' : 'Bagi Rata';
@@ -115,7 +107,7 @@ actionRouter.post('/sawer', requireUser, async (req, res) => {
   res.json({ user: formatUser(updated) });
 });
 
-// POST /api/shop/buy -> Beli item dari Lapak Rongsok (Hanya notif ke PC Bot Pembeli, tidak ke Grup/CH)
+// POST /api/shop/buy -> Beli item dari Lapak Rongsok (Hanya notif ke PC Bot Pembeli)
 actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   const u = req.dbUser;
   const itemId = String(req.body?.itemId || '');
@@ -144,28 +136,21 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
 
-  // Kirim struk pembelian hanya ke PC Bot pembeli
-  const bot = getBot();
-  if (bot && u.id) {
-    const dmText =
-      `🛒 <b>PURCHASE COMPLETE!</b>\n\n` +
-      `• Item: <b>${escHtml(item.name)}</b> (Lapak Rongsok)\n` +
-      `• Harga: <b>-${item.price} PSC</b>\n` +
-      `• Sisa Saldo: <b>${updated.psc} PSC</b>\n\n` +
-      `Gaya bertambah! Item sudah masuk ke Gudang Barang lu.`;
-
-    const kb = ENV.MINIAPP_LINK
-      ? new InlineKeyboard().url('🛒 BUKA LAPAK RONGSOK', `${ENV.MINIAPP_LINK}?startapp=lapak`)
-      : undefined;
-
-    bot.api.sendMessage(u.id, dmText, { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
-  }
+  await notifyPrivateUser(
+    u.id,
+    `🛒 <b>PURCHASE COMPLETE!</b>\n\n` +
+    `• Item: <b>${escHtml(item.name)}</b> (Lapak Rongsok)\n` +
+    `• Harga: <b>-${item.price} PSC</b>\n` +
+    `• Sisa Saldo: <b>${updated.psc} PSC</b>\n\n` +
+    `Gaya bertambah! Item sudah masuk ke Gudang Barang lu.`,
+    { buttonText: '🛒 BUKA LAPAK RONGSOK', startParam: 'lapak' }
+  );
 
   const inv = db.prepare('SELECT id, item_id AS itemId, acquired_at AS acquiredAt FROM inventory WHERE user_id = ? ORDER BY id DESC').all(u.id);
   res.json({ user: formatUser(updated), inv, catalog: getCatalog() });
 });
 
-// POST /api/gift/send -> Kirim hadiah gift ke warga lain
+// POST /api/gift/send -> Kirim hadiah gift ke warga lain (Hanya notif PC ke Penerima & Pengirim, tanpa spam Grup)
 actionRouter.post('/gift/send', requireUser, async (req, res) => {
   const u = req.dbUser;
   const itemId = String(req.body?.itemId || '');
@@ -193,16 +178,34 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
   });
   tx();
 
-  await broadcastToTelegram({
-    target: 'group',
-    text: `🎁 <b>SPECIAL DELIVERY!</b>\n<b>${escHtml(u.name)}</b> ngirim <b>${escHtml(item.name)}</b> ke <b>${escHtml(recipient.name)}</b> (@${escHtml(recipient.username)})!` +
-      (message ? `\n💬 <i>"${escHtml(message)}"</i>` : ''),
-    buttonText: '🎁 BUKA PROFIL',
-    startParam: 'gue',
-    feedText: `${u.name} ngirim ${item.name} ke @${recipient.username}!`
-  });
-
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
+  addFeed(`${u.name} ngirim ${item.name} ke @${recipient.username}.`);
+
+  const senderTag = u.username ? ` (@${escHtml(u.username)})` : '';
+  const recipTag = recipient.username ? ` (@${escHtml(recipient.username)})` : '';
+
+  // Notif khusus ke Penerima Gift
+  await notifyPrivateUser(
+    recipient.id,
+    `🎁 <b>KAMU DAPAT GIFT BARU!</b>\n\n` +
+    `• Dari: <b>${escHtml(u.name)}</b>${senderTag}\n` +
+    `• Hadiah: <b>${escHtml(item.name)}</b>\n` +
+    (message ? `• Pesan: <i>"${escHtml(message)}"</i>\n` : '') +
+    `\nItem sudah masuk ke Gudang Barang kamu. Buka PunkID untuk <b>Pin</b> ke kartu!`,
+    { buttonText: '🎁 CEK GUDANG & PUNKID', startParam: 'gue' }
+  );
+
+  // Struk khusus ke Pengirim Gift
+  await notifyPrivateUser(
+    u.id,
+    `🎁 <b>GIFT TERKIRIM!</b>\n\n` +
+    `• Penerima: <b>${escHtml(recipient.name)}</b>${recipTag}\n` +
+    `• Item: <b>${escHtml(item.name)}</b> (-${item.price} PSC)\n` +
+    `• Bonus Reputasi: <b>+3 Street Cred</b>\n` +
+    `• Sisa Saldo: <b>${updated.psc} PSC</b>`,
+    { buttonText: '🪪 BUKA PUNKSHIT.OS', startParam: 'gue' }
+  );
+
   res.json({ user: formatUser(updated) });
 });
 
