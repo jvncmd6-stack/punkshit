@@ -12,13 +12,18 @@
   if (rawStart && rawStart.indexOf('__') !== -1) {
     var parts = rawStart.split('__');
     routeParam = parts[0];
-    try {
-      var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      var decodedUrl = atob(b64);
-      if (decodedUrl && decodedUrl.indexOf('http') === 0) {
-        apiFromUrl = decodedUrl;
-      }
-    } catch (e) {}
+    var encoded = parts[1] || '';
+    if (encoded.indexOf('r_') === 0) {
+      apiFromUrl = 'https://' + encoded.slice(2) + '.up.railway.app';
+    } else {
+      try {
+        var b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+        var decodedUrl = atob(b64);
+        if (decodedUrl && decodedUrl.indexOf('http') === 0) {
+          apiFromUrl = decodedUrl;
+        }
+      } catch (e) {}
+    }
   }
 
   if (apiFromUrl && apiFromUrl.indexOf('http') === 0) {
