@@ -37,6 +37,37 @@ export function parsePinnedGifts(raw) {
   return [str];
 }
 
+export function buildMiniAppUrl(startParam = '') {
+  if (!ENV.MINIAPP_LINK) return '';
+  const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : (process.env.API_URL || '').trim();
+
+  const payload = railwayApi
+    ? `${startParam || 'home'}__${Buffer.from(railwayApi).toString('base64url')}`
+    : startParam;
+
+  return payload
+    ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(payload)}`
+    : ENV.MINIAPP_LINK;
+}
+
+// Kirim notif personal khusus ke PC Bot penerima (tidak spam ke Grup/Channel)
+export async function notifyPrivateUser(targetUserId, text, { buttonText = '🪪 BUKA PUNKSHIT.OS', startParam = 'home' } = {}) {
+  if (!botInstance || !targetUserId || !text) return;
+  try {
+    const url = buildMiniAppUrl(startParam);
+    const kb = url ? new InlineKeyboard().url(buttonText, url) : undefined;
+    await botInstance.api.sendMessage(String(targetUserId), text, {
+      parse_mode: 'HTML',
+      reply_markup: kb,
+      disable_web_page_preview: true
+    });
+  } catch (err) {
+    // Abaikan jika user belum pernah /start bot di PC
+  }
+}
+
 export async function syncTelegramAvatar(userId, tgUserObj = null) {
   const uid = String(userId);
   if (tgUserObj && tgUserObj.username !== undefined) {
@@ -146,12 +177,20 @@ export async function broadcastToTelegram({ target = 'group', text = '', buttonT
 
   const upperText = text.toUpperCase();
 
-  // 1. Blokir spam Absen & Sapaan Markas agar tidak dikirim ke grup maupun channel
-  if (
-    upperText.includes('MASIH HIDUP TERNYATA') ||
-    upperText.includes('ABSEN HARI KE-') ||
-    upperText.includes('SAPAAN MARKAS')
-  ) {
+  // 1. Blokir total notif personal/spam agar TIDAK pernah dikirim ke Grup maupun Channel
+  const blockedKeywords = [
+    'MASIH HIDUP TERNYATA',
+    'ABSEN HARI KE-',
+    'SAPAAN MARKAS',
+    'KIRIM GIFT',
+    'MENGIRIM GIFT',
+    'HADIAH MARKAS',
+    'TRANSFER PSC',
+    'SAWERAN PSC',
+    'SPARK SECURED',
+    'AJAKAN SPARK'
+  ];
+  if (blockedKeywords.some(kw => upperText.includes(kw))) {
     return;
   }
 
@@ -166,19 +205,8 @@ export async function broadcastToTelegram({ target = 'group', text = '', buttonT
     finalTarget = 'both';
   }
 
-  const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : (process.env.API_URL || '').trim();
-
-  const payload = railwayApi
-    ? `${startParam || 'home'}__${Buffer.from(railwayApi).toString('base64url')}`
-    : startParam;
-
-  const url = payload
-    ? `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(payload)}`
-    : ENV.MINIAPP_LINK;
-
-  const kb = new InlineKeyboard().url(buttonText, url);
+  const url = buildMiniAppUrl(startParam);
+  const kb = url ? new InlineKeyboard().url(buttonText, url) : undefined;
 
   const sendSafe = async chatId => {
     if (!chatId) return;
