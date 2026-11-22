@@ -6,8 +6,39 @@ window.PunkAPI = (function () {
     return String(CFG.API_URL || '').replace(/\/+$/, '');
   }
 
+  // Ambil initData dari SDK Telegram, atau fallback ke URL hash / sessionStorage
+  // (mengatasi tg.initData kosong pada Android WebView / Telegram versi lama)
   function getInitData() {
-    return (tg && tg.initData) ? tg.initData : '';
+    var sdkData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+    if (sdkData) {
+      try { sessionStorage.setItem('psk_tma_init', sdkData); } catch (e) {}
+      return sdkData;
+    }
+
+    try {
+      var hashStr = String(window.location.hash || '').replace(/^#/, '');
+      if (hashStr.indexOf('tgWebAppData=') !== -1) {
+        var hp = new URLSearchParams(hashStr);
+        var fromHash = hp.get('tgWebAppData') || '';
+        if (fromHash) {
+          sessionStorage.setItem('psk_tma_init', fromHash);
+          return fromHash;
+        }
+      }
+      var searchStr = String(window.location.search || '').replace(/^\?/, '');
+      if (searchStr.indexOf('tgWebAppData=') !== -1) {
+        var sp = new URLSearchParams(searchStr);
+        var fromSearch = sp.get('tgWebAppData') || '';
+        if (fromSearch) {
+          sessionStorage.setItem('psk_tma_init', fromSearch);
+          return fromSearch;
+        }
+      }
+      var cached = sessionStorage.getItem('psk_tma_init') || '';
+      if (cached) return cached;
+    } catch (e) {}
+
+    return '';
   }
 
   function setSyncStatus(state) {
