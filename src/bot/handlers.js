@@ -1,7 +1,7 @@
 import { InlineKeyboard } from 'grammy';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
-import { escHtml } from '../services/syncEngine.js';
+import { escHtml, notifyPrivateUser } from '../services/syncEngine.js';
 import {
   DEFAULT_GREET,
   DEFAULT_BYE,
@@ -41,8 +41,29 @@ function logAudit(actorId, action, detail) {
   } catch (e) {}
 }
 
+function purgeWargaData(userId, username = '') {
+  const uid = String(userId);
+  const usn = String(username || '').replace(/^@/, '').toLowerCase();
+
+  const existing = db.prepare('SELECT id, name, username FROM users WHERE id = ?').get(uid);
+  const targetUsn = usn || (existing?.username || '').toLowerCase();
+
+  db.prepare('DELETE FROM users WHERE id = ?').run(uid);
+
+  if (targetUsn) {
+    try { db.prepare('DELETE FROM spark_pairs WHERE user1 = ? OR user2 = ?').run(targetUsn, targetUsn); } catch (e) {}
+    try { db.prepare('DELETE FROM spark_daily WHERE username = ?').run(targetUsn); } catch (e) {}
+  }
+
+  try { db.prepare('DELETE FROM inventory WHERE user_id = ?').run(uid); } catch (e) {}
+  try { db.prepare('DELETE FROM shop_items WHERE seller_id = ?').run(uid); } catch (e) {}
+  try { db.prepare('DELETE FROM member_market WHERE seller_id = ?').run(uid); } catch (e) {}
+
+  return existing;
+}
+
 export function registerBotHandlers(bot) {
-  // 1. Tracker Spark Buddies di Grup (5 gap + 2 pesan)
+  // 1. Tracker Spark Buddies di Grup (5 gap + 2 pesan -> notif via PC, tanpa spam grup)
   bot.on('message', async (ctx, next) => {
     try {
       const chatType = ctx.chat?.type;
@@ -101,12 +122,22 @@ export function registerBotHandlers(bot) {
                 WHERE id = ?
               `).run(newStreak, newXp, today, pair.id);
 
-              await ctx.reply(
-                `🔥 <b>SPARK SECURED!</b>\n` +
-                `@${escHtml(usn)} x @${escHtml(partner)} sudah aktif bareng hari ini!\n` +
-                `Streak: <b>${newStreak} Hari</b> · Total XP: <b>${newXp}</b>`,
-                { parse_mode: 'HTML' }
-              ).catch(() => {});
+              // Kirim notif ke PC masing-masing pasangan (tidak nyepam ke grup)
+              const pRow = db.prepare('SELECT id FROM users WHERE LOWER(username) = ?').get(partner);
+              const sparkDm =
+                `🔥 <b>SPARK HARIAN MENYALA!</b>\n\n` +
+                `Kamu & @${escHtml(partner)} sudah aktif ngobrol hari ini!\n` +
+                `• Streak: <b>${newStreak} Hari</b>\n` +
+                `• Total XP: <b>${newXp} XP</b>`;
+
+              await notifyPrivateUser(user.id, sparkDm, { buttonText: '🔥 CEK SPARK', startParam: 'spark' });
+              if (pRow?.id) {
+                await notifyPrivateUser(
+                  pRow.id,
+                  `🔥 <b>SPARK HARIAN MENYALA!</b>\n\nKamu & @${escHtml(usn)} sudah aktif ngobrol hari ini!\n• Streak: <b>${newStreak} Hari</b>\n• Total XP: <b>${newXp} XP</b>`,
+                  { buttonText: '🔥 CEK SPARK', startParam: 'spark' }
+                );
+              }
             }
           }
         }
@@ -191,7 +222,35 @@ export function registerBotHandlers(bot) {
     );
   });
 
-  // 4. Ekonomi & Admin Commands
+  // 4. Ekonomi, Hapus Warga & Admin Commands
+  bot.command('delwarga', async (ctx) => {
+    if (!isBotOwnerOrAdmin(ctx.from.id)) {
+      return ctx.reply('⛔ Khusus Owner & Admin yang bisa hapus data PunkID warga.');
+    }
+
+    const rawTarget = String(ctx.match || '').trim().replace(/^@/, '');
+    const replyUser = ctx.message?.reply_to_message?.from;
+    let targetUser = null;
+
+    if (rawTarget) {
+      targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
+    } else if (replyUser && !replyUser.is_bot) {
+      targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(String(replyUser.id));
+    } else {
+      return ctx.reply('Format: <code>/delwarga @username</code> atau <code>/delwarga 123456789</code>', { parse_mode: 'HTML' });
+    }
+
+    if (!targetUser) return ctx.reply('Data PunkID warga tersebut sudah tidak ada di database.');
+
+    purgeWargaData(targetUser.id, targetUser.username);
+    logAudit(ctx.from.id, 'DEL WARGA (BOT)', `Hapus PunkID ${targetUser.name} (${targetUser.id})`);
+
+    await ctx.reply(
+      `🗑️ <b>PUNKID DIHAPUS</b>\nData warga <b>${escHtml(targetUser.name)}</b> (<code>${escHtml(targetUser.id)}</code>) resmi dihapus dari markas.`,
+      { parse_mode: 'HTML' }
+    );
+  });
+
   bot.command('givepsc', async (ctx) => {
     if (!isBotOwnerOrAdmin(ctx.from.id)) {
       return ctx.reply('⛔ Khusus Owner & Admin doang yang bisa suntik koin PSC cuy.');
@@ -546,7 +605,7 @@ export function registerBotHandlers(bot) {
     await ctx.answerCallbackQuery();
   });
 
-  // 7. Sapaan Warga Masuk & Keluar Grup
+  // 7. Sapaan Warga Masuk & Auto-Hapus PunkID Saat Keluar / Di-Kick
   bot.on('message:new_chat_members', async (ctx) => {
     const members = ctx.message.new_chat_members || [];
     let count = 0;
@@ -577,6 +636,15 @@ export function registerBotHandlers(bot) {
   bot.on('message:left_chat_member', async (ctx) => {
     const m = ctx.message.left_chat_member;
     if (!m || m.is_bot) return;
+
+    if (ENV.GROUP_ID && String(ctx.chat.id) !== String(ENV.GROUP_ID)) return;
+
+    // Otomatis hapus PunkID & data Spark dari database (baik keluar sendiri maupun di-kick)
+    const deleted = purgeWargaData(m.id, m.username || '');
+    if (deleted) {
+      const kickedBy = ctx.from && ctx.from.id !== m.id ? ` (Dikeluarkan oleh ${ctx.from.first_name})` : ' (Keluar sendiri)';
+      logAudit(ctx.from?.id || m.id, 'AUTO DEL WARGA', `Hapus PunkID ${deleted.name}${kickedBy}`);
+    }
 
     let count = 0;
     try { count = await ctx.getChatMemberCount(); } catch (e) {}
