@@ -13,8 +13,12 @@
       return (w.name || '').toLowerCase().indexOf(q) !== -1 || (w.username || '').toLowerCase().indexOf(q) !== -1;
     });
 
+    var bdayBanner = typeof window.renderBirthdayBannerSlot === 'function'
+      ? window.renderBirthdayBannerSlot()
+      : '';
+
     return (
-      ${window.renderBirthdayBannerSlot ? window.renderBirthdayBannerSlot() : ''}
+      bdayBanner +
       '<input id="wg-search" placeholder="🔍 Cari nama atau @username warga..." value="' + C.esc(searchQuery) + '" style="margin-bottom:14px">' +
 
       '<div class="chips" style="margin-bottom:14px">' +
@@ -31,14 +35,14 @@
           ? list.map(function (w) {
               var roleTag = (w.role && w.role !== 'member') ? ' <span class="role-tag">' + C.esc(w.role) + '</span>' : '';
               return (
-  '<div class="rw">' +
-    '<div data-act="wg-view" data-uid="' + C.esc(w.id) + '" style="display:flex;align-items:center;gap:11px;flex:1;cursor:pointer">' +
-      C.renderAvatar(w, 'mini') +
-      '<div><b>' + C.esc(w.name) + roleTag + '</b><small>' + C.esc(w.presence || '☕ Nongki Dulu') + ' · ' + C.rankInfo(w.streak).title + '</small></div>' +
-    '</div>' +
-    '<button class="pill" data-act="wg-sapa" data-uid="' + C.esc(w.id) + '" data-name="' + C.esc(w.name) + '">👋 Sapa</button>' +
-  '</div>'
-);
+                '<div class="rw">' +
+                  '<div data-act="wg-view" data-uid="' + C.esc(w.id) + '" style="display:flex;align-items:center;gap:11px;flex:1;cursor:pointer">' +
+                    C.renderAvatar(w, 'mini') +
+                    '<div><b>' + C.esc(w.name) + roleTag + '</b><small>' + C.esc(w.presence || '☕ Nongki Dulu') + ' · ' + C.rankInfo(w.streak).title + '</small></div>' +
+                  '</div>' +
+                  '<button class="pill" data-act="wg-sapa" data-uid="' + C.esc(w.id) + '" data-name="' + C.esc(w.name) + '">👋 Sapa</button>' +
+                '</div>'
+              );
             }).join('')
           : '<div class="rw"><small>Belum ada warga lain yang terdeteksi aktif.</small></div>') +
       '</div>'
@@ -74,6 +78,10 @@
 
   // 3. Halaman Kotak Rahasia (Menfess -> Moderasi Dalang -> Channel)
   function renderKotak() {
+    var archiveSection = typeof window.renderKotakArchiveSection === 'function'
+      ? window.renderKotakArchiveSection()
+      : '';
+
     return (
       '<div class="grp" style="margin-bottom:16px">' +
         '<div class="rw"><div><b>📮 Kirim Menfess / Pesan Anonim</b><small>Pesan akan dicek pengurus di Ruang Dalang sebelum tayang di Channel & Grup.</small></div></div>' +
@@ -87,8 +95,8 @@
       '</select>' +
       '<label>ISI PESAN ANONIM</label>' +
       '<textarea id="mf-txt" maxlength="280" placeholder="Tulis unek-unek lo di sini (identitas aman)..."></textarea>' +
-      '<button class="btn" data-act="wg-menfess-send">KIRIM KE KOTAK RAHASIA</button>'
-      ${window.renderKotakArchiveSection ? window.renderKotakArchiveSection() : ''}
+      '<button class="btn" data-act="wg-menfess-send">KIRIM KE KOTAK RAHASIA</button>' +
+      archiveSection
     );
   }
 
@@ -155,23 +163,21 @@
     var act = t.getAttribute('data-act');
 
     if (act === 'wg-view') {
-  if (window.openWargaProfile) window.openWargaProfile(t.getAttribute('data-uid'));
-} else if (act === 'wg-spark-invite') {
-  var targetUsn = t.getAttribute('data-usn');
-  t.disabled = true;
-  try {
-    var spRes = await API.post('/api/spark/action', {
-      type: 'SPARK_INVITE_SEND',
-      targetUsername: targetUsn
-    });
-    C.notify('Mas Raka', 'Spark Buddies', spRes.message || ('Ajakan Spark dikirim ke @' + targetUsn + '!'));
-  } catch (err) {
-    t.disabled = false;
-    C.notify('Mas Raka', 'Info', err.message);
-  }
-}
-    
-    if (act === 'wg-sapa') {
+      if (window.openWargaProfile) window.openWargaProfile(t.getAttribute('data-uid'));
+    } else if (act === 'wg-spark-invite') {
+      var targetUsn = t.getAttribute('data-usn');
+      t.disabled = true;
+      try {
+        var spRes = await API.post('/api/spark/action', {
+          type: 'SPARK_INVITE_SEND',
+          targetUsername: targetUsn
+        });
+        C.notify('Mas Raka', 'Spark Buddies', spRes.message || ('Ajakan Spark dikirim ke @' + targetUsn + '!'));
+      } catch (err) {
+        t.disabled = false;
+        C.notify('Mas Raka', 'Info', err.message);
+      }
+    } else if (act === 'wg-sapa') {
       var targetId = t.getAttribute('data-uid');
       var targetName = t.getAttribute('data-name');
       t.disabled = true;
