@@ -34,8 +34,10 @@ export function verifyTelegramInitData(initData) {
 
   if (signature !== hash) return null;
 
+  // Toleransi hingga 7 hari selama signature HMAC asli dari BOT_TOKEN valid
+  // (mencegah gagal login pada HP warga yang jam/tanggalnya meleset atau cache sesi lama)
   const authDate = Number(params.get('auth_date') || 0);
-  if (Date.now() / 1000 - authDate > 86400) return null;
+  if (!authDate || Math.abs(Date.now() / 1000 - authDate) > 604800) return null;
 
   try {
     return JSON.parse(params.get('user'));
@@ -45,7 +47,12 @@ export function verifyTelegramInitData(initData) {
 }
 
 export function authTma(req, res, next) {
-  const raw = (req.get('authorization') || '').replace(/^tma\s+/i, '').trim();
+  const raw = (
+    req.get('authorization') ||
+    req.get('x-telegram-init-data') ||
+    ''
+  ).replace(/^tma\s+/i, '').trim();
+
   const tgUser = verifyTelegramInitData(raw);
   if (!tgUser || !tgUser.id) {
     return res.status(401).json({ error: 'Sesi Telegram tidak valid. Buka ulang dari bot.' });
