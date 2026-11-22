@@ -78,6 +78,22 @@ window.PunkCore = (function () {
     return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:' + cols[1] + '99"><div class="rot">' + layers + '</div></div>';
   }
 
+  // Render efek Avatar Border (baik custom imageUrl maupun efek ring bawaan Lapak Rongsok)
+  function renderBorderOverlay(u) {
+    if (!u) return '';
+    if (u.equippedBorderUrl) {
+      return '<img class="dc-border" src="' + esc(API.assetUrl(u.equippedBorderUrl)) + '" alt="">';
+    }
+    if (u.equippedBorderId) {
+      var bItem = findItem(u.equippedBorderId);
+      if (bItem) {
+        var cols = bItem.colors || ['#8FC7FF', '#176BFF'];
+        return '<div class="dc-border-fx ' + esc(bItem.skinClass || '') + '" style="--bc1:' + esc(cols[0]) + ';--bc2:' + esc(cols[1]) + '"></div>';
+      }
+    }
+    return '';
+  }
+
   function renderAvatar(u, mode) {
     if (!u) return '';
     var initial = esc((u.name || '?')[0].toUpperCase());
@@ -87,10 +103,7 @@ window.PunkCore = (function () {
       : '';
     var fallback = '<span style="' + (photoSrc ? 'display:none' : '') + '">' + initial + '</span>';
 
-    var borderHtml = '';
-    if (u.equippedBorderUrl) {
-      borderHtml = '<img class="dc-border" src="' + esc(API.assetUrl(u.equippedBorderUrl)) + '" alt="">';
-    }
+    var borderHtml = renderBorderOverlay(u);
 
     var pinHtml = '';
     if (u.pinnedGiftId && mode !== 'mini') {
@@ -206,7 +219,6 @@ window.PunkCore = (function () {
     }).join('') || '<i style="background:#FFD633">P</i>';
   }
 
-  // Tampilan Lengkap untuk Modul Absen, Time Capsule (kapsul), Lapak Warga (lapakwarga), & Pasal/Help (rules)
   function getFallbackView(id) {
     if (id === 'absen') {
       var u = S.user || {};
@@ -490,7 +502,6 @@ window.PunkCore = (function () {
     }
   }
 
-  // Global Event Listeners
   document.addEventListener('click', async function (e) {
     var t = e.target.closest('[data-act]');
     if (!t) return;
