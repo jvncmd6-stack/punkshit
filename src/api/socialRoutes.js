@@ -3,10 +3,10 @@ import crypto from 'crypto';
 import { InputFile, InlineKeyboard } from 'grammy';
 import path from 'path';
 import { ENV } from '../config/env.js';
-import { db } from '../database/db.js';
+import { db, addFeed } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
 import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
-import { formatUser, getBot, broadcastToTelegram, escHtml } from '../services/syncEngine.js';
+import { formatUser, getBot, broadcastToTelegram, notifyPrivateUser, escHtml } from '../services/syncEngine.js';
 
 export const socialRouter = Router();
 
@@ -159,30 +159,22 @@ socialRouter.post('/shop', requireUser, uploadMem.single('media'), async (req, r
   }
 });
 
-// POST /api/warga-shop/buy -> Beli item/jasa dari Lapak Warga (Hanya notif PC ke Pembeli & Penjual, tanpa notif Grup/CH)
+// POST /api/warga-shop/buy -> Beli item/jasa dari Lapak Warga (Hanya notif PC ke Pembeli & Penjual)
 socialRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
   const buyer = req.dbUser;
   const itemId = String(req.body?.itemId || '').trim();
   const note = String(req.body?.note || '').trim().slice(0, 120);
 
   const item = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(itemId);
-  if (!item) {
-    return res.status(404).json({ error: 'Produk atau jasa tidak ditemukan di etalase.' });
-  }
-  if (item.status === 'sold') {
-    return res.status(400).json({ error: 'Yah telat! Barang ini sudah dibeli warga lain.' });
-  }
-  if (String(item.seller_id) === String(buyer.id)) {
-    return res.status(400).json({ error: 'Nggak bisa beli dagangan sendiri bro!' });
-  }
+  if (!item) return res.status(404).json({ error: 'Produk atau jasa tidak ditemukan di etalase.' });
+  if (item.status === 'sold') return res.status(400).json({ error: 'Yah telat! Barang ini sudah dibeli warga lain.' });
+  if (String(item.seller_id) === String(buyer.id)) return res.status(400).json({ error: 'Nggak bisa beli dagangan sendiri bro!' });
   if ((buyer.psc || 0) < item.price) {
     return res.status(400).json({ error: `Saldo PSC kurang! Butuh ${item.price} PSC, saldo lu ${buyer.psc || 0} PSC.` });
   }
 
   const seller = db.prepare('SELECT * FROM users WHERE id = ?').get(String(item.seller_id));
-  if (!seller) {
-    return res.status(404).json({ error: 'Akun pelapak sudah tidak aktif.' });
-  }
+  if (!seller) return res.status(404).json({ error: 'Akun pelapak sudah tidak aktif.' });
 
   const orderId = 'ord_' + crypto.randomBytes(4).toString('hex');
   const now = Date.now();
@@ -214,38 +206,29 @@ socialRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
   const updatedBuyer = db.prepare('SELECT * FROM users WHERE id = ?').get(buyer.id);
 
   // Kirim DM hanya ke PC Bot Penjual & Pembeli (tidak broadcast ke Grup/Channel)
-  const bot = getBot();
-  if (bot) {
-    const kb = ENV.MINIAPP_LINK
-      ? new InlineKeyboard().url('🪪 BUKA LAPAK WARGA', `${ENV.MINIAPP_LINK}?startapp=lapakwarga`)
-      : undefined;
+  const buyerTag = buyer.username ? `@${escHtml(buyer.username)}` : `<b>${escHtml(buyer.name)}</b>`;
+  await notifyPrivateUser(
+    seller.id,
+    `🛍️ <b>ORDERAN LAPAK WARGA MASUK!</b>\n\n` +
+    `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
+    `• Harga: <b>+${item.price} PSC</b> (otomatis masuk dompet)\n` +
+    `• Pembeli: <b>${escHtml(buyer.name)}</b> (${buyerTag})\n` +
+    (note ? `• Catatan Pembeli: <i>"${escHtml(note)}"</i>\n` : '') +
+    `\nSegera hubungi pembeli buat serah terima barang/jasanya!`,
+    { buttonText: '🪪 BUKA LAPAK WARGA', startParam: 'lapakwarga' }
+  );
 
-    if (seller.id) {
-      const buyerTag = buyer.username ? `@${escHtml(buyer.username)}` : `<b>${escHtml(buyer.name)}</b>`;
-      const sellerDmText =
-        `🛍️ <b>ORDERAN LAPAK WARGA MASUK!</b>\n\n` +
-        `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
-        `• Harga: <b>+${item.price} PSC</b> (otomatis masuk dompet)\n` +
-        `• Pembeli: <b>${escHtml(buyer.name)}</b> (${buyerTag})\n` +
-        (note ? `• Catatan Pembeli: <i>"${escHtml(note)}"</i>\n` : '') +
-        `\nSegera hubungi pembeli buat serah terima barang/jasanya!`;
-
-      bot.api.sendMessage(seller.id, sellerDmText, { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
-    }
-
-    if (buyer.id) {
-      const sellerTag = seller.username ? `@${escHtml(seller.username)}` : `<b>${escHtml(seller.name)}</b>`;
-      const buyerDmText =
-        `🛍️ <b>TRANSAKSI LAPAK WARGA BERHASIL!</b>\n\n` +
-        `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
-        `• Harga: <b>-${item.price} PSC</b> (Sisa: <b>${updatedBuyer.psc} PSC</b>)\n` +
-        `• Penjual: <b>${escHtml(seller.name)}</b> (${sellerTag})\n` +
-        (note ? `• Catatan Lu: <i>"${escHtml(note)}"</i>\n` : '') +
-        `\nSilakan kontak penjual untuk serah terima barang/jasanya!`;
-
-      bot.api.sendMessage(buyer.id, buyerDmText, { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
-    }
-  }
+  const sellerTag = seller.username ? `@${escHtml(seller.username)}` : `<b>${escHtml(seller.name)}</b>`;
+  await notifyPrivateUser(
+    buyer.id,
+    `🛍️ <b>TRANSAKSI LAPAK WARGA BERHASIL!</b>\n\n` +
+    `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
+    `• Harga: <b>-${item.price} PSC</b> (Sisa: <b>${updatedBuyer.psc} PSC</b>)\n` +
+    `• Penjual: <b>${escHtml(seller.name)}</b> (${sellerTag})\n` +
+    (note ? `• Catatan Lu: <i>"${escHtml(note)}"</i>\n` : '') +
+    `\nSilakan kontak penjual untuk serah terima barang/jasanya!`,
+    { buttonText: '🪪 BUKA LAPAK WARGA', startParam: 'lapakwarga' }
+  );
 
   const items = db.prepare(`
     SELECT * FROM shop_items
@@ -289,19 +272,22 @@ socialRouter.post('/warga-shop/delete', requireUser, (req, res) => {
   res.json({ ok: true, items });
 });
 
-// POST /api/social/greet -> Sapa warga lain di Grup
+// POST /api/social/greet -> Sapa warga lain (Jalur pribadi ke PC penerima + log feed WebApp, tanpa spam Grup)
 socialRouter.post('/social/greet', requireUser, async (req, res) => {
   const targetId = String(req.body?.targetUserId || '');
   const target = db.prepare('SELECT * FROM users WHERE id = ?').get(targetId);
   if (!target) return res.status(404).json({ error: 'Warga tidak ditemukan.' });
 
-  await broadcastToTelegram({
-    target: 'group',
-    text: `<b>SAPAAN MARKAS</b>\n<b>${escHtml(req.dbUser.name)}</b> nyapa <b>${escHtml(target.name)}</b>${target.username ? ` (@${escHtml(target.username)})` : ''} di PUNKSHIT.OS.`,
-    buttonText: 'CEK WARGA',
-    startParam: 'warga',
-    feedText: `${req.dbUser.name} menyapa ${target.name} di markas.`
-  });
+  addFeed(`${req.dbUser.name} menyapa ${target.name} di markas.`);
+
+  if (String(target.id) !== String(req.dbUser.id)) {
+    const senderTag = req.dbUser.username ? ` (@${escHtml(req.dbUser.username)})` : '';
+    await notifyPrivateUser(
+      target.id,
+      `👋 <b>SAPAAN DARI MARKAS</b>\n\n<b>${escHtml(req.dbUser.name)}</b>${senderTag} baru aja nyapa kamu di PUNKSHIT.OS!`,
+      { buttonText: '🪪 BUKA MARKAS', startParam: 'warga' }
+    );
+  }
 
   res.json({ ok: true });
 });
@@ -435,9 +421,7 @@ socialRouter.post('/radio', requireUser, async (req, res) => {
   const link = String(req.body?.link || '').trim().slice(0, 180);
   const message = String(req.body?.message || '').trim().slice(0, 100);
 
-  if (song.length < 3) {
-    return res.status(400).json({ error: 'Judul lagu wajib diisi.' });
-  }
+  if (song.length < 3) return res.status(400).json({ error: 'Judul lagu wajib diisi.' });
   if (!/^https:\/\/open\.spotify\.com\//.test(link)) {
     return res.status(400).json({ error: 'Wajib menyertakan link Spotify (https://open.spotify.com/...) atau kirim file MP3 langsung ke PC Bot.' });
   }
