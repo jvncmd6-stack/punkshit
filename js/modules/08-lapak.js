@@ -282,15 +282,19 @@
     var soldOut = (item.stock != null && item.stock === 0);
 
     var previewHtml = '';
-    if (item.type === 'border' && item.imageUrl) {
+    if (item.type === 'border') {
       var initial = C.esc((u.name || '?')[0].toUpperCase());
       var pfp = u.photoUrl
         ? '<img class="pfp" src="' + C.esc(API.assetUrl(u.photoUrl)) + '" alt="">'
         : '<span>' + initial + '</span>';
+      var cols = item.colors || ['#8FC7FF', '#176BFF'];
+      var borderLayer = item.imageUrl
+        ? '<img class="dc-border" src="' + C.esc(API.assetUrl(item.imageUrl)) + '" alt="">'
+        : '<div class="dc-border-fx ' + C.esc(item.skinClass || '') + '" style="--bc1:' + C.esc(cols[0]) + ';--bc2:' + C.esc(cols[1]) + '"></div>';
       previewHtml =
         '<div class="try-box">' +
           pfp +
-          '<img class="dc-border" src="' + C.esc(API.assetUrl(item.imageUrl)) + '" alt="">' +
+          borderLayer +
         '</div>' +
         '<small style="color:#6df0a0;font-weight:600;display:block;margin-bottom:6px">✨ Live Preview di Avatar Telegram Lo</small>';
     } else {
@@ -325,6 +329,10 @@
           '<label>USERNAME PENERIMA</label>' +
           '<input id="lp-to" placeholder="@username" maxlength="32">' +
           '<input id="lp-msg" placeholder="Pesan ucapan (opsional)" maxlength="70">' +
+          '<label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin:6px 0 10px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">' +
+            '<input type="checkbox" id="lp-anon" style="width:18px;height:18px;min-height:auto;margin:0;accent-color:var(--yel)">' +
+            '<span>🕵️ Kirim sebagai Anonim (Sembunyikan nama gue)</span>' +
+          '</label>' +
           '<button class="btn" data-act="lp-send-gift" data-id="' + C.esc(item.id) + '">Kirim Gift · ' + item.price + ' PSC</button>' +
         '</div>';
     }
@@ -483,6 +491,9 @@
       var git = C.findItem(gid);
       var to = (document.getElementById('lp-to').value || '').trim().replace(/^@?/, '@');
       var msg = (document.getElementById('lp-msg').value || '').trim();
+      var anonEl = document.getElementById('lp-anon');
+      var isAnon = !!(anonEl && anonEl.checked);
+
       if (to.length < 3) {
         C.notify('Mas Raka', 'Validasi', 'Masukkan @username penerima dengan benar.');
         return;
@@ -494,11 +505,16 @@
       t.disabled = true;
       t.textContent = 'Mengirim...';
       try {
-        var res = await API.post('/api/gift/send', { itemId: gid, toUsername: to, message: msg });
+        var res = await API.post('/api/gift/send', {
+          itemId: gid,
+          toUsername: to,
+          message: msg,
+          anonymous: isAnon
+        });
         S.user = res.user;
         C.shut();
         C.refresh();
-        C.notify('Mas Raka', '→ Grup Punkshit', S.user.name + ' ngirim ' + git.name + ' ke ' + to + '!');
+        C.notify('Mas Raka', 'Gift Terkirim!', git.name + ' berhasil dikirim' + (isAnon ? ' secara anonim' : '') + ' ke ' + to + '!');
       } catch (err) {
         t.disabled = false;
         t.textContent = 'Kirim Gift · ' + git.price + ' PSC';
