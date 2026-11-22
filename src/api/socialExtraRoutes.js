@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { db } from '../database/db.js';
+import { db, addFeed } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
 import {
   formatUser,
   getCatalog,
   parsePinnedGifts,
-  broadcastToTelegram,
+  notifyPrivateUser,
   escHtml
 } from '../services/syncEngine.js';
 
@@ -45,7 +45,7 @@ socialExtraRouter.get('/leaderboard/global', (req, res) => {
   }
 });
 
-// 2. POST /api/social/transfer-psc -> Transfer PSC antarwarga langsung dari profil
+// 2. POST /api/social/transfer-psc -> Transfer PSC antarwarga (Notif PC ke Penerima & Pengirim, tanpa spam Grup)
 socialExtraRouter.post('/social/transfer-psc', requireUser, async (req, res) => {
   const sender = req.dbUser;
   const targetId = String(req.body?.targetUserId || '').trim();
@@ -79,18 +79,35 @@ socialExtraRouter.post('/social/transfer-psc', requireUser, async (req, res) => 
   });
   tx();
 
-  await broadcastToTelegram({
-    target: 'group',
-    text:
-      `💸 <b>SAWERAN MARKAS!</b>\n` +
-      `<b>${escHtml(sender.name)}</b> baru aja ngirim <b>${amount} PSC</b> ke <b>${escHtml(receiver.name)}</b>!` +
-      (note ? `\n<i>"${escHtml(note)}"</i>` : ''),
-    buttonText: '🪪 CEK MARKAS',
-    startParam: 'warga',
-    feedText: `${sender.name} transfer ${amount} PSC ke ${receiver.name}.`
-  });
-
   const updatedSender = db.prepare('SELECT * FROM users WHERE id = ?').get(sender.id);
+  const updatedReceiver = db.prepare('SELECT * FROM users WHERE id = ?').get(receiver.id);
+  addFeed(`${sender.name} transfer ${amount} PSC ke ${receiver.name}.`);
+
+  const senderTag = sender.username ? ` (@${escHtml(sender.username)})` : '';
+  const receiverTag = receiver.username ? ` (@${escHtml(receiver.username)})` : '';
+
+  // Notif pribadi ke Penerima PSC
+  await notifyPrivateUser(
+    receiver.id,
+    `💸 <b>TRANSFER PSC MASUK!</b>\n\n` +
+    `• Dari: <b>${escHtml(sender.name)}</b>${senderTag}\n` +
+    `• Nominal: <b>+${amount} PSC</b> (+1 Street Cred)\n` +
+    `• Saldo Sekarang: <b>${updatedReceiver.psc} PSC</b>\n` +
+    (note ? `• Catatan: <i>"${escHtml(note)}"</i>` : ''),
+    { buttonText: '🪪 CEK DOMPET', startParam: 'home' }
+  );
+
+  // Struk pribadi ke Pengirim PSC
+  await notifyPrivateUser(
+    sender.id,
+    `💸 <b>TRANSFER PSC BERHASIL!</b>\n\n` +
+    `• Penerima: <b>${escHtml(receiver.name)}</b>${receiverTag}\n` +
+    `• Nominal: <b>-${amount} PSC</b>\n` +
+    `• Sisa Saldo: <b>${updatedSender.psc} PSC</b>\n` +
+    (note ? `• Catatan: <i>"${escHtml(note)}"</i>` : ''),
+    { buttonText: '🪪 BUKA PUNKSHIT.OS', startParam: 'home' }
+  );
+
   res.json({
     ok: true,
     message: `Berhasil kirim ${amount} PSC ke ${receiver.name}!`,
@@ -98,7 +115,7 @@ socialExtraRouter.post('/social/transfer-psc', requireUser, async (req, res) => 
   });
 });
 
-// 3. POST /api/social/send-gift -> Kirim item dari Gudang Barang ke warga lain
+// 3. POST /api/social/send-gift -> Kirim item dari Gudang Barang ke warga lain (Notif PC ke Penerima & Pengirim)
 socialExtraRouter.post('/social/send-gift', requireUser, async (req, res) => {
   const sender = req.dbUser;
   const targetId = String(req.body?.targetUserId || '').trim();
@@ -129,7 +146,6 @@ socialExtraRouter.post('/social/send-gift', requireUser, async (req, res) => {
     db.prepare('UPDATE inventory SET user_id = ?, acquired_at = ? WHERE id = ?')
       .run(receiver.id, Date.now(), invRow.id);
 
-    // Lepas item jika sebelumnya sedang dipakai/dipin pengirim dan stoknya habis
     const stillHas = db.prepare('SELECT 1 FROM inventory WHERE user_id = ? AND item_id = ?').get(sender.id, invRow.item_id);
     if (!stillHas) {
       if (sender.equipped_border_id === invRow.item_id) {
@@ -150,16 +166,31 @@ socialExtraRouter.post('/social/send-gift', requireUser, async (req, res) => {
   });
   transferTx();
 
-  await broadcastToTelegram({
-    target: 'group',
-    text:
-      `🎁 <b>KIRIMAN HADIAH WARGA!</b>\n` +
-      `<b>${escHtml(sender.name)}</b> ngasih <b>${escHtml(itemMeta.name)}</b> (${escHtml(itemMeta.rarity)}) ke <b>${escHtml(receiver.name)}</b>!` +
-      (note ? `\n<i>"${escHtml(note)}"</i>` : ''),
-    buttonText: '🎒 LIHAT PROFIL',
-    startParam: 'warga',
-    feedText: `${sender.name} ngasih hadiah "${itemMeta.name}" ke ${receiver.name}.`
-  });
+  addFeed(`${sender.name} ngasih hadiah "${itemMeta.name}" ke ${receiver.name}.`);
+
+  const senderTag = sender.username ? ` (@${escHtml(sender.username)})` : '';
+  const receiverTag = receiver.username ? ` (@${escHtml(receiver.username)})` : '';
+
+  // Notif pribadi ke Penerima Gift
+  await notifyPrivateUser(
+    receiver.id,
+    `🎁 <b>KAMU DAPAT HADIAH DARI WARGA!</b>\n\n` +
+    `• Dari: <b>${escHtml(sender.name)}</b>${senderTag}\n` +
+    `• Item: <b>${escHtml(itemMeta.name)}</b> (${escHtml(itemMeta.rarity)})\n` +
+    (note ? `• Pesan: <i>"${escHtml(note)}"</i>\n` : '') +
+    `\nItem sudah masuk ke Gudang Barang kamu. Buka PunkID untuk <b>Pin</b> ke kartu!`,
+    { buttonText: '🎁 CEK GUDANG & PUNKID', startParam: 'gue' }
+  );
+
+  // Struk pribadi ke Pengirim Gift
+  await notifyPrivateUser(
+    sender.id,
+    `🎁 <b>HADIAH TERKIRIM!</b>\n\n` +
+    `• Penerima: <b>${escHtml(receiver.name)}</b>${receiverTag}\n` +
+    `• Item: <b>${escHtml(itemMeta.name)}</b> (${escHtml(itemMeta.rarity)})\n` +
+    `• Bonus Reputasi: <b>+2 Street Cred</b>`,
+    { buttonText: '🪪 BUKA PUNKSHIT.OS', startParam: 'gue' }
+  );
 
   const updatedSender = db.prepare('SELECT * FROM users WHERE id = ?').get(sender.id);
   const updatedInv = db.prepare(
