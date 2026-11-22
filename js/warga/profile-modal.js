@@ -152,6 +152,10 @@
       '<select id="gf-inv-id">' + optionsHtml + '</select>' +
       '<label>UCAPAN HADIAH (OPSIONAL)</label>' +
       '<input id="gf-note" maxlength="60" placeholder="Hadiah spesial buat lo...">' +
+      '<label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin:6px 0 10px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)">' +
+        '<input type="checkbox" id="gf-anon" style="width:18px;height:18px;min-height:auto;margin:0;accent-color:var(--yel)">' +
+        '<span>🕵️ Kirim sebagai Anonim (Sembunyikan nama gue)</span>' +
+      '</label>' +
       '<button class="btn" data-act="wg-gift-submit" data-uid="' + C.esc(targetUid) + '">KIRIM HADIAH</button>'
     );
   }
@@ -236,9 +240,16 @@
       var gUid = t.getAttribute('data-uid');
       var invId = Number(document.getElementById('gf-inv-id').value);
       var gNote = (document.getElementById('gf-note').value || '').trim();
+      var anonEl = document.getElementById('gf-anon');
+      var isAnon = !!(anonEl && anonEl.checked);
       t.disabled = true;
       try {
-        var gRes = await API.post('/api/social/send-gift', { targetUserId: gUid, invId: invId, note: gNote });
+        var gRes = await API.post('/api/social/send-gift', {
+          targetUserId: gUid,
+          invId: invId,
+          note: gNote,
+          anonymous: isAnon
+        });
         if (gRes.user) S.user = gRes.user;
         if (gRes.inv) S.inv = gRes.inv;
         C.shut();
