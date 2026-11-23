@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { db, addFeed, addAuditLog } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
-import { uploadMedia } from '../middlewares/upload.js';
+import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
 import { broadcastToTelegram, escHtml } from '../services/syncEngine.js';
 
 export const marketRouter = Router();
@@ -46,43 +46,49 @@ marketRouter.get('/shop', requireUser, (req, res) => {
 });
 
 // POST /api/shop -> Pajang produk baru ke Lapak Warga (dengan stok)
-marketRouter.post('/shop', requireUser, uploadMedia.single('media'), async (req, res) => {
-  const u = req.dbUser;
-  const title = String(req.body?.title || '').trim().slice(0, 60);
-  const price = Math.max(1, Math.min(100000, parseInt(req.body?.price, 10) || 0));
-  const category = String(req.body?.category || 'Barang').trim().slice(0, 30);
-  const description = String(req.body?.description || '').trim().slice(0, 220);
-  let stock = parseInt(req.body?.stock, 10);
-  if (Number.isNaN(stock)) stock = category === 'Jasa' ? -1 : 1;
-  stock = Math.max(-1, Math.min(999, stock));
+marketRouter.post('/shop', requireUser, uploadMem.single('media'), async (req, res) => {
+  try {
+    const u = req.dbUser;
+    const title = String(req.body?.title || '').trim().slice(0, 60);
+    const price = Math.max(1, Math.min(100000, parseInt(req.body?.price, 10) || 0));
+    const category = String(req.body?.category || 'Barang').trim().slice(0, 30);
+    const description = String(req.body?.description || '').trim().slice(0, 220);
+    let stock = parseInt(req.body?.stock, 10);
+    if (Number.isNaN(stock)) stock = category === 'Jasa' ? -1 : 1;
+    stock = Math.max(-1, Math.min(999, stock));
 
-  if (title.length < 3 || !price) {
-    return res.status(400).json({ error: 'Nama produk minimal 3 huruf & harga wajib diisi.' });
+    if (title.length < 3 || !price) {
+      return res.status(400).json({ error: 'Nama produk minimal 3 huruf & harga wajib diisi.' });
+    }
+
+    const activeCount = db.prepare(`SELECT COUNT(*) AS c FROM warga_shop_items WHERE seller_id = ? AND status = 'open'`).get(String(u.id)).c;
+    if (activeCount >= 8) {
+      return res.status(400).json({ error: 'Maksimal 8 produk aktif di etalase. Hapus atau habiskan dulu yang lama.' });
+    }
+
+    const id = 'ws_' + crypto.randomBytes(4).toString('hex');
+    const imageUrl = req.file
+      ? await processAndSaveImage(req.file, 'shop', { width: 900, height: 900, fit: 'inside' })
+      : '';
+    const now = Date.now();
+
+    db.prepare(`
+      INSERT INTO warga_shop_items (id, seller_id, seller_name, seller_username, category, title, price, stock, description, image_url, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)
+    `).run(id, String(u.id), u.name, u.username || '', category, title, price, stock, description, imageUrl, now);
+
+    addFeed(`${u.name} buka lapak baru: ${title} (${price} PSC).`);
+    await broadcastToTelegram({
+      target: 'group',
+      text: `🏪 <b>LAPAK WARGA BARU!</b>\n• Produk: <b>${escHtml(title)}</b> (${escHtml(category)})\n• Harga: <b>${price} PSC</b> · Stok: <b>${stock < 0 ? 'Unlimited' : stock}</b>\n• Pelapak: ${u.username ? '@' + escHtml(u.username) : escHtml(u.name)}`,
+      buttonText: '🛍️ INTIP ETALASE',
+      startParam: 'lapak'
+    });
+
+    res.json({ ok: true, id, ...getShopSnapshot(u.id) });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Gagal memasang produk.' });
   }
-
-  const activeCount = db.prepare(`SELECT COUNT(*) AS c FROM warga_shop_items WHERE seller_id = ? AND status = 'open'`).get(String(u.id)).c;
-  if (activeCount >= 8) {
-    return res.status(400).json({ error: 'Maksimal 8 produk aktif di etalase. Hapus atau habiskan dulu yang lama.' });
-  }
-
-  const id = 'ws_' + crypto.randomBytes(4).toString('hex');
-  const imageUrl = req.file ? `/uploads/${req.file.filename}` : '';
-  const now = Date.now();
-
-  db.prepare(`
-    INSERT INTO warga_shop_items (id, seller_id, seller_name, seller_username, category, title, price, stock, description, image_url, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)
-  `).run(id, String(u.id), u.name, u.username || '', category, title, price, stock, description, imageUrl, now);
-
-  addFeed(`${u.name} buka lapak baru: ${title} (${price} PSC).`);
-  await broadcastToTelegram({
-    target: 'group',
-    text: `🏪 <b>LAPAK WARGA BARU!</b>\n• Produk: <b>${escHtml(title)}</b> (${escHtml(category)})\n• Harga: <b>${price} PSC</b> · Stok: <b>${stock < 0 ? 'Unlimited' : stock}</b>\n• Pelapak: ${u.username ? '@' + escHtml(u.username) : escHtml(u.name)}`,
-    buttonText: '🛍️ INTIP ETALASE',
-    startParam: 'lapak'
-  });
-
-  res.json({ ok: true, id, ...getShopSnapshot(u.id) });
 });
 
 // POST /api/warga-shop/edit -> Edit harga, judul, deskripsi, & restock barang
@@ -209,37 +215,41 @@ marketRouter.post('/warga-shop/delete', requireUser, (req, res) => {
 });
 
 // POST /api/shop/collab-submit -> Warga mengajukan item Collab untuk Lapak Rongsok
-marketRouter.post('/shop/collab-submit', requireUser, uploadMedia.single('media'), async (req, res) => {
-  const u = req.dbUser;
-  const type = ['border', 'skin', 'gift'].includes(req.body?.type) ? req.body.type : 'border';
-  const name = String(req.body?.name || '').trim().slice(0, 40);
-  const price = Math.max(50, Math.min(5000, parseInt(req.body?.price, 10) || 150));
-  const desc = String(req.body?.desc || '').trim().slice(0, 140);
+marketRouter.post('/shop/collab-submit', requireUser, uploadMem.single('media'), async (req, res) => {
+  try {
+    const u = req.dbUser;
+    const type = ['border', 'skin', 'gift'].includes(req.body?.type) ? req.body.type : 'border';
+    const name = String(req.body?.name || '').trim().slice(0, 40);
+    const price = Math.max(50, Math.min(5000, parseInt(req.body?.price, 10) || 150));
+    const desc = String(req.body?.desc || '').trim().slice(0, 140);
 
-  if (name.length < 3 || !req.file) {
-    return res.status(400).json({ error: 'Nama item minimal 3 huruf dan wajib upload gambar/WebM desainnya!' });
+    if (name.length < 3 || !req.file) {
+      return res.status(400).json({ error: 'Nama item minimal 3 huruf dan wajib upload gambar/WebM desainnya!' });
+    }
+
+    const subId = 'col_' + crypto.randomBytes(3).toString('hex');
+    const imageUrl = await processAndSaveImage(req.file, 'shop', { width: 512, height: 512, fit: 'inside' });
+
+    db.prepare(`
+      INSERT INTO item_submissions (id, creator_id, creator_name, creator_username, type, name, price, desc, image_url, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+    `).run(subId, String(u.id), u.name, u.username || '', type, name, price, desc, imageUrl, Date.now());
+
+    addAuditLog(u.id, 'COLLAB_SUBMIT', `Ajukan item collab ${name} (${type}) ID: ${subId}`);
+
+    await broadcastToTelegram({
+      target: 'group',
+      text:
+        `🎨 <b>PENGAJUAN ITEM COLLAB BARU!</b>\n` +
+        `• ID Pengajuan: <code>${subId}</code>\n` +
+        `• Kreator: ${u.username ? '@' + escHtml(u.username) : escHtml(u.name)}\n` +
+        `• Kategori: <b>${type.toUpperCase()}</b>\n` +
+        `• Nama Item: <b>${escHtml(name)}</b> (${price} PSC)\n\n` +
+        `<i>Admin tinggal ketik command bot:</i>\n<code>/acc_collab ${subId}</code> atau <code>/tolak_collab ${subId}</code>`
+    });
+
+    res.json({ ok: true, id: subId });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Gagal mengajukan item collab.' });
   }
-
-  const subId = 'col_' + crypto.randomBytes(3).toString('hex');
-  const imageUrl = `/uploads/${req.file.filename}`;
-
-  db.prepare(`
-    INSERT INTO item_submissions (id, creator_id, creator_name, creator_username, type, name, price, desc, image_url, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-  `).run(subId, String(u.id), u.name, u.username || '', type, name, price, desc, imageUrl, Date.now());
-
-  addAuditLog(u.id, 'COLLAB_SUBMIT', `Ajukan item collab ${name} (${type}) ID: ${subId}`);
-
-  await broadcastToTelegram({
-    target: 'group',
-    text:
-      `🎨 <b>PENGAJUAN ITEM COLLAB BARU!</b>\n` +
-      `• ID Pengajuan: <code>${subId}</code>\n` +
-      `• Kreator: ${u.username ? '@' + escHtml(u.username) : escHtml(u.name)}\n` +
-      `• Kategori: <b>${type.toUpperCase()}</b>\n` +
-      `• Nama Item: <b>${escHtml(name)}</b> (${price} PSC)\n\n` +
-      `<i>Admin tinggal ketik command bot:</i>\n<code>/acc_collab ${subId}</code> atau <code>/tolak_collab ${subId}</code>`
-  });
-
-  res.json({ ok: true, id: subId });
 });
