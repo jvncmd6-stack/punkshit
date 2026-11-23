@@ -15,42 +15,101 @@ import {
 
 export const actionRouter = Router();
 
-function calcAbsenBonus(streak) {
-  const base = streak < 4 ? 2 : streak < 7 ? 3 : streak < 14 ? 5 : streak < 30 ? 7 : streak < 60 ? 10 : 15;
-  return base + (streak % 7 === 0 ? 25 : 0);
+// Pastikan kolom streak_shield tersedia di tabel users
+try {
+  db.exec('ALTER TABLE users ADD COLUMN streak_shield INTEGER DEFAULT 0');
+} catch (_) {}
+
+function attachExtraFields(row) {
+  const formatted = formatUser(row);
+  if (formatted && row) {
+    formatted.streakShield = Number(row.streak_shield || 0);
+  }
+  return formatted;
 }
 
-// POST /api/absen -> Absen Nyawa harian
+function getTierAbsenBonus(u) {
+  const cred = Number(u.cred) || 0;
+  const best = Math.max(Number(u.best) || 0, Number(u.streak) || 0);
+  if (cred >= 300 && best >= 14) return 5; // Sepuh / Fosil
+  if (cred >= 25 && best >= 3) return 2;   // Anak Nongkrong+
+  return 0;
+}
+
+function calcAbsenBonus(streak, u) {
+  const base = streak < 4 ? 2 : streak < 7 ? 3 : streak < 14 ? 5 : streak < 30 ? 7 : streak < 60 ? 10 : 15;
+  const tierBonus = getTierAbsenBonus(u);
+  return base + tierBonus + (streak % 7 === 0 ? 25 : 0);
+}
+
+// POST /api/absen -> Absen Harian + Auto Tameng Streak + Bonus Pangkat
 actionRouter.post('/absen', requireUser, async (req, res) => {
   const u = req.dbUser;
   const today = todayWib();
   if (u.last_absen === today) {
-    return res.status(400).json({ error: 'Lu udah absen hari ini bro. Besok lagi!' });
+    return res.status(400).json({ error: 'Hari ini udah tercatat absennya cuy. Besok gas lagi ya!' });
   }
 
   const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-  const nextStreak = (u.last_absen === yesterday) ? (u.streak + 1) : 1;
-  const nextBest = Math.max(u.best, nextStreak);
-  const earned = calcAbsenBonus(nextStreak);
+  const hasShield = Number(u.streak_shield || 0) > 0;
+  let shieldUsed = false;
+  let nextStreak = 1;
+
+  if (u.last_absen === yesterday) {
+    nextStreak = (u.streak || 0) + 1;
+  } else if ((u.streak || 0) > 0 && hasShield) {
+    nextStreak = (u.streak || 0) + 1;
+    shieldUsed = true;
+  }
+
+  const nextBest = Math.max(u.best || 0, nextStreak);
+  const earned = calcAbsenBonus(nextStreak, u);
   const now = Date.now();
 
   const tx = db.transaction(() => {
     db.prepare(`
-      UPDATE users SET psc = psc + ?, streak = ?, best = ?, cred = cred + 2, last_absen = ?, presence_at = ?
+      UPDATE users
+      SET psc = psc + ?, streak = ?, best = ?, cred = cred + 2, last_absen = ?, presence_at = ?,
+          streak_shield = CASE WHEN ? = 1 THEN MAX(0, streak_shield - 1) ELSE streak_shield END
       WHERE id = ?
-    `).run(earned, nextStreak, nextBest, today, now, u.id);
+    `).run(earned, nextStreak, nextBest, today, now, shieldUsed ? 1 : 0, u.id);
 
     db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(u.id, 'absen', earned, `Absen Nyawa hari ke-${nextStreak}`, now);
+      .run(u.id, 'absen', earned, `Absen Harian hari ke-${nextStreak}${shieldUsed ? ' (Tameng Streak aktif)' : ''}`, now);
   });
   tx();
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
-  const feedMsg = `MASIH HIDUP TERNYATA. ${u.name} absen hari ke-${nextStreak} (+${earned} PSC).`;
+  const feedMsg = shieldUsed
+    ? `🛡️ Tameng Streak menyelamatkan ${u.name}! Lanjut absen hari ke-${nextStreak} (+${earned} PSC).`
+    : `${u.name} hadir di markas! Absen hari ke-${nextStreak} (+${earned} PSC).`;
   addFeed(feedMsg);
 
   const feed = db.prepare('SELECT id, text, created_at AS createdAt FROM feed ORDER BY id DESC LIMIT 12').all();
-  res.json({ user: formatUser(updated), earned, message: feedMsg, feed });
+  res.json({ user: attachExtraFields(updated), earned, shieldUsed, message: feedMsg, feed });
+});
+
+// POST /api/wallet/buy-shield -> Beli Tameng Streak (60 PSC)
+actionRouter.post('/wallet/buy-shield', requireUser, (req, res) => {
+  const u = req.dbUser;
+  const price = 60;
+  if (Number(u.streak_shield || 0) > 0) {
+    return res.status(400).json({ error: 'Tameng Streak lo udah aktif cuy, siap jagain streak!' });
+  }
+  if ((u.psc || 0) < price) {
+    return res.status(400).json({ error: 'Saldo PSC belum cukup nih cuy (butuh 60 PSC).' });
+  }
+
+  const now = Date.now();
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE users SET psc = psc - ?, streak_shield = 1 WHERE id = ?').run(price, u.id);
+    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(u.id, 'shield_buy', -price, 'Aktifkan Tameng Streak (1x Proteksi)', now);
+  });
+  tx();
+
+  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
+  res.json({ user: attachExtraFields(updated) });
 });
 
 // POST /api/sawer -> Bagi Rezeki (Kunci saldo & lempar tombol klaim ke Grup Telegram)
@@ -62,13 +121,13 @@ actionRouter.post('/sawer', requireUser, async (req, res) => {
   const message = String(req.body?.message || '').trim().slice(0, 70);
 
   if (!amount || amount < 10 || amount > 50000) {
-    return res.status(400).json({ error: 'Nominal saweran minimal 10 PSC.' });
+    return res.status(400).json({ error: 'Minimal saweran 10 PSC ya cuy.' });
   }
   if (!quota || quota < 1 || quota > 50 || quota > amount) {
-    return res.status(400).json({ error: 'Kuota penerima tidak valid.' });
+    return res.status(400).json({ error: 'Kuota penerima belum pas nih, cek lagi ya.' });
   }
   if (u.psc < amount) {
-    return res.status(400).json({ error: 'Saldo PSC tidak mencukupi.' });
+    return res.status(400).json({ error: 'Saldo PSC belum cukup buat nominal segitu cuy.' });
   }
 
   const sawId = 'sw_' + crypto.randomBytes(5).toString('hex');
@@ -89,13 +148,13 @@ actionRouter.post('/sawer', requireUser, async (req, res) => {
   if (bot && ENV.GROUP_ID) {
     const modeLabel = mode === 'random' ? 'Bagi Acak' : 'Bagi Rata';
     const text =
-      `💸 <b>WOI, ADA DUIT JATUH!</b>\n` +
-      `<b>${escHtml(u.name)}</b> baru aja ngelempar <b>${amount} PSC</b>!\n\n` +
+      `💸 <b>ADA REZEKI TONGKRONGAN!</b>\n` +
+      `<b>${escHtml(u.name)}</b> baru aja berbagi <b>${amount} PSC</b> buat warga!\n\n` +
       `• Kuota: <b>${quota} warga</b> (${modeLabel})\n` +
       (message ? `• Pesan: <i>"${escHtml(message)}"</i>\n` : '') +
-      `\nSiapa cepat, dia kenyang!`;
+      `\nYuk gas klaim sebelum kehabisan!`;
 
-    const kb = new InlineKeyboard().text(`💰 SIKAT SAWERAN (0/${quota})`, `claim_sw:${sawId}`);
+    const kb = new InlineKeyboard().text(`💰 KLAIM REZEKI (0/${quota})`, `claim_sw:${sawId}`);
     try {
       await bot.api.sendMessage(ENV.GROUP_ID, text, { parse_mode: 'HTML', reply_markup: kb });
     } catch (e) {
@@ -104,7 +163,7 @@ actionRouter.post('/sawer', requireUser, async (req, res) => {
   }
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
-  res.json({ user: formatUser(updated) });
+  res.json({ user: attachExtraFields(updated) });
 });
 
 // POST /api/shop/buy -> Beli item dari Lapak Rongsok + Royalti 20% untuk Item Collab
@@ -114,12 +173,12 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   const item = db.prepare('SELECT * FROM items WHERE id = ?').get(itemId);
 
   if (!item) return res.status(404).json({ error: 'Item tidak ditemukan di Lapak.' });
-  if (item.stock === 0) return res.status(400).json({ error: 'Stok item ini sudah habis terjual!' });
-  if (u.psc < item.price) return res.status(400).json({ error: 'Saldo PSC kurang!' });
+  if (item.stock === 0) return res.status(400).json({ error: 'Waduh, stok item ini baru aja habis!' });
+  if (u.psc < item.price) return res.status(400).json({ error: 'Saldo PSC belum cukup cuy, kumpulin dulu yuk!' });
 
   if (item.type !== 'gift') {
     const already = db.prepare('SELECT 1 FROM inventory WHERE user_id = ? AND item_id = ?').get(u.id, item.id);
-    if (already) return res.status(400).json({ error: 'Lu sudah memiliki item ini di Gudang Barang.' });
+    if (already) return res.status(400).json({ error: 'Item ini udah ada di Gudang Barang lo cuy.' });
   }
 
   const now = Date.now();
@@ -147,11 +206,11 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
 
   await notifyPrivateUser(
     u.id,
-    `🛒 <b>PURCHASE COMPLETE!</b>\n\n` +
+    `🛒 <b>TRANSAKSI BERHASIL!</b>\n\n` +
     `• Item: <b>${escHtml(item.name)}</b> (Lapak Rongsok)\n` +
     `• Harga: <b>-${item.price} PSC</b>\n` +
     `• Sisa Saldo: <b>${updated.psc} PSC</b>\n\n` +
-    `Gaya bertambah! Item sudah masuk ke Gudang Barang lu.`,
+    `Mantap! Item sudah masuk ke Gudang Barang lo.`,
     { buttonText: '🛒 BUKA LAPAK RONGSOK', startParam: 'lapak' }
   );
 
@@ -166,7 +225,7 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   }
 
   const inv = db.prepare('SELECT id, item_id AS itemId, acquired_at AS acquiredAt FROM inventory WHERE user_id = ? ORDER BY id DESC').all(u.id);
-  res.json({ user: formatUser(updated), inv, catalog: getCatalog() });
+  res.json({ user: attachExtraFields(updated), inv, catalog: getCatalog() });
 });
 
 // POST /api/gift/send -> Kirim hadiah gift ke warga lain (Mendukung Mode Anonim + Hanya notif PC)
@@ -179,14 +238,14 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
 
   const item = db.prepare('SELECT * FROM items WHERE id = ? AND type = ?').get(itemId, 'gift');
   if (!item) return res.status(404).json({ error: 'Gift tidak ditemukan.' });
-  if (u.psc < item.price) return res.status(400).json({ error: 'Saldo PSC tidak cukup.' });
+  if (u.psc < item.price) return res.status(400).json({ error: 'Saldo PSC belum cukup cuy.' });
 
   const recipient = db.prepare('SELECT * FROM users WHERE LOWER(username) = LOWER(?)').get(toRaw);
   if (!recipient) {
     return res.status(404).json({ error: `Warga @${toRaw} belum terdaftar di PUNKSHIT.OS.` });
   }
   if (recipient.id === u.id) {
-    return res.status(400).json({ error: 'Nggak bisa kirim gift ke diri sendiri, beli aja langsung.' });
+    return res.status(400).json({ error: 'Kalau buat diri sendiri tinggal beli langsung aja cuy!' });
   }
 
   const now = Date.now();
@@ -228,7 +287,7 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
     { buttonText: '🪪 BUKA PUNKSHIT.OS', startParam: 'gue' }
   );
 
-  res.json({ user: formatUser(updated) });
+  res.json({ user: attachExtraFields(updated) });
 });
 
 // GET /api/wallet/history -> Buku Kas (Riwayat Transaksi)
@@ -245,5 +304,5 @@ actionRouter.get('/leaderboard', (req, res) => {
   const allowed = { streak: 'streak', cred: 'cred', psc: 'psc', best: 'best' };
   const col = allowed[req.query.by] || 'streak';
   const rows = db.prepare(`SELECT * FROM users ORDER BY ${col} DESC, created_at ASC LIMIT 20`).all();
-  res.json({ list: rows.map(formatUser) });
+  res.json({ list: rows.map(attachExtraFields) });
 });
