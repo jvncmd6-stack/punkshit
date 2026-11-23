@@ -5,10 +5,16 @@ import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { syncTelegramAvatar } from '../services/syncEngine.js';
 
-// Pastikan subfolder banners tersedia untuk menyimpan cache foto profil Telegram
 fs.mkdirSync(path.join(ENV.UPLOAD_DIR, 'banners'), { recursive: true });
 
 const avatarSyncCooldown = new Map();
+
+// Endpoint migrasi browser khusus Owner yang memakai verifikasi query ?ownerId=
+const OWNER_BROWSER_PATHS = [
+  '/admin/backup',
+  '/admin/restore-ui',
+  '/admin/restore'
+];
 
 export function verifyTelegramInitData(initData) {
   if (!initData) return null;
@@ -34,8 +40,6 @@ export function verifyTelegramInitData(initData) {
 
   if (signature !== hash) return null;
 
-  // Toleransi hingga 7 hari selama signature HMAC asli dari BOT_TOKEN valid
-  // (mencegah gagal login pada HP warga yang jam/tanggalnya meleset atau cache sesi lama)
   const authDate = Number(params.get('auth_date') || 0);
   if (!authDate || Math.abs(Date.now() / 1000 - authDate) > 604800) return null;
 
@@ -47,6 +51,10 @@ export function verifyTelegramInitData(initData) {
 }
 
 export function authTma(req, res, next) {
+  if (OWNER_BROWSER_PATHS.includes(req.path)) {
+    return next();
+  }
+
   const raw = (
     req.get('authorization') ||
     req.get('x-telegram-init-data') ||
@@ -63,12 +71,19 @@ export function authTma(req, res, next) {
   let user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
 
   if (user) {
-    if (ENV.OWNER_IDS.includes(uid) && user.role !== 'owner') {
+    if ((ENV.OWNER_IDS || []).map(String).includes(uid) && user.role !== 'owner') {
       db.prepare('UPDATE users SET role = ? WHERE id = ?').run('owner', uid);
       user.role = 'owner';
     }
 
-    // Sinkronisasi PP & Username Telegram (tiap 5 menit) selama tidak memakai foto kustom
+    // Blokir semua aksi transaksi (POST/PATCH/DELETE) jika akun sedang dibekukan pengurus
+    const isOwner = (ENV.OWNER_IDS || []).map(String).includes(uid) || user.role === 'owner';
+    if (!isOwner && Number(user.is_frozen) === 1 && req.method !== 'GET') {
+      return res.status(403).json({
+        error: '🧊 Akun kamu sedang dibekukan sementara oleh pengurus markas demi ketertiban.'
+      });
+    }
+
     const now = Date.now();
     const isCustomPhoto = (user.photo_url || '').startsWith('/uploads/') && !(user.photo_url || '').includes('/pfp-');
     if (!isCustomPhoto && (avatarSyncCooldown.get(uid) || 0) < now) {
