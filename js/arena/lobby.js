@@ -22,9 +22,9 @@
   ];
 
   function diffBadge(level) {
-    if (level === 'easy') return '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(52,199,89,.18);color:#6DF0A0">🟢 MUDAH</span>';
-    if (level === 'hard') return '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(239,68,68,.2);color:#FCA5A5">🔴 SULIT</span>';
-    return '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(250,204,21,.18);color:#FDE047">🟡 SEDANG</span>';
+    if (level === 'easy') return '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(52,199,89,.18);color:#6DF0A0;white-space:nowrap;flex-shrink:0">🟢 MUDAH</span>';
+    if (level === 'hard') return '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(239,68,68,.2);color:#FCA5A5;white-space:nowrap;flex-shrink:0">🔴 SULIT</span>';
+    return '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(250,204,21,.18);color:#FDE047;white-space:nowrap;flex-shrink:0">🟡 SEDANG</span>';
   }
 
   function renderGamesTab() {
@@ -37,7 +37,7 @@
       {
         id: 'fish', em: '🎣', title: 'Mancing Galatama 2.0',
         diff: 'medium', tag: fq.left + '/' + fq.max + ' Kail',
-        reward: '5–45 PSC',
+        reward: '6–60 PSC',
         desc: '3 Spot (Pinggir/Tengah/Palung) & 15 spesies ikan langka.'
       },
       {
@@ -49,19 +49,19 @@
       {
         id: 'claw', em: '🕹️', title: 'Mesin Rongsok 2.0',
         diff: 'medium', tag: '3 Box',
-        reward: '8–40 PSC',
+        reward: '8–45 PSC',
         desc: 'Pilih Box Rongsok, Retro Y2K, atau Brankas Boss!'
       },
       {
         id: 'react', em: '⚡', title: 'Reaction Rush 2.0',
         diff: 'hard', tag: 'Refleks',
-        reward: '5–25 PSC',
-        desc: 'Uji kecepatan jari & fokus tanpa kena jebakan merah.'
+        reward: '5–32 PSC',
+        desc: 'Uji kecepatan jari & fokus tanpa kena jebakan oranye.'
       },
       {
         id: 'trivia', em: '🧠', title: 'Punk Trivia 2.0',
-        diff: 'medium', tag: '5 Soal',
-        reward: '6–30 PSC',
+        diff: 'medium', tag: '5–6 Soal',
+        reward: '6–35 PSC',
         desc: 'Kuis kilat ber-combo: Sains, Budaya Pop, & Logika.'
       }
     ];
@@ -69,52 +69,52 @@
     var extraGames = [
       {
         id: 'whack', em: '🔨', title: 'Gebuk Siapa?',
-        diff: 'hard', tag: '30 Detik',
-        reward: '5–25 PSC',
-        desc: 'Gebuk tikus & bos berhelm, awas jangan pukul bom!'
+        diff: 'hard', tag: '25 Detik',
+        reward: '5–28 PSC',
+        desc: 'Gebuk alien & bos mahkota, awas jangan pukul bom!'
       },
       {
         id: 'memory', em: '🃏', title: 'Adu Ingatan',
-        diff: 'easy', tag: 'Grid 4x4',
-        reward: '6–20 PSC',
-        desc: 'Cocokkan 8 pasang kartu sehemat langkah mungkin.'
+        diff: 'easy', tag: '3 Ukuran',
+        reward: '5–26 PSC',
+        desc: 'Cocokkan pasangan kartu sehemat langkah mungkin.'
       }
     ];
 
     function buildCard(g) {
       return (
-        '<button class="game-card" data-act="ar-open" data-game="' + g.id + '" style="position:relative;text-align:left;padding:12px;display:flex;flex-direction:column;gap:4px">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:2px">' +
+        '<button class="game-card" data-act="ar-open" data-game="' + g.id + '" style="position:relative;width:100%;height:auto;min-height:unset;box-sizing:border-box;overflow:hidden;text-align:left;padding:11px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;white-space:normal;line-height:1.35">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;width:100%;flex-wrap:wrap">' +
             diffBadge(g.diff) +
-            '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(56,189,248,.16);color:#7DD3FC">' + C.esc(g.tag) + '</span>' +
+            '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(56,189,248,.16);color:#7DD3FC;white-space:nowrap;flex-shrink:0">' + C.esc(g.tag) + '</span>' +
           '</div>' +
-          '<div style="display:flex;align-items:center;gap:8px;margin-top:2px">' +
-            '<em style="font-size:26px;font-style:normal">' + g.em + '</em>' +
-            '<div>' +
-              '<b style="display:block;font-size:13px">' + C.esc(g.title) + '</b>' +
-              '<span style="font-size:10px;color:#FFD633;font-weight:700">💰 ' + C.esc(g.reward) + '</span>' +
+          '<div style="display:flex;align-items:center;gap:8px;width:100%;min-width:0">' +
+            '<em style="font-size:24px;font-style:normal;line-height:1;flex-shrink:0">' + g.em + '</em>' +
+            '<div style="min-width:0;flex:1">' +
+              '<b style="display:block;font-size:12.5px;line-height:1.25;word-break:break-word">' + C.esc(g.title) + '</b>' +
+              '<span style="display:block;font-size:10px;color:#FFD633;font-weight:800;margin-top:2px">💰 ' + C.esc(g.reward) + '</span>' +
             '</div>' +
           '</div>' +
-          '<small style="font-size:11px;line-height:1.35;opacity:.8;margin-top:2px">' + C.esc(g.desc) + '</small>' +
+          '<small style="display:block;font-size:10.5px;line-height:1.35;opacity:.78;white-space:normal;word-break:break-word">' + C.esc(g.desc) + '</small>' +
         '</button>'
       );
     }
 
     var antiGrindBanner =
-      '<div class="card" style="padding:10px 12px;margin-bottom:12px;background:rgba(15,23,42,.85);border:1px solid rgba(255,214,51,.22)">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px">' +
-          '<span>⚖️ <b>Fair Economy Harian</b> (Anti-Grinding)</span>' +
-          '<b style="color:#FFD633">' + dailyEarned + ' / ' + dailyCap + ' PSC</b>' +
+      '<div class="card" style="padding:11px 12px;margin-bottom:12px;background:rgba(15,23,42,.85);border:1px solid rgba(255,214,51,.22);box-sizing:border-box">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11.5px;line-height:1.3">' +
+          '<span style="min-width:0">⚖️ <b>Fair Economy Harian</b></span>' +
+          '<b style="color:#FFD633;white-space:nowrap;flex-shrink:0">' + dailyEarned + ' / ' + dailyCap + ' PSC</b>' +
         '</div>' +
-        '<small style="display:block;opacity:.72;font-size:10px;margin-top:3px">Semakin sulit mode & makin tinggi skor, makin besar koinnya. Kalau limit harian penuh, tetap bisa main untuk XP & Fishdex!</small>' +
+        '<small style="display:block;opacity:.74;font-size:10.5px;line-height:1.38;margin-top:4px">Makin sulit mode & makin tinggi skor, makin besar hadiahnya. Jika limit harian penuh, tetap bisa main untuk XP & Fishdex!</small>' +
       '</div>';
 
     return (
       antiGrindBanner +
       '<h3 class="gh">MAIN ARCADE (UPGRADE 2.0)</h3>' +
-      '<div class="game-grid">' + coreGames.map(buildCard).join('') + '</div>' +
+      '<div class="game-grid" style="align-items:stretch">' + coreGames.map(buildCard).join('') + '</div>' +
       '<h3 class="gh" style="margin-top:14px">ARCADE EKSPANSI</h3>' +
-      '<div class="game-grid">' + extraGames.map(buildCard).join('') + '</div>'
+      '<div class="game-grid" style="align-items:stretch">' + extraGames.map(buildCard).join('') + '</div>'
     );
   }
 
@@ -123,14 +123,14 @@
     var p = st.profile;
     var questsHtml = st.quests.map(function (q) {
       var btn = q.claimed
-        ? '<button class="pill" disabled>SELESAI</button>'
+        ? '<button class="pill" style="flex-shrink:0" disabled>SELESAI</button>'
         : q.done
-          ? '<button class="pill" style="background:#34C75933;color:#6df0a0" data-act="ar-claim-quest" data-id="' + C.esc(q.id) + '">KLAIM +' + q.psc + ' PSC</button>'
-          : '<span style="font-size:11px;color:var(--mut);font-weight:700">' + q.progress + '/' + q.target + '</span>';
+          ? '<button class="pill" style="background:#34C75933;color:#6df0a0;flex-shrink:0" data-act="ar-claim-quest" data-id="' + C.esc(q.id) + '">KLAIM +' + q.psc + ' PSC</button>'
+          : '<span style="font-size:11px;color:var(--mut);font-weight:700;white-space:nowrap;flex-shrink:0">' + q.progress + '/' + q.target + '</span>';
 
       return (
-        '<div class="rw">' +
-          '<div><b>' + C.esc(q.title) + '</b><small>' + C.esc(q.desc) + ' · +' + q.xp + ' XP</small></div>' +
+        '<div class="rw" style="gap:10px">' +
+          '<div style="min-width:0;flex:1"><b style="display:block;line-height:1.3">' + C.esc(q.title) + '</b><small style="display:block;line-height:1.35">' + C.esc(q.desc) + ' · +' + q.xp + ' XP</small></div>' +
           btn +
         '</div>'
       );
@@ -140,14 +140,14 @@
       var unlocked = p.level >= m.level;
       var claimed = (p.claimedPass || []).indexOf(m.level) !== -1;
       var actionHtml = claimed
-        ? '<button class="pill" disabled>DIKLAIM</button>'
+        ? '<button class="pill" style="flex-shrink:0" disabled>DIKLAIM</button>'
         : unlocked
-          ? '<button class="pill" style="background:#FFD63333;color:#FFD633" data-act="ar-claim-pass" data-lvl="' + m.level + '">AMBIL</button>'
-          : '<span style="font-size:11px;opacity:.6">🔒 Lv.' + m.level + '</span>';
+          ? '<button class="pill" style="background:#FFD63333;color:#FFD633;flex-shrink:0" data-act="ar-claim-pass" data-lvl="' + m.level + '">AMBIL</button>'
+          : '<span style="font-size:11px;opacity:.6;white-space:nowrap;flex-shrink:0">🔒 Lv.' + m.level + '</span>';
 
       return (
-        '<div class="rw" style="opacity:' + (unlocked ? '1' : '.65') + '">' +
-          '<div><b>Level ' + m.level + ' — ' + C.esc(m.label) + '</b><small>' + (unlocked ? 'Target tercapai!' : 'Kumpulkan XP untuk membuka') + '</small></div>' +
+        '<div class="rw" style="gap:10px;opacity:' + (unlocked ? '1' : '.65') + '">' +
+          '<div style="min-width:0;flex:1"><b style="display:block;line-height:1.3">Level ' + m.level + ' — ' + C.esc(m.label) + '</b><small style="display:block;line-height:1.35">' + (unlocked ? 'Target tercapai!' : 'Kumpulkan XP untuk membuka') + '</small></div>' +
           actionHtml +
         '</div>'
       );
@@ -176,16 +176,16 @@
       var icon = it.category === 'fish' ? '🐟' : it.category === 'claw' ? '🧸' : '🏆';
       var subText = it.weight > 0 ? (it.weight + ' kg · ') : '';
       var sellBtn = it.sell_price > 0
-        ? '<button class="pill" data-act="ar-sell-item" data-id="' + it.id + '">Jual +' + it.sell_price + ' PSC</button>'
-        : '<span class="pill" style="opacity:.7">Koleksi</span>';
+        ? '<button class="pill" style="flex-shrink:0" data-act="ar-sell-item" data-id="' + it.id + '">Jual +' + it.sell_price + ' PSC</button>'
+        : '<span class="pill" style="opacity:.7;flex-shrink:0">Koleksi</span>';
 
       return (
-        '<div class="rw">' +
-          '<div style="display:flex;align-items:center;gap:10px">' +
-            '<span style="font-size:22px">' + icon + '</span>' +
-            '<div>' +
-              '<b>' + C.esc(it.name) + '</b>' +
-              '<small style="color:' + col + ';font-weight:700">' + subText + C.esc(it.rarity) + '</small>' +
+        '<div class="rw" style="gap:10px">' +
+          '<div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">' +
+            '<span style="font-size:22px;flex-shrink:0">' + icon + '</span>' +
+            '<div style="min-width:0;flex:1">' +
+              '<b style="display:block;line-height:1.3;word-break:break-word">' + C.esc(it.name) + '</b>' +
+              '<small style="color:' + col + ';font-weight:700;display:block;line-height:1.3">' + subText + C.esc(it.rarity) + '</small>' +
             '</div>' +
           '</div>' +
           sellBtn +
@@ -197,21 +197,21 @@
       var found = !!uniqueFishKeys[sp.key];
       var rCol = A.rarityColor(sp.rarity);
       return (
-        '<div style="padding:8px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid ' + (found ? rCol + '66' : 'rgba(255,255,255,.07)') + ';opacity:' + (found ? '1' : '.5') + '">' +
-          '<div style="font-size:16px">' + (found ? '🐟' : '❓') + '</div>' +
-          '<div style="font-size:11px;font-weight:700;margin-top:2px">' + (found ? C.esc(sp.name) : '???') + '</div>' +
-          '<small style="font-size:9px;color:' + rCol + '">' + sp.rarity + ' · ' + sp.spot + '</small>' +
+        '<div style="padding:8px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid ' + (found ? rCol + '66' : 'rgba(255,255,255,.07)') + ';opacity:' + (found ? '1' : '.5') + ';min-width:0;overflow:hidden">' +
+          '<div style="font-size:16px;line-height:1.1">' + (found ? '🐟' : '❓') + '</div>' +
+          '<div style="font-size:10.5px;font-weight:700;margin-top:3px;line-height:1.25;word-break:break-word">' + (found ? C.esc(sp.name) : '???') + '</div>' +
+          '<small style="display:block;font-size:9px;color:' + rCol + ';margin-top:2px;line-height:1.2">' + sp.rarity + ' · ' + sp.spot + '</small>' +
         '</div>'
       );
     }).join('');
 
     return (
       '<div class="card" style="margin-bottom:12px">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-          '<div><b>📖 Ensiklopedia Fishdex</b><small style="display:block">Koleksi seluruh spesies ikan Nusantara & mistis</small></div>' +
-          '<b style="color:#38BDF8">' + discoveredCount + ' / ' + totalSpecies + '</b>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">' +
+          '<div style="min-width:0"><b>📖 Ensiklopedia Fishdex</b><small style="display:block;line-height:1.3">Koleksi seluruh spesies ikan Nusantara & mistis</small></div>' +
+          '<b style="color:#38BDF8;white-space:nowrap;flex-shrink:0">' + discoveredCount + ' / ' + totalSpecies + '</b>' +
         '</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">' + fishdexGrid + '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">' + fishdexGrid + '</div>' +
       '</div>' +
       '<h3 class="gh">TAS KOLEKSI & TANGKAPAN (' + activeItems.length + ')</h3>' +
       '<div class="grp">' + itemsHtml + '</div>'
@@ -225,12 +225,12 @@
 
     var xpHtml = xpList.map(function (r, i) {
       var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1);
-      return '<div class="rw"><div><b>' + medal + ' ' + C.esc(r.name) + '</b><small>Level ' + r.level + '</small></div><b style="color:#FFD633">' + r.xp + ' XP</b></div>';
+      return '<div class="rw" style="gap:8px"><div style="min-width:0;flex:1"><b style="display:block;word-break:break-word">' + medal + ' ' + C.esc(r.name) + '</b><small>Level ' + r.level + '</small></div><b style="color:#FFD633;white-space:nowrap;flex-shrink:0">' + r.xp + ' XP</b></div>';
     }).join('') || '<div class="rw"><small>Belum ada data XP.</small></div>';
 
     var reactHtml = reactList.map(function (r, i) {
       var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1);
-      return '<div class="rw"><div><b>' + medal + ' ' + C.esc(r.name) + '</b></div><b style="color:#38BDF8">' + Math.round(r.score) + ' ms</b></div>';
+      return '<div class="rw" style="gap:8px"><div style="min-width:0;flex:1"><b style="display:block;word-break:break-word">' + medal + ' ' + C.esc(r.name) + '</b></div><b style="color:#38BDF8;white-space:nowrap;flex-shrink:0">' + Math.round(r.score) + ' ms</b></div>';
     }).join('') || '<div class="rw"><small>Belum ada rekor refleks.</small></div>';
 
     return (
@@ -258,14 +258,14 @@
 
     var headerCard =
       '<div class="grp" style="margin-bottom:12px;background:linear-gradient(135deg,#0284C744,#0F172A 65%,#EAB30822);border:1px solid rgba(56,189,248,.28)">' +
-        '<div class="rw" style="align-items:flex-start">' +
-          '<div>' +
-            '<small style="color:#38BDF8;font-weight:800;letter-spacing:.06em">🕹️ ARENA GABUT 2.0 · Y2K ARCADE</small>' +
-            '<div style="font-size:19px;font-weight:900;margin-top:2px">LEVEL ' + p.level + ' <span style="font-size:12px;color:var(--yel);font-weight:700">(' + (p.xp || 0) + ' XP)</span></div>' +
-            '<small>Pilih tingkat kesulitan · Hadiah makin gede di mode Sulit</small>' +
+        '<div class="rw" style="align-items:flex-start;gap:10px">' +
+          '<div style="min-width:0;flex:1">' +
+            '<small style="display:block;color:#38BDF8;font-weight:800;letter-spacing:.05em;line-height:1.3">🕹️ ARENA GABUT 2.0 · Y2K ARCADE</small>' +
+            '<div style="font-size:18px;font-weight:900;margin-top:2px;line-height:1.25">LEVEL ' + p.level + ' <span style="font-size:12px;color:var(--yel);font-weight:700">(' + (p.xp || 0) + ' XP)</span></div>' +
+            '<small style="display:block;line-height:1.35;margin-top:2px">Pilih tingkat kesulitan · Hadiah makin gede di mode Sulit</small>' +
           '</div>' +
-          '<div style="text-align:right">' +
-            '<span class="pill" style="background:#FFD63326;color:#FFD633">💰 ' + (S.user ? S.user.psc : 0) + ' PSC</span>' +
+          '<div style="text-align:right;flex-shrink:0">' +
+            '<span class="pill" style="background:#FFD63326;color:#FFD633;white-space:nowrap">💰 ' + (S.user ? S.user.psc : 0) + ' PSC</span>' +
           '</div>' +
         '</div>' +
         '<div style="padding:0 14px 12px">' +
