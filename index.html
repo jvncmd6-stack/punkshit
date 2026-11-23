@@ -8,11 +8,11 @@
   <meta http-equiv="Expires" content="0">
   <meta name="theme-color" content="#0a0f1c">
   <title>PUNKSHIT.OS — The Underground Digital Hangout</title>
-  <link rel="manifest" href="./manifest.json?v=26">
+  <link rel="manifest" href="./manifest.json?v=27">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="./css/theme.css?v=26">
-  <link rel="stylesheet" href="./css/animations.css?v=26">
-  <link rel="stylesheet" href="./css/components.css?v=26">
+  <link rel="stylesheet" href="./css/theme.css?v=27">
+  <link rel="stylesheet" href="./css/animations.css?v=27">
+  <link rel="stylesheet" href="./css/components.css?v=27">
 </head>
 <body>
   <div class="phone" id="ph">
@@ -84,184 +84,36 @@
   </div>
 
   <!-- Core & Config -->
-  <script src="./js/config.js?v=26"></script>
+  <script src="./js/config.js?v=27"></script>
   <script>
     window.PUNK_CONFIG = window.PUNK_CONFIG || { API_URL: '', SPARK_API_URL: '', ICONS: {}, BASE_GRID: [], DOCK: [] };
   </script>
-  <script src="./js/api.js?v=26"></script>
-  <script src="./js/core.js?v=26"></script>
+  <script src="./js/api.js?v=27"></script>
+  <script src="./js/core.js?v=27"></script>
 
   <!-- 11 Modul Utama + Ruang Dalang -->
-  <script src="./js/modules/01-markas.js?v=26"></script>
-  <script src="./js/modules/02-punkid.js?v=26"></script>
-  <script src="./js/modules/03-progression.js?v=26"></script>
-  <script src="./js/modules/04-kas.js?v=26"></script>
-  <script src="./js/arena/state.js?v=26"></script>
-  <script src="./js/arena/lobby.js?v=26"></script>
-  <script src="./js/arena/games-core.js?v=26"></script>
-  <script src="./js/arena/games-extra.js?v=26"></script>
-  <script src="./js/arena/spark-coop.js?v=26"></script>
-  <script src="./js/modules/05-arena.js?v=26"></script>
-  <script src="./js/warga/profile-modal.js?v=26"></script>
-  <script src="./js/warga/leaderboard.js?v=26"></script>
-  <script src="./js/warga/kotak-archive.js?v=26"></script>
-  <script src="./js/warga/birthday-banner.js?v=26"></script>
-  <script src="./js/modules/06-warga.js?v=26"></script>
-  <script src="./js/modules/07-kalender.js?v=26"></script>
-  <script src="./js/lapak/lapak-rongsok.js?v=26"></script>
-  <script src="./js/lapak/lapak-warga.js?v=26"></script>
-  <script src="./js/lapak/lapak-seller.js?v=26"></script>
-  <script src="./js/modules/08-lapak.js?v=26"></script>
-  <script src="./js/modules/09-museum.js?v=26"></script>
-  <script src="./js/modules/10-dalang.js?v=26"></script>
-  <script src="./js/modules/11-spark.js?v=26"></script>
-
-  <!-- JEMBATAN OTOMATIS PUNKSHIT.OS <-> SPARK BUDDIES -->
-  <script>
-    (function initSparkBridge() {
-      const cleanUsn = (v) => String(v || "").trim().replace(/^@+/, "").toLowerCase();
-      const getSparkApi = () => (window.PUNK_CONFIG?.SPARK_API_URL || localStorage.getItem("psk_spark_api") || "").replace(/\/$/, "");
-
-      function resolveCurrentUser() {
-        const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
-        const coreS = window.PunkCore?.S || {};
-        const stateUser = coreS.user || window.STATE?.user || window.PUNK?.user || window.CURRENT_USER || {};
-        let storedUser = {};
-        try {
-          for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i);
-            if (/punk|user|warga|auth/i.test(k)) {
-              const parsed = JSON.parse(localStorage.getItem(k));
-              if (parsed && typeof parsed === "object") {
-                if (parsed.username || parsed.usn) storedUser = parsed;
-                else if (parsed.user && (parsed.user.username || parsed.user.usn)) storedUser = parsed.user;
-              }
-            }
-          }
-        } catch (_) {}
-
-        const username = cleanUsn(
-          tgUser.username || stateUser.username || stateUser.usn || storedUser.username || storedUser.usn
-        );
-        const name = tgUser.first_name || stateUser.name || storedUser.name || username || "Warga";
-        return {
-          id: tgUser.id || stateUser.id || storedUser.id || null,
-          username,
-          name,
-          rank: stateUser.rank || storedUser.rank || "Warga Markas",
-          sparkBuddy: stateUser.sparkBuddy || storedUser.sparkBuddy || null
-        };
-      }
-
-      async function resolveMembers() {
-        const coreS = window.PunkCore?.S || {};
-        const rawList =
-          coreS.members ||
-          coreS.warga ||
-          window.STATE?.members ||
-          window.STATE?.warga ||
-          window.WARGA ||
-          window.PUNK?.members ||
-          [];
-
-        let list = Array.isArray(rawList) ? rawList : Object.values(rawList || {});
-
-        if (!list.length) {
-          try {
-            for (let i = 0; i < localStorage.length; i++) {
-              const k = localStorage.key(i);
-              if (/warga|member|cache/i.test(k)) {
-                const parsed = JSON.parse(localStorage.getItem(k));
-                const arr = Array.isArray(parsed) ? parsed : (parsed?.members || parsed?.warga || []);
-                if (Array.isArray(arr) && arr.length) { list = arr; break; }
-              }
-            }
-          } catch (_) {}
-        }
-
-        const sparkBase = getSparkApi();
-        if (!list.length && sparkBase) {
-          try {
-            const res = await fetch(sparkBase + "/api/spark/warga").catch(() => null);
-            if (res && res.ok) {
-              const data = await res.json();
-              list = Array.isArray(data) ? data : (data.members || data.warga || []);
-            }
-          } catch (_) {}
-        }
-
-        return list
-          .map((m) => ({
-            id: m.id || m.telegram_id || null,
-            username: cleanUsn(m.username || m.usn || m.tg_username),
-            name: m.name || m.first_name || m.display_name || "",
-            rank: m.rank || m.role || m.title || "Warga Punk"
-          }))
-          .filter((m) => m.username);
-      }
-
-      async function pushSyncToSpark(targetWin) {
-        const user = resolveCurrentUser();
-        const members = await resolveMembers();
-        const sparkBase = getSparkApi();
-
-        if (user.username && sparkBase) {
-          try {
-            const stRes = await fetch(sparkBase + "/api/spark/status?username=" + encodeURIComponent(user.username)).catch(() => null);
-            if (stRes && stRes.ok) {
-              const stData = await stRes.json();
-              if (stData && stData.sparkBuddy) user.sparkBuddy = stData.sparkBuddy;
-            }
-          } catch (_) {}
-        }
-
-        const payload = { type: "PUNK_SYNC", user, members };
-
-        if (targetWin && typeof targetWin.postMessage === "function") {
-          targetWin.postMessage(payload, "*");
-        }
-        document.querySelectorAll("iframe").forEach((ifr) => {
-          try { ifr.contentWindow && ifr.contentWindow.postMessage(payload, "*"); } catch (_) {}
-        });
-      }
-
-      window.addEventListener("message", async (ev) => {
-        const d = ev.data;
-        if (!d || typeof d !== "object") return;
-
-        if (d.type === "SPARK_REQUEST_SYNC") {
-          await pushSyncToSpark(ev.source);
-        }
-
-        if (["SPARK_INVITE_SEND", "SPARK_INVITE_ACCEPT", "SPARK_INVITE_DECLINE", "SPARK_INVITE_CANCEL", "SPARK_UNPAIR"].includes(d.type)) {
-          const sparkBase = getSparkApi();
-          if (sparkBase) {
-            fetch(sparkBase + "/api/spark/action", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ...d,
-                initData: window.Telegram?.WebApp?.initData || ""
-              })
-            })
-              .then((r) => (r.ok ? r.json() : null))
-              .then(() => pushSyncToSpark(ev.source))
-              .catch(() => {});
-          }
-        }
-      });
-
-      const bd = document.getElementById("bd");
-      if (bd) {
-        new MutationObserver(() => {
-          const ifr = bd.querySelector("iframe");
-          if (ifr) {
-            ifr.addEventListener("load", () => pushSyncToSpark(ifr.contentWindow));
-            setTimeout(() => pushSyncToSpark(ifr.contentWindow), 300);
-          }
-        }).observe(bd, { childList: true, subtree: true });
-      }
-    })();
-  </script>
+  <script src="./js/modules/01-markas.js?v=27"></script>
+  <script src="./js/modules/02-punkid.js?v=27"></script>
+  <script src="./js/modules/03-progression.js?v=27"></script>
+  <script src="./js/modules/04-kas.js?v=27"></script>
+  <script src="./js/arena/state.js?v=27"></script>
+  <script src="./js/arena/lobby.js?v=27"></script>
+  <script src="./js/arena/games-core.js?v=27"></script>
+  <script src="./js/arena/games-extra.js?v=27"></script>
+  <script src="./js/arena/spark-coop.js?v=27"></script>
+  <script src="./js/modules/05-arena.js?v=27"></script>
+  <script src="./js/warga/profile-modal.js?v=27"></script>
+  <script src="./js/warga/leaderboard.js?v=27"></script>
+  <script src="./js/warga/kotak-archive.js?v=27"></script>
+  <script src="./js/warga/birthday-banner.js?v=27"></script>
+  <script src="./js/modules/06-warga.js?v=27"></script>
+  <script src="./js/modules/07-kalender.js?v=27"></script>
+  <script src="./js/lapak/lapak-rongsok.js?v=27"></script>
+  <script src="./js/lapak/lapak-warga.js?v=27"></script>
+  <script src="./js/lapak/lapak-seller.js?v=27"></script>
+  <script src="./js/modules/08-lapak.js?v=27"></script>
+  <script src="./js/modules/09-museum.js?v=27"></script>
+  <script src="./js/modules/10-dalang.js?v=27"></script>
+  <script src="./js/modules/11-spark.js?v=27"></script>
 </body>
 </html>
