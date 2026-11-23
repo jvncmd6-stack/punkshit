@@ -2,6 +2,7 @@ import { InlineKeyboard } from 'grammy';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { escHtml, notifyPrivateUser, buildMiniAppUrl } from '../services/syncEngine.js';
+import { registerLapakCommands } from './lapakCommands.js';
 import {
   DEFAULT_GREET,
   DEFAULT_BYE,
@@ -56,14 +57,17 @@ function purgeWargaData(userId, username = '') {
   }
 
   try { db.prepare('DELETE FROM inventory WHERE user_id = ?').run(uid); } catch (e) {}
-  try { db.prepare('DELETE FROM shop_items WHERE seller_id = ?').run(uid); } catch (e) {}
+  try { db.prepare('DELETE FROM warga_shop_items WHERE seller_id = ?').run(uid); } catch (e) {}
   try { db.prepare('DELETE FROM member_market WHERE seller_id = ?').run(uid); } catch (e) {}
 
   return existing;
 }
 
 export function registerBotHandlers(bot) {
-  // 1. Tracker Spark Buddies di Grup (5 gap + 2 pesan -> notif via PC, tanpa spam grup)
+  // Daftarkan command khusus Lapak & Item Collab
+  registerLapakCommands(bot);
+
+  // 1. Tracker Spark Buddies di Grup
   bot.on('message', async (ctx, next) => {
     try {
       const chatType = ctx.chat?.type;
@@ -116,13 +120,9 @@ export function registerBotHandlers(bot) {
             ) {
               const newStreak = (pair.streak || 0) + 1;
               const newXp = (pair.xp || 0) + 10;
-              db.prepare(`
-                UPDATE spark_pairs
-                SET streak = ?, xp = ?, last_qualified_date = ?
-                WHERE id = ?
-              `).run(newStreak, newXp, today, pair.id);
+              db.prepare('UPDATE spark_pairs SET streak = ?, xp = ?, last_qualified_date = ? WHERE id = ?')
+                .run(newStreak, newXp, today, pair.id);
 
-              // Kirim notif ke PC masing-masing pasangan (tidak nyepam ke grup)
               const pRow = db.prepare('SELECT id FROM users WHERE LOWER(username) = ?').get(partner);
               const sparkDm =
                 `🔥 <b>SPARK HARIAN MENYALA!</b>\n\n` +
@@ -160,8 +160,7 @@ export function registerBotHandlers(bot) {
       const appUrl = buildMiniAppUrl('home');
       if (appUrl) kb.url('🪪 Buka PUNKSHIT.OS', appUrl);
       await ctx.reply(
-        '🪪 <b>PUNKSHIT.OS — MARKAS ONLINE</b>\n' +
-        'Wih, nongol juga. Tap tombol di bawah buat buka Mini App:',
+        '🪪 <b>PUNKSHIT.OS — MARKAS ONLINE</b>\nWih, nongol juga. Tap tombol di bawah buat buka Mini App:',
         { parse_mode: 'HTML', reply_markup: kb }
       );
     }
@@ -199,37 +198,21 @@ export function registerBotHandlers(bot) {
     const kb = new InlineKeyboard();
     const sparkUrl = buildMiniAppUrl('spark');
     if (sparkUrl) kb.url('🔥 Buka Spark Buddies', sparkUrl);
-    await ctx.reply(
-      '🔥 <b>SPARK BUDDIES</b>\nNyalain api bareng partner markas kamu! Tap tombol di bawah:',
-      { parse_mode: 'HTML', reply_markup: kb }
-    );
+    await ctx.reply('🔥 <b>SPARK BUDDIES</b>\nNyalain api bareng partner markas kamu! Tap tombol di bawah:', { parse_mode: 'HTML', reply_markup: kb });
   });
 
   bot.command('acc', async (ctx) => {
     const usn = (ctx.from?.username || '').toLowerCase();
     if (!usn) return ctx.reply('Pasang @username Telegram dulu sebelum pakai Spark Buddies.');
-
-    const row = db.prepare(`
-      SELECT id, user1 FROM spark_pairs
-      WHERE user2 = ? AND status = 'pending'
-      ORDER BY id DESC LIMIT 1
-    `).get(usn);
-
+    const row = db.prepare("SELECT id, user1 FROM spark_pairs WHERE user2 = ? AND status = 'pending' ORDER BY id DESC LIMIT 1").get(usn);
     if (!row) return ctx.reply('Nggak ada ajakan Spark yang masuk buat kamu saat ini.');
-
     db.prepare("UPDATE spark_pairs SET status = 'paired' WHERE id = ?").run(row.id);
-    await ctx.reply(
-      `🔥 <b>SPARK RESMI MENYALA!</b>\n@${escHtml(row.user1)} x @${escHtml(usn)} sekarang resmi jadi Spark Buddies!`,
-      { parse_mode: 'HTML' }
-    );
+    await ctx.reply(`🔥 <b>SPARK RESMI MENYALA!</b>\n@${escHtml(row.user1)} x @${escHtml(usn)} sekarang resmi jadi Spark Buddies!`, { parse_mode: 'HTML' });
   });
 
-  // 4. Ekonomi, Hapus Warga & Admin Commands
+  // 4. Warga & Ekonomi Commands
   bot.command('delwarga', async (ctx) => {
-    if (!isBotOwnerOrAdmin(ctx.from.id)) {
-      return ctx.reply('⛔ Khusus Owner & Admin yang bisa hapus data PunkID warga.');
-    }
-
+    if (!isBotOwnerOrAdmin(ctx.from.id)) return ctx.reply('⛔ Khusus Owner & Admin.');
     const rawTarget = String(ctx.match || '').trim().replace(/^@/, '');
     const replyUser = ctx.message?.reply_to_message?.from;
     let targetUser = null;
@@ -243,21 +226,13 @@ export function registerBotHandlers(bot) {
     }
 
     if (!targetUser) return ctx.reply('Data PunkID warga tersebut sudah tidak ada di database.');
-
     purgeWargaData(targetUser.id, targetUser.username);
     logAudit(ctx.from.id, 'DEL WARGA (BOT)', `Hapus PunkID ${targetUser.name} (${targetUser.id})`);
-
-    await ctx.reply(
-      `🗑️ <b>PUNKID DIHAPUS</b>\nData warga <b>${escHtml(targetUser.name)}</b> (<code>${escHtml(targetUser.id)}</code>) resmi dihapus dari markas.`,
-      { parse_mode: 'HTML' }
-    );
+    await ctx.reply(`🗑️ <b>PUNKID DIHAPUS</b>\nData warga <b>${escHtml(targetUser.name)}</b> resmi dihapus.`, { parse_mode: 'HTML' });
   });
 
   bot.command('givepsc', async (ctx) => {
-    if (!isBotOwnerOrAdmin(ctx.from.id)) {
-      return ctx.reply('⛔ Khusus Owner & Admin doang yang bisa suntik koin PSC cuy.');
-    }
-
+    if (!isBotOwnerOrAdmin(ctx.from.id)) return ctx.reply('⛔ Khusus Owner & Admin doang.');
     const args = String(ctx.match || '').trim().split(/\s+/).filter(Boolean);
     const replyUser = ctx.message?.reply_to_message?.from;
     let targetUser = null;
@@ -274,13 +249,7 @@ export function registerBotHandlers(bot) {
       if (args.length > 2) reason = args.slice(2).join(' ');
       targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
     } else {
-      return ctx.reply(
-        'Format Give / Top Up PSC:\n' +
-        '• <code>/givepsc @username 500</code>\n' +
-        '• <code>/givepsc 123456789 500</code>\n' +
-        '• Atau <b>reply pesan warga</b> di grup lalu ketik <code>/givepsc 500</code>',
-        { parse_mode: 'HTML' }
-      );
+      return ctx.reply('Format: <code>/givepsc @username 500</code> atau reply pesan warga lalu <code>/givepsc 500</code>', { parse_mode: 'HTML' });
     }
 
     if (!amount || Number.isNaN(amount)) return ctx.reply('Nominal koin PSC harus berupa angka valid.');
@@ -292,11 +261,7 @@ export function registerBotHandlers(bot) {
 
     const sign = amount > 0 ? `+${amount}` : `${amount}`;
     await ctx.reply(
-      `💰 <b>TRANSAKSI PSC BERHASIL</b>\n\n` +
-      `• Penerima: <b>${escHtml(targetUser.name)}</b>\n` +
-      `• Nominal: <b>${sign} PSC</b>\n` +
-      `• Saldo Sekarang: <b>${updated.psc} PSC</b>\n` +
-      `• Keterangan: <i>${escHtml(reason)}</i>`,
+      `💰 <b>TRANSAKSI PSC BERHASIL</b>\n• Penerima: <b>${escHtml(targetUser.name)}</b>\n• Nominal: <b>${sign} PSC</b>\n• Saldo Sekarang: <b>${updated.psc} PSC</b>\n• Keterangan: <i>${escHtml(reason)}</i>`,
       { parse_mode: 'HTML' }
     );
   });
@@ -315,27 +280,17 @@ export function registerBotHandlers(bot) {
     }
 
     if (!targetUser) return ctx.reply('Data warga belum ditemukan di PunkID.');
-
     await ctx.reply(
-      `💳 <b>DOMPET WARGA — ${escHtml(targetUser.name)}</b>\n` +
-      `• ID Warga: <code>${escHtml(targetUser.member_no || targetUser.id)}</code>\n` +
-      `• Role: <code>${escHtml((targetUser.role || 'member').toUpperCase())}</code>\n` +
-      `• Saldo PSC: <b>${targetUser.psc || 0} PSC</b>\n` +
-      `• Street Cred: <b>${targetUser.cred || 0}</b>`,
+      `💳 <b>DOMPET WARGA — ${escHtml(targetUser.name)}</b>\n• ID Warga: <code>${escHtml(targetUser.member_no || targetUser.id)}</code>\n• Role: <code>${escHtml((targetUser.role || 'member').toUpperCase())}</code>\n• Saldo PSC: <b>${targetUser.psc || 0} PSC</b>\n• Street Cred: <b>${targetUser.cred || 0}</b>`,
       { parse_mode: 'HTML' }
     );
   });
 
   bot.command('setrole', async (ctx) => {
     const senderId = String(ctx.from.id);
-    if (!(ENV.OWNER_IDS || []).map(String).includes(senderId)) {
-      return ctx.reply('⛔ Khusus Owner utama (OWNER_IDS) yang bisa ubah role pengurus.');
-    }
-
+    if (!(ENV.OWNER_IDS || []).map(String).includes(senderId)) return ctx.reply('⛔ Khusus Owner utama.');
     const args = String(ctx.match || '').trim().split(/\s+/).filter(Boolean);
-    if (args.length < 2) {
-      return ctx.reply('Format: <code>/setrole @username admin</code> (admin/moderator/member)', { parse_mode: 'HTML' });
-    }
+    if (args.length < 2) return ctx.reply('Format: <code>/setrole @username admin</code>', { parse_mode: 'HTML' });
 
     const rawTarget = args[0].replace(/^@/, '');
     const role = args[1].toLowerCase();
@@ -346,38 +301,27 @@ export function registerBotHandlers(bot) {
 
     db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, targetUser.id);
     logAudit(senderId, 'SET ROLE (BOT)', `${targetUser.name} -> ${role}`);
-    await ctx.reply(`✅ Role <b>${escHtml(targetUser.name)}</b> resmi diubah menjadi <b>${role.toUpperCase()}</b>.`, { parse_mode: 'HTML' });
+    await ctx.reply(`✅ Role <b>${escHtml(targetUser.name)}</b> diubah menjadi <b>${role.toUpperCase()}</b>.`, { parse_mode: 'HTML' });
   });
 
-  // 5. Radio Gang & Admin Greet Settings
+  // 5. Radio & Greet Settings
   bot.command('req', async (ctx) => {
     const raw = String(ctx.match || '').trim();
     const parts = raw.split('|').map((s) => s.trim());
     const song = (parts[0] || '').slice(0, 80);
     const link = (parts[1] || '').slice(0, 180);
-
     if (song.length < 3 || !/^https:\/\/open\.spotify\.com\//.test(link)) {
       return ctx.reply('Format: <code>/req Judul Lagu - Artis | https://open.spotify.com/track/...</code>', { parse_mode: 'HTML' });
     }
-
     const senderName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ') || 'Warga';
-    const info = db.prepare(`
-      INSERT INTO radio_queue (user_id, user_name, source_type, song, link, file_id, message, status, created_at)
-      VALUES (?, ?, 'spotify', ?, ?, '', '', 'waiting', ?)
-    `).run(String(ctx.from.id), senderName, song, link, Date.now());
-
+    const info = db.prepare("INSERT INTO radio_queue (user_id, user_name, source_type, song, link, file_id, message, status, created_at) VALUES (?, ?, 'spotify', ?, ?, '', '', 'waiting', ?)").run(String(ctx.from.id), senderName, song, link, Date.now());
     const reqId = info.lastInsertRowid;
     const warehouseId = getWarehouseId();
     if (warehouseId) {
       const kb = new InlineKeyboard().url('Buka di Spotify', link);
-      await bot.api.sendMessage(
-        warehouseId,
-        `<b>REQUEST SPOTIFY #${reqId}</b>\nJudul: <b>${escHtml(song)}</b>\nDari: <b>${escHtml(senderName)}</b>\nLink: ${escHtml(link)}`,
-        { parse_mode: 'HTML', reply_markup: kb }
-      ).catch(() => {});
+      await bot.api.sendMessage(warehouseId, `<b>REQUEST SPOTIFY #${reqId}</b>\nJudul: <b>${escHtml(song)}</b>\nDari: <b>${escHtml(senderName)}</b>\nLink: ${escHtml(link)}`, { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
     }
-
-    await ctx.reply(`✅ Sip, request #${reqId} (<b>${escHtml(song)}</b>) udah masuk antrean & Gudang.`, { parse_mode: 'HTML' });
+    await ctx.reply(`✅ Sip, request #${reqId} (<b>${escHtml(song)}</b>) masuk antrean.`, { parse_mode: 'HTML' });
   });
 
   bot.on(['message:audio', 'message:document'], async (ctx, next) => {
@@ -386,31 +330,17 @@ export function registerBotHandlers(bot) {
     const doc = ctx.message.document;
     const isAudioDoc = doc && doc.mime_type && doc.mime_type.startsWith('audio/');
     if (!audio && !isAudioDoc) return next();
-
     const warehouseId = getWarehouseId();
     if (!warehouseId) return ctx.reply('Channel Gudang belum diset sama admin.');
 
     const fileId = audio ? audio.file_id : doc.file_id;
-    const song = (
-      String(ctx.message.caption || '').trim() ||
-      (audio && [audio.performer, audio.title].filter(Boolean).join(' - ')) ||
-      (doc && doc.file_name) ||
-      'Audio Request Warga'
-    ).slice(0, 80);
+    const song = (String(ctx.message.caption || '').trim() || (audio && [audio.performer, audio.title].filter(Boolean).join(' - ')) || (doc && doc.file_name) || 'Audio Request Warga').slice(0, 80);
     const senderName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ') || 'Warga';
-
-    const info = db.prepare(`
-      INSERT INTO radio_queue (user_id, user_name, source_type, song, link, file_id, message, status, created_at)
-      VALUES (?, ?, 'audio', ?, '', ?, '', 'waiting', ?)
-    `).run(String(ctx.from.id), senderName, song, fileId, Date.now());
-
+    const info = db.prepare("INSERT INTO radio_queue (user_id, user_name, source_type, song, link, file_id, message, status, created_at) VALUES (?, ?, 'audio', ?, '', ?, '', 'waiting', ?)").run(String(ctx.from.id), senderName, song, fileId, Date.now());
     const reqId = info.lastInsertRowid;
     try {
-      await bot.api.sendAudio(warehouseId, fileId, {
-        caption: `<b>GUDANG MUSIK — REQUEST #${reqId}</b>\nJudul: <b>${escHtml(song)}</b>\nDari: <b>${escHtml(senderName)}</b>`,
-        parse_mode: 'HTML'
-      });
-      await ctx.reply(`✅ Mantap, file <b>${escHtml(song)}</b> udah masuk Gudang Musik di antrean <b>#${reqId}</b>.`, { parse_mode: 'HTML' });
+      await bot.api.sendAudio(warehouseId, fileId, { caption: `<b>GUDANG MUSIK — REQUEST #${reqId}</b>\nJudul: <b>${escHtml(song)}</b>\nDari: <b>${escHtml(senderName)}</b>`, parse_mode: 'HTML' });
+      await ctx.reply(`✅ File <b>${escHtml(song)}</b> masuk Gudang Musik antrean <b>#${reqId}</b>.`, { parse_mode: 'HTML' });
     } catch (err) {
       await ctx.reply(`Gagal kirim file ke Gudang: ${err.message}`);
     }
@@ -522,41 +452,27 @@ export function registerBotHandlers(bot) {
       if (!clicker || clicker !== target) {
         return ctx.answerCallbackQuery({ text: `Cuma @${target} yang bisa pencet tombol ini!`, show_alert: true });
       }
-
       if (mode === 'spark_acc') {
         const row = db.prepare("SELECT id FROM spark_pairs WHERE user1 = ? AND user2 = ? AND status = 'pending'").get(sender, clicker);
-        if (!row) return ctx.answerCallbackQuery({ text: 'Ajakan sudah kadaluarsa atau dibatalkan.', show_alert: true });
-
+        if (!row) return ctx.answerCallbackQuery({ text: 'Ajakan sudah kadaluarsa.', show_alert: true });
         db.prepare("UPDATE spark_pairs SET status = 'paired' WHERE id = ?").run(row.id);
-        await ctx.editMessageText(
-          `🔥 <b>SPARK RESMI MENYALA!</b>\n@${escHtml(sender)} x @${escHtml(clicker)} sekarang resmi jadi Spark Buddies!`,
-          { parse_mode: 'HTML' }
-        ).catch(() => {});
+        await ctx.editMessageText(`🔥 <b>SPARK RESMI MENYALA!</b>\n@${escHtml(sender)} x @${escHtml(clicker)} sekarang resmi jadi Spark Buddies!`, { parse_mode: 'HTML' }).catch(() => {});
         return ctx.answerCallbackQuery({ text: 'Spark resmi menyala! 🔥' });
       }
-
       db.prepare('DELETE FROM spark_pairs WHERE (user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)').run(sender, clicker, clicker, sender);
       await ctx.editMessageText(`💨 Ajakan Spark dari @${escHtml(sender)} ke @${escHtml(clicker)} ditolak.`, { parse_mode: 'HTML' }).catch(() => {});
       return ctx.answerCallbackQuery({ text: 'Ajakan ditolak.' });
     }
 
     if (data === 'pc_home') {
-      await ctx.editMessageText(renderPrivateHomeText(ctx.from.id), {
-        parse_mode: 'HTML',
-        reply_markup: buildPrivateMenuKeyboard(ctx.from.id)
-      }).catch(() => {});
+      await ctx.editMessageText(renderPrivateHomeText(ctx.from.id), { parse_mode: 'HTML', reply_markup: buildPrivateMenuKeyboard(ctx.from.id) }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
-
     if (data === 'pc_tutor_miniapp' || data.startsWith('pc_tutor_')) {
       const page = data === 'pc_tutor_miniapp' ? 'overview' : data.replace('pc_tutor_', '');
-      await ctx.editMessageText(renderTutorMiniAppText(page), {
-        parse_mode: 'HTML',
-        reply_markup: buildTutorKeyboard(page, isPrivate)
-      }).catch(() => {});
+      await ctx.editMessageText(renderTutorMiniAppText(page), { parse_mode: 'HTML', reply_markup: buildTutorKeyboard(page, isPrivate) }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
-
     if (data === 'pc_kamus') {
       const kb = new InlineKeyboard().text('📱 Tutor Mini App', 'pc_tutor_miniapp');
       if (admin) kb.text('⚙️ Command Admin', 'pc_admin_cmd');
@@ -564,39 +480,25 @@ export function registerBotHandlers(bot) {
       await ctx.editMessageText(renderKamusText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
-
     if (data === 'pc_admin_cmd') {
-      if (!admin) {
-        return ctx.answerCallbackQuery({ text: `Khusus Owner/Admin! ID kamu (${ctx.from.id}) belum masuk OWNER_IDS.`, show_alert: true });
-      }
-      const kb = new InlineKeyboard()
-        .text('📝 Teks Greet & Bye', 'pc_greet_info')
-        .text('📖 Kamus Warga', 'pc_kamus')
-        .row()
-        .text('« Menu Utama', 'pc_home');
+      if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner/Admin!', show_alert: true });
+      const kb = new InlineKeyboard().text('📝 Teks Greet & Bye', 'pc_greet_info').text('📖 Kamus Warga', 'pc_kamus').row().text('« Menu Utama', 'pc_home');
       await ctx.editMessageText(renderAdminCmdText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
-
     if (data === 'pc_greet_info') {
       if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin.', show_alert: true });
       const kb = new InlineKeyboard().text('⚙️ Command Admin', 'pc_admin_cmd').row().text('« Menu Utama', 'pc_home');
       await ctx.editMessageText(renderGreetInfoText(), { parse_mode: 'HTML', reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery();
     }
-
     if (data === 'pc_radio_queue') {
       const kb = new InlineKeyboard().text('🔄 Refresh', 'pc_radio_queue');
       if (admin) kb.text('🗑️ Kosongkan', 'pc_radio_clear');
       kb.row().text('📱 Tutor Mini App', 'pc_tutor_miniapp').text('« Menu Utama', 'pc_home');
-      await ctx.editMessageText(renderRadioQueueText(), {
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-        reply_markup: kb
-      }).catch(() => {});
+      await ctx.editMessageText(renderRadioQueueText(), { parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: kb }).catch(() => {});
       return ctx.answerCallbackQuery({ text: 'Antrean di-refresh.' });
     }
-
     if (data === 'pc_radio_clear') {
       if (!admin) return ctx.answerCallbackQuery({ text: 'Khusus Owner & Admin.', show_alert: true });
       db.prepare("UPDATE radio_queue SET status = 'played' WHERE status = 'waiting'").run();
@@ -608,12 +510,11 @@ export function registerBotHandlers(bot) {
     await ctx.answerCallbackQuery();
   });
 
-  // 7. Sapaan Warga Masuk & Auto-Hapus PunkID Saat Keluar / Di-Kick
+  // 7. Greet & Bye
   bot.on('message:new_chat_members', async (ctx) => {
     const members = ctx.message.new_chat_members || [];
     let count = 0;
     try { count = await ctx.getChatMemberCount(); } catch (e) {}
-
     const tpl = getSetting('greet_text', DEFAULT_GREET);
     const mediaRaw = getSetting('greet_media', '');
     const kb = buildGreetKeyboard();
@@ -622,52 +523,4 @@ export function registerBotHandlers(bot) {
       if (m.is_bot) continue;
       const body = formatTemplate(tpl, m, count);
       try {
-        if (mediaRaw.startsWith('animation:')) {
-          await ctx.replyWithAnimation(mediaRaw.slice(10), { caption: body, parse_mode: 'HTML', reply_markup: kb });
-        } else if (mediaRaw.startsWith('sticker:')) {
-          await ctx.replyWithSticker(mediaRaw.slice(8));
-          await ctx.reply(body, { parse_mode: 'HTML', reply_markup: kb, disable_web_page_preview: true });
-        } else {
-          await ctx.reply(body, { parse_mode: 'HTML', reply_markup: kb, disable_web_page_preview: true });
-        }
-      } catch (err) {
-        console.error('[Greet Error]:', err.message);
-      }
-    }
-  });
-
-  bot.on('message:left_chat_member', async (ctx) => {
-    const m = ctx.message.left_chat_member;
-    if (!m || m.is_bot) return;
-
-    if (ENV.GROUP_ID && String(ctx.chat.id) !== String(ENV.GROUP_ID)) return;
-
-    // Otomatis hapus PunkID & data Spark dari database (baik keluar sendiri maupun di-kick)
-    const deleted = purgeWargaData(m.id, m.username || '');
-    if (deleted) {
-      const kickedBy = ctx.from && ctx.from.id !== m.id ? ` (Dikeluarkan oleh ${ctx.from.first_name})` : ' (Keluar sendiri)';
-      logAudit(ctx.from?.id || m.id, 'AUTO DEL WARGA', `Hapus PunkID ${deleted.name}${kickedBy}`);
-    }
-
-    let count = 0;
-    try { count = await ctx.getChatMemberCount(); } catch (e) {}
-
-    const tpl = getSetting('bye_text', DEFAULT_BYE);
-    const mediaRaw = getSetting('bye_media', '');
-    const kb = buildByeKeyboard();
-    const body = formatTemplate(tpl, m, count);
-
-    try {
-      if (mediaRaw.startsWith('animation:')) {
-        await ctx.replyWithAnimation(mediaRaw.slice(10), { caption: body, parse_mode: 'HTML', reply_markup: kb });
-      } else if (mediaRaw.startsWith('sticker:')) {
-        await ctx.replyWithSticker(mediaRaw.slice(8));
-        await ctx.reply(body, { parse_mode: 'HTML', reply_markup: kb, disable_web_page_preview: true });
-      } else {
-        await ctx.reply(body, { parse_mode: 'HTML', reply_markup: kb, disable_web_page_preview: true });
-      }
-    } catch (err) {
-      console.error('[Bye Error]:', err.message);
-    }
-  });
-}
+        if (mediaRaw.startsWith('animation:')) await ctx.replyWithAnimation(mediaRaw.slice(10),
