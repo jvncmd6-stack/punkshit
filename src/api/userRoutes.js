@@ -15,6 +15,14 @@ import {
 
 export const userRouter = Router();
 
+function attachExtraUserFields(row) {
+  const formatted = formatUser(row);
+  if (formatted && row) {
+    formatted.streakShield = Number(row.streak_shield || 0);
+  }
+  return formatted;
+}
+
 // GET /api/me -> Sinkronisasi state awal + konfigurasi URL Grup/Channel
 userRouter.get('/me', async (req, res) => {
   const uid = String(req.tgUser.id);
@@ -73,7 +81,7 @@ userRouter.get('/me', async (req, res) => {
       channelUrl: (process.env.CHANNEL_URL || '').trim(),
       miniappLink: ENV.MINIAPP_LINK
     },
-    user: formatUser(user),
+    user: attachExtraUserFields(user),
     inv,
     catalog: getCatalog(),
     onlineUsers: getOnlineUsers(),
@@ -87,13 +95,13 @@ userRouter.get('/me', async (req, res) => {
 // POST /api/register -> Aktivasi PunkID pertama kali
 userRouter.post('/register', async (req, res) => {
   if (req.dbUser) {
-    return res.json({ user: formatUser(req.dbUser), inv: [] });
+    return res.json({ user: attachExtraUserFields(req.dbUser), inv: [] });
   }
 
   const uid = String(req.tgUser.id);
   const rawName = String(req.body?.name || req.tgUser.first_name || 'Warga').trim().slice(0, 24);
   if (rawName.length < 2) {
-    return res.status(400).json({ error: 'Nama minimal 2 karakter.' });
+    return res.status(400).json({ error: 'Nama minimal 2 karakter cuy.' });
   }
 
   const totalUsers = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
@@ -114,24 +122,24 @@ userRouter.post('/register', async (req, res) => {
 
   await broadcastToTelegram({
     target: 'group',
-    text: `🪪 <b>NEW CHARACTER UNLOCKED!</b>\n<b>${escHtml(rawName)}</b> (${memberNo}) resmi mencetak PunkID dan bergabung di markas. Good luck, rookie!`,
+    text: `🪪 <b>WARGA BARU RESMI GABUNG!</b>\n<b>${escHtml(rawName)}</b> (${memberNo}) baru aja cetak PunkID dan mampir ke markas. Selamat datang di tongkrongan!`,
     buttonText: '🪪 LIHAT MARKAS',
-    feedText: `NEW CHARACTER UNLOCKED! ${rawName} (${memberNo}) resmi jadi warga.`
+    feedText: `Warga baru ${rawName} (${memberNo}) resmi gabung ke markas!`
   });
 
-  res.json({ user: formatUser(freshUser), inv: [] });
+  res.json({ user: attachExtraUserFields(freshUser), inv: [] });
 });
 
 // POST /api/profile/banner -> Upload gambar/GIF latar belakang profil
 userRouter.post('/profile/banner', requireUser, uploadMem.single('banner'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'File gambar banner belum dipilih.' });
+      return res.status(400).json({ error: 'Pilih file gambar banner-nya dulu cuy.' });
     }
     const publicPath = await processAndSaveImage(req.file, 'banners', { width: 900, height: 450, fit: 'cover' });
     db.prepare('UPDATE users SET banner_url = ? WHERE id = ?').run(publicPath, req.dbUser.id);
     const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
-    res.json({ user: formatUser(updated) });
+    res.json({ user: attachExtraUserFields(updated) });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -144,14 +152,14 @@ userRouter.post('/profile', requireUser, (req, res) => {
   const spotifyUrl = String(req.body?.spotifyUrl || '').trim().slice(0, 200);
   const ringStyle = Math.max(0, Math.min(3, Number(req.body?.ringStyle) || 0));
 
-  if (name.length < 2) return res.status(400).json({ error: 'Nama minimal 2 huruf.' });
+  if (name.length < 2) return res.status(400).json({ error: 'Nama minimal 2 huruf ya.' });
 
   db.prepare(`
     UPDATE users SET name = ?, bio = ?, spotify_url = ?, ring_style = ? WHERE id = ?
   `).run(name, bio, spotifyUrl, ringStyle, req.dbUser.id);
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
-  res.json({ user: formatUser(updated) });
+  res.json({ user: attachExtraUserFields(updated) });
 });
 
 // POST /api/profile/sync-telegram -> Tarik ulang foto profil & username terbaru dari Telegram
@@ -165,7 +173,7 @@ userRouter.post('/profile/sync-telegram', requireUser, async (req, res) => {
 
   await syncTelegramAvatar(req.dbUser.id, req.tgUser);
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
-  res.json({ user: formatUser(updated) });
+  res.json({ user: attachExtraUserFields(updated) });
 });
 
 // POST /api/profile/equip -> Pasang / lepas Border Avatar, Multi-Gift Profil (>1), atau Card Skin
@@ -175,7 +183,7 @@ userRouter.post('/profile/equip', requireUser, (req, res) => {
 
   if (itemId) {
     const owned = db.prepare('SELECT 1 FROM inventory WHERE user_id = ? AND item_id = ?').get(uid, itemId);
-    if (!owned) return res.status(403).json({ error: 'Item tidak ditemukan di Gudang Barang lo.' });
+    if (!owned) return res.status(403).json({ error: 'Item ini belum ada di Gudang Barang lo cuy.' });
   }
 
   if (type === 'border') {
@@ -183,7 +191,6 @@ userRouter.post('/profile/equip', requireUser, (req, res) => {
   } else if (type === 'skin') {
     db.prepare('UPDATE users SET equipped_skin_id = ? WHERE id = ?').run(itemId || '', uid);
   } else if (type === 'pin') {
-    // Mendukung multi-gift (array itemIds) maupun toggle satuan (itemId) hingga 6 gift sekaligus
     if (Array.isArray(itemIds)) {
       const validIds = [];
       for (const id of itemIds) {
@@ -196,7 +203,6 @@ userRouter.post('/profile/equip', requireUser, (req, res) => {
       db.prepare('UPDATE users SET pinned_gift_id = ? WHERE id = ?')
         .run(validIds.length ? JSON.stringify(validIds) : '', uid);
     } else if (!itemId) {
-      // Kosongkan semua gift dari profil
       db.prepare('UPDATE users SET pinned_gift_id = ? WHERE id = ?').run('', uid);
     } else {
       const curList = parsePinnedGifts(req.dbUser.pinned_gift_id);
@@ -206,7 +212,7 @@ userRouter.post('/profile/equip', requireUser, (req, res) => {
         nextList = curList.filter(x => x !== targetId);
       } else {
         if (curList.length >= 6) {
-          return res.status(400).json({ error: 'Maksimal 6 gift bisa dipasang sekaligus di profil.' });
+          return res.status(400).json({ error: 'Maksimal 6 gift bisa dipasang sekaligus di kartu profil ya.' });
         }
         nextList = [...curList, targetId];
       }
@@ -214,36 +220,39 @@ userRouter.post('/profile/equip', requireUser, (req, res) => {
         .run(nextList.length ? JSON.stringify(nextList) : '', uid);
     }
   } else {
-    return res.status(400).json({ error: 'Tipe equip tidak valid.' });
+    return res.status(400).json({ error: 'Tipe item tidak dikenali.' });
   }
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
-  res.json({ user: formatUser(updated) });
+  res.json({ user: attachExtraUserFields(updated) });
 });
 
 // POST /api/profile/birthday -> Simpan tanggal ulang tahun
 userRouter.post('/profile/birthday', requireUser, (req, res) => {
   const bday = String(req.body?.birthday || '').trim();
   if (!/^\d{2}-\d{2}$/.test(bday)) {
-    return res.status(400).json({ error: 'Format tanggal harus DD-MM.' });
+    return res.status(400).json({ error: 'Format tanggal harus DD-MM ya.' });
   }
   db.prepare('UPDATE users SET birthday = ? WHERE id = ?').run(bday, req.dbUser.id);
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
-  res.json({ user: formatUser(updated) });
+  res.json({ user: attachExtraUserFields(updated) });
 });
 
-// POST /api/presence -> Update status "Siapa yang Masih Hidup?" (anti undefined)
-userRouter.post('/presence', requireUser, (req, res) => {
-  const raw = req.body?.status || req.body?.text || '';
+// POST /api/presence & /api/profile/presence -> Update status nongkrong warga
+function handlePresenceUpdate(req, res) {
+  const raw = req.body?.presence || req.body?.status || req.body?.text || '';
   const cleaned = String(raw).replace(/undefined/gi, '').trim().slice(0, 32);
-  const status = cleaned || '☕ Nongki Dulu';
+  const status = cleaned || '☕ Nongki Santai';
 
   db.prepare('UPDATE users SET presence = ?, presence_at = ? WHERE id = ?')
     .run(status, Date.now(), req.dbUser.id);
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
-  res.json({ user: formatUser(updated), onlineUsers: getOnlineUsers() });
-});
+  res.json({ user: attachExtraUserFields(updated), onlineUsers: getOnlineUsers() });
+}
+
+userRouter.post('/presence', requireUser, handlePresenceUpdate);
+userRouter.post('/profile/presence', requireUser, handlePresenceUpdate);
 
 // GET /api/users/profile/:target -> Lihat profil publik warga lain (by ID atau @username)
 userRouter.get('/users/profile/:target', (req, res) => {
@@ -257,8 +266,8 @@ userRouter.get('/users/profile/:target', (req, res) => {
   if (!row) return res.status(404).json({ error: 'Warga tidak ditemukan.' });
 
   const itemCount = db.prepare('SELECT COUNT(*) AS c FROM inventory WHERE user_id = ?').get(row.id).c;
-  const pubUser = formatUser(row);
-  delete pubUser.psc; // Jangan tampilkan saldo privat orang lain
+  const pubUser = attachExtraUserFields(row);
+  delete pubUser.psc;
 
   res.json({
     user: pubUser,
