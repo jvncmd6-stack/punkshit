@@ -30,7 +30,8 @@ export function getSparkListForUser(username) {
 
   const today = todayWib();
   const a1 = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, usn);
-  const g1 = { gap: a1 ? a1.gap : 0, msg: a1 ? a1.msg : 0 };
+  const g1 = { gap: a1 ? (a1.gap || 0) : 0, msg: a1 ? (a1.msg || 0) : 0 };
+  const actorLitToday = (g1.gap > 0 || g1.msg > 0);
 
   return rows.map((pair) => {
     if (pair.status === 'pending') {
@@ -40,6 +41,9 @@ export function getSparkListForUser(username) {
 
     const partner = pair.user1 === usn ? pair.user2 : pair.user1;
     const a2 = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, partner);
+    const g2 = { gap: a2 ? (a2.gap || 0) : 0, msg: a2 ? (a2.msg || 0) : 0 };
+    const partnerLitToday = (g2.gap > 0 || g2.msg > 0);
+    const caseCompleted = String(pair.case_status || '').toUpperCase() === 'COMPLETED';
 
     return {
       status: 'paired',
@@ -47,7 +51,12 @@ export function getSparkListForUser(username) {
       streak: pair.streak || 0,
       xp: pair.xp || 0,
       g1,
-      g2: { gap: a2 ? a2.gap : 0, msg: a2 ? a2.msg : 0 }
+      g2,
+      litToday: actorLitToday,
+      partnerLitToday,
+      hasSetorToday: actorLitToday,
+      caseCompleted,
+      setorDisabled: actorLitToday || caseCompleted
     };
   });
 }
@@ -73,6 +82,61 @@ sparkRouter.post('/spark/action', async (req, res) => {
       : cleanUsn(body.targetUsername || body.fromUsername);
 
     if (!actor) return res.status(400).json({ ok: false, message: 'Username Telegram kamu belum terbaca.' });
+
+    if (action === 'SPARK_SETOR' || action === 'SPARK_LIGHT') {
+      const today = todayWib();
+      const pair = target
+        ? db.prepare("SELECT * FROM spark_pairs WHERE ((user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)) AND status = 'paired'").get(actor, target, target, actor)
+        : db.prepare("SELECT * FROM spark_pairs WHERE (user1 = ? OR user2 = ?) AND status = 'paired' ORDER BY id ASC LIMIT 1").get(actor, actor);
+
+      if (!pair) {
+        const list = getSparkListForUser(actor);
+        return res.json({ ok: false, message: 'Kamu belum punya pasangan Spark aktif.', sparkBuddies: list, sparkBuddy: list[0] || null });
+      }
+
+      if (String(pair.case_status || '').toUpperCase() === 'COMPLETED') {
+        const list = getSparkListForUser(actor);
+        return res.json({ ok: false, message: 'Kasus Spark ini sudah selesai.', sparkBuddies: list, sparkBuddy: list[0] || null });
+      }
+
+      const existing = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, actor);
+      if (existing && (existing.gap > 0 || existing.msg > 0)) {
+        const list = getSparkListForUser(actor);
+        return res.json({ ok: false, message: 'Kamu sudah setor hari ini! Kembali lagi besok ya.', sparkBuddies: list, sparkBuddy: list[0] || null });
+      }
+
+      db.prepare(`
+        INSERT INTO spark_daily (date, username, gap, msg)
+        VALUES (?, ?, 1, 1)
+        ON CONFLICT(date, username) DO UPDATE SET gap = MAX(1, gap), msg = MAX(1, msg)
+      `).run(today, actor);
+
+      const partner = pair.user1 === actor ? pair.user2 : pair.user1;
+      const partnerDaily = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, partner);
+      const partnerDone = partnerDaily && (partnerDaily.gap > 0 || partnerDaily.msg > 0);
+
+      if (partnerDone && pair.last_qualified_date !== today) {
+        db.prepare(`
+          UPDATE spark_pairs
+          SET streak = COALESCE(streak, 0) + 1,
+              xp = COALESCE(xp, 0) + 25,
+              last_qualified_date = ?
+          WHERE id = ?
+        `).run(today, pair.id);
+      } else {
+        db.prepare('UPDATE spark_pairs SET xp = COALESCE(xp, 0) + 10 WHERE id = ?').run(pair.id);
+      }
+
+      const list = getSparkListForUser(actor);
+      return res.json({
+        ok: true,
+        message: partnerDone
+          ? `Api Spark hari ini menyala penuh bareng @${partner}! Streak bertambah 🔥`
+          : `Setoran tercatat! Menunggu @${partner} ikut menyalakan api hari ini.`,
+        sparkBuddies: list,
+        sparkBuddy: list[0] || null
+      });
+    }
 
     if (action === 'SPARK_INVITE_SEND') {
       if (!target || actor === target) {
