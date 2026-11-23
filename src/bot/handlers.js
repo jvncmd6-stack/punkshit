@@ -1,4 +1,5 @@
 import { InlineKeyboard } from 'grammy';
+import crypto from 'crypto';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { escHtml, notifyPrivateUser, buildMiniAppUrl } from '../services/syncEngine.js';
@@ -35,6 +36,11 @@ function todayWib() {
   return now.toISOString().slice(0, 10);
 }
 
+function isStrictOwner(userId) {
+  const owners = (ENV.OWNER_IDS || []).map(String);
+  return Boolean(userId && owners.includes(String(userId)));
+}
+
 function logAudit(actorId, action, detail) {
   try {
     db.prepare('INSERT INTO audit_logs (actor_id, action, detail, created_at) VALUES (?, ?, ?, ?)')
@@ -64,10 +70,9 @@ function purgeWargaData(userId, username = '') {
 }
 
 export function registerBotHandlers(bot) {
-  // Daftarkan command khusus Lapak & Item Collab
   registerLapakCommands(bot);
 
-  // 1. Tracker Spark Buddies di Grup
+  // 1. Tracker Spark Buddies di Grup (Support 3 Slot & Abaikan Kasus Selesai)
   bot.on('message', async (ctx, next) => {
     try {
       const chatType = ctx.chat?.type;
@@ -96,15 +101,17 @@ export function registerBotHandlers(bot) {
               last_msg_ts = excluded.last_msg_ts
           `).run(today, usn, newGap, newMsg, nowSec);
 
-          const pair = db.prepare(`
+          const pairs = db.prepare(`
             SELECT * FROM spark_pairs
-            WHERE (user1 = ? OR user2 = ?) AND status = 'paired'
-            LIMIT 1
-          `).get(usn, usn);
+            WHERE (user1 = ? OR user2 = ?)
+              AND status = 'paired'
+              AND COALESCE(case_status, 'OPEN') != 'COMPLETED'
+          `).all(usn, usn);
 
-          if (pair) {
+          const repliedUsn = (ctx.message?.reply_to_message?.from?.username || '').toLowerCase();
+
+          for (const pair of pairs) {
             const partner = pair.user1 === usn ? pair.user2 : pair.user1;
-            const repliedUsn = (ctx.message?.reply_to_message?.from?.username || '').toLowerCase();
             if (repliedUsn && repliedUsn === partner) {
               db.prepare('UPDATE spark_pairs SET xp = xp + 5 WHERE id = ?').run(pair.id);
             }
@@ -210,9 +217,41 @@ export function registerBotHandlers(bot) {
     await ctx.reply(`🔥 <b>SPARK RESMI MENYALA!</b>\n@${escHtml(row.user1)} x @${escHtml(usn)} sekarang resmi jadi Spark Buddies!`, { parse_mode: 'HTML' });
   });
 
-  // 4. Warga & Ekonomi Commands
-  bot.command('delwarga', async (ctx) => {
+  // 4. Keamanan, Warga & Ekonomi (PSC Admin Wajib Izin Owner!)
+  bot.command(['freeze', 'unfreeze'], async (ctx) => {
     if (!isBotOwnerOrAdmin(ctx.from.id)) return ctx.reply('⛔ Khusus Owner & Admin.');
+    const isFreeze = ctx.message.text.startsWith('/freeze');
+    const args = String(ctx.match || '').trim().split(/\s+/).filter(Boolean);
+    const replyUser = ctx.message?.reply_to_message?.from;
+    let targetUser = null;
+    let reason = 'Penertiban Markas';
+
+    if (replyUser && !replyUser.is_bot) {
+      targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(String(replyUser.id));
+      if (args.length) reason = args.join(' ');
+    } else if (args.length >= 1) {
+      const raw = args[0].replace(/^@/, '');
+      targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(raw, raw);
+      if (args.length > 1) reason = args.slice(1).join(' ');
+    } else {
+      return ctx.reply('Format: <code>/freeze @username alasan</code> atau reply pesan warga.', { parse_mode: 'HTML' });
+    }
+
+    if (!targetUser) return ctx.reply('Warga tidak ditemukan di database PunkID.');
+    if (isStrictOwner(targetUser.id)) return ctx.reply('⛔ Akun Owner tidak dapat dibekukan.');
+
+    db.prepare('UPDATE users SET is_frozen = ? WHERE id = ?').run(isFreeze ? 1 : 0, targetUser.id);
+    logAudit(ctx.from.id, isFreeze ? 'FREEZE (BOT)' : 'UNFREEZE (BOT)', `${targetUser.name} (${reason})`);
+    await ctx.reply(
+      isFreeze
+        ? `🧊 <b>AKUN DIBEKUKAN SEMENTARA</b>\nWarga: <b>${escHtml(targetUser.name)}</b>\nAlasan: <i>${escHtml(reason)}</i>`
+        : `✅ <b>AKUN DIPULIHKAN</b>\nWarga <b>${escHtml(targetUser.name)}</b> sudah bisa beraktivitas kembali.`,
+      { parse_mode: 'HTML' }
+    );
+  });
+
+  bot.command('delwarga', async (ctx) => {
+    if (!isStrictOwner(ctx.from.id)) return ctx.reply('⛔ Penghapusan permanen data warga khusus Owner.');
     const rawTarget = String(ctx.match || '').trim().replace(/^@/, '');
     const replyUser = ctx.message?.reply_to_message?.from;
     let targetUser = null;
@@ -232,12 +271,12 @@ export function registerBotHandlers(bot) {
   });
 
   bot.command('givepsc', async (ctx) => {
-    if (!isBotOwnerOrAdmin(ctx.from.id)) return ctx.reply('⛔ Khusus Owner & Admin doang.');
+    if (!isBotOwnerOrAdmin(ctx.from.id)) return ctx.reply('⛔ Khusus Owner & Admin.');
     const args = String(ctx.match || '').trim().split(/\s+/).filter(Boolean);
     const replyUser = ctx.message?.reply_to_message?.from;
     let targetUser = null;
     let amount = 0;
-    let reason = 'Top Up / Give Admin';
+    let reason = 'Hadiah / Apresiasi Event';
 
     if (replyUser && !replyUser.is_bot && args.length >= 1 && /^-?\d+$/.test(args[0])) {
       amount = Number(args[0]);
@@ -249,19 +288,53 @@ export function registerBotHandlers(bot) {
       if (args.length > 2) reason = args.slice(2).join(' ');
       targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
     } else {
-      return ctx.reply('Format: <code>/givepsc @username 500</code> atau reply pesan warga lalu <code>/givepsc 500</code>', { parse_mode: 'HTML' });
+      return ctx.reply('Format: <code>/givepsc @username 500 alasan</code> atau reply pesan warga lalu <code>/givepsc 500</code>', { parse_mode: 'HTML' });
     }
 
     if (!amount || Number.isNaN(amount)) return ctx.reply('Nominal koin PSC harus berupa angka valid.');
     if (!targetUser) return ctx.reply('Warga belum terdaftar di database PunkID.');
 
-    db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(amount, targetUser.id);
-    const updated = db.prepare('SELECT psc FROM users WHERE id = ?').get(targetUser.id);
-    logAudit(ctx.from.id, 'GIVE PSC (BOT)', `${amount > 0 ? '+' : ''}${amount} PSC ke ${targetUser.name} (${reason})`);
+    // Jika yang menjalankan adalah OWNER -> langsung eksekusi
+    if (isStrictOwner(ctx.from.id)) {
+      db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(amount, targetUser.id);
+      const updated = db.prepare('SELECT psc FROM users WHERE id = ?').get(targetUser.id);
+      logAudit(ctx.from.id, 'OWNER PSC (BOT)', `${amount > 0 ? '+' : ''}${amount} PSC ke ${targetUser.name} (${reason})`);
 
-    const sign = amount > 0 ? `+${amount}` : `${amount}`;
-    await ctx.reply(
-      `💰 <b>TRANSAKSI PSC BERHASIL</b>\n• Penerima: <b>${escHtml(targetUser.name)}</b>\n• Nominal: <b>${sign} PSC</b>\n• Saldo Sekarang: <b>${updated.psc} PSC</b>\n• Keterangan: <i>${escHtml(reason)}</i>`,
+      const sign = amount > 0 ? `+${amount}` : `${amount}`;
+      return ctx.reply(
+        `💰 <b>TRANSAKSI PSC BERHASIL (OWNER)</b>\n• Penerima: <b>${escHtml(targetUser.name)}</b>\n• Nominal: <b>${sign} PSC</b>\n• Saldo Sekarang: <b>${updated.psc} PSC</b>\n• Keterangan: <i>${escHtml(reason)}</i>`,
+        { parse_mode: 'HTML' }
+      );
+    }
+
+    // Jika ADMIN biasa -> wajib masuk antrean izin Owner!
+    if (amount < 1 || amount > 5000) {
+      return ctx.reply('Admin hanya bisa mengajukan pencairan positif antara 1 s/d 5.000 PSC untuk disetujui Owner.');
+    }
+
+    const reqId = 'req_' + crypto.randomBytes(4).toString('hex');
+    const requesterName = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ') || 'Admin';
+    db.prepare(`
+      INSERT INTO psc_requests (id, requester_id, requester_name, target_id, target_name, amount, reason, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+    `).run(reqId, String(ctx.from.id), requesterName, String(targetUser.id), targetUser.name, amount, reason, Date.now());
+
+    logAudit(ctx.from.id, 'AJUKAN PSC (BOT)', `${requesterName} mengajukan ${amount} PSC ke ${targetUser.name}`);
+
+    const kb = new InlineKeyboard()
+      .text('✅ Izinkan & Cairkan', `psc_acc:${reqId}`)
+      .text('❌ Tolak', `psc_rej:${reqId}`);
+
+    for (const ownerId of (ENV.OWNER_IDS || [])) {
+      await bot.api.sendMessage(
+        ownerId,
+        `🔐 <b>PERMINTAAN IZIN PENCAIRAN PSC</b>\n\n• Admin Pengaju: <b>${escHtml(requesterName)}</b>\n• Penerima: <b>${escHtml(targetUser.name)}</b>\n• Nominal: <b>+${amount} PSC</b>\n• Alasan: <i>${escHtml(reason)}</i>\n\nKetuk tombol di bawah untuk memberi izin:`,
+        { parse_mode: 'HTML', reply_markup: kb }
+      ).catch(() => {});
+    }
+
+    return ctx.reply(
+      `⏳ <b>MENUNGGU IZIN OWNER</b>\nPengajuan <b>+${amount} PSC</b> untuk <b>${escHtml(targetUser.name)}</b> sudah dikirim ke Owner Markas untuk disetujui.`,
       { parse_mode: 'HTML' }
     );
   });
@@ -288,7 +361,7 @@ export function registerBotHandlers(bot) {
 
   bot.command('setrole', async (ctx) => {
     const senderId = String(ctx.from.id);
-    if (!(ENV.OWNER_IDS || []).map(String).includes(senderId)) return ctx.reply('⛔ Khusus Owner utama.');
+    if (!isStrictOwner(senderId)) return ctx.reply('⛔ Khusus Owner utama.');
     const args = String(ctx.match || '').trim().split(/\s+/).filter(Boolean);
     if (args.length < 2) return ctx.reply('Format: <code>/setrole @username admin</code>', { parse_mode: 'HTML' });
 
@@ -297,7 +370,7 @@ export function registerBotHandlers(bot) {
     if (!['admin', 'moderator', 'member'].includes(role)) return ctx.reply('Role cuma boleh: admin, moderator, atau member.');
 
     const targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
-    if (!targetUser) return ctx.reply('Warga kaga ketemu di database PunkID.');
+    if (!targetUser) return ctx.reply('Warga tidak ketemu di database PunkID.');
 
     db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, targetUser.id);
     logAudit(senderId, 'SET ROLE (BOT)', `${targetUser.name} -> ${role}`);
@@ -438,8 +511,10 @@ export function registerBotHandlers(bot) {
   });
 
   // 6. Callback Inline Buttons
-  bot.on('callback_query:data', async (ctx) => {
+  bot.on('callback_query:data', async (ctx, next) => {
     const data = ctx.callbackQuery.data;
+    if (data.startsWith('psc_')) return next();
+
     const admin = isBotAdmin(ctx.from.id);
     const isPrivate = ctx.chat?.type === 'private';
 
@@ -523,4 +598,24 @@ export function registerBotHandlers(bot) {
       if (m.is_bot) continue;
       const body = formatTemplate(tpl, m, count);
       try {
-        if (mediaRaw.startsWith('animation:')) await ctx.replyWithAnimation(mediaRaw.slice(10),
+        if (mediaRaw.startsWith('animation:')) await ctx.replyWithAnimation(mediaRaw.slice(10), { caption: body, parse_mode: 'HTML', reply_markup: kb });
+        else if (mediaRaw.startsWith('sticker:')) { await ctx.replyWithSticker(mediaRaw.slice(8)); await ctx.reply(body, { parse_mode: 'HTML', reply_markup: kb }); }
+        else await ctx.reply(body, { parse_mode: 'HTML', reply_markup: kb });
+      } catch (e) {}
+    }
+  });
+
+  bot.on('message:left_chat_member', async (ctx) => {
+    const m = ctx.message.left_chat_member;
+    if (!m || m.is_bot) return;
+    const tpl = getSetting('bye_text', DEFAULT_BYE);
+    const mediaRaw = getSetting('bye_media', '');
+    const kb = buildByeKeyboard();
+    const body = formatTemplate(tpl, m, 0);
+    try {
+      if (mediaRaw.startsWith('animation:')) await ctx.replyWithAnimation(mediaRaw.slice(10), { caption: body, parse_mode: 'HTML', reply_markup: kb });
+      else if (mediaRaw.startsWith('sticker:')) { await ctx.replyWithSticker(mediaRaw.slice(8)); await ctx.reply(body, { parse_mode: 'HTML', reply_markup: kb }); }
+      else await ctx.reply(body, { parse_mode: 'HTML', reply_markup: kb });
+    } catch (e) {}
+  });
+}
