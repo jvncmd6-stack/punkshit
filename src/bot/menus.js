@@ -206,7 +206,7 @@ export function renderTutorMiniAppText(page = 'overview') {
       '<blockquote>' +
       '<b>🔥 Spark Buddies (Maks. 3 Slot)</b>\n' +
       '• Undang partner lewat <code>@username</code> → partner ACC via bot / <code>/acc</code>.\n' +
-      '• Aktif chat bareng di grup tiap hari untuk menaikkan <b>Spark Streak</b> (+10 XP, bonus +5 XP jika saling reply, & <b>+15% XP</b> di Arena).' +
+      '• Setor harian lewat tombol di Spark Buddies atau ketik <code>/setor</code> (1x/hari) dan aktif chat bareng di grup untuk menaikkan <b>Spark Streak</b> (7 hari berturut-turut = kasus mingguan selesai + bonus <b>100 PSC</b>).' +
       '</blockquote>'
     );
   }
@@ -246,9 +246,9 @@ export function renderTutorMiniAppText(page = 'overview') {
       '<blockquote>' +
       '<b>👁️ POV Pengurus (Ruang Dalang)</b>\n' +
       '• Menu eksklusif <i>Owner / Admin / Moderator</i> di Mini App:\n' +
-      '  – Moderasi ACC / Tolak <b>Menfess</b> masuk.\n' +
-      '  – Buka polling <b>Sidang Warga</b> & tambah jadwal <b>Kalender</b>.\n' +
-      '  – Punya tombol <b>🗑️ Hapus</b> & <b>🧹 Bersihkan</b> di Arsip Menfess & Wanted Board.' +
+      '  – Moderasi ACC / Tolak <b>Menfess</b> masuk & kurasi <b>Item Collab</b>.\n' +
+      '  – Bekukan sementara akun warga bermasalah (<i>Freeze / Unfreeze</i>).\n' +
+      '  – Ajukan hadiah/pencairan PSC warga (wajib ACC <b>Owner Markas</b> sebelum cair).' +
       '</blockquote>'
     );
   }
@@ -279,6 +279,7 @@ export function renderKamusText() {
     '<blockquote>' +
     '<b>2. Spark Buddies & Dompet:</b>\n' +
     '• <code>/spark</code> — Buka menu Spark Buddies\n' +
+    '• <code>/setor</code> — Setor harian nyalain api Spark (1x/hari)\n' +
     '• <code>/acc</code> — Terima ajakan Spark yang masuk\n' +
     '• <code>/cekpsc</code> — Cek saldo PSC & Street Cred' +
     '</blockquote>\n\n' +
@@ -296,22 +297,25 @@ export function renderAdminCmdText() {
   const byeMedia = getSetting('bye_media', '');
 
   return (
-    '⚙️ <b>COMMAND ADMIN — EKONOMI, WARGA & SYSTEM</b>\n\n' +
+    '⚙️ <b>COMMAND ADMIN — KEAMANAN, EKONOMI & SYSTEM</b>\n\n' +
     '<blockquote>' +
     `• Grup ID: <code>${escHtml(ENV.GROUP_ID || 'Kosong')}</code>\n` +
     `• Channel ID: <code>${escHtml(ENV.CHANNEL_ID || 'Kosong')}</code>\n` +
     `• Gudang Musik: <b>${wh ? 'Terhubung' : 'Belum Diset'}</b>\n` +
     `• Media Greet: <b>${greetMedia ? greetMedia.split(':')[0].toUpperCase() : 'Kosong'}</b> | Bye: <b>${byeMedia ? byeMedia.split(':')[0].toUpperCase() : 'Kosong'}</b>` +
     '</blockquote>\n\n' +
-    '<b>Top Up PSC, Role & Hapus Warga:</b>\n' +
-    '• <code>/givepsc @username 500</code> — Kirim/top up koin PSC\n' +
-    '• <code>/givepsc 500</code> — Reply pesan warga di grup untuk give koin\n' +
-    '• <code>/givepsc @username -200</code> — Potong koin PSC warga\n' +
+    '<b>Keamanan & Penertiban Warga:</b>\n' +
+    '• <code>/freeze @username alasan</code> — Bekukan akun warga bermasalah\n' +
+    '• <code>/unfreeze @username</code> — Pulihkan akun warga\n' +
+    '• <code>/delwarga @username</code> — Hapus permanen PunkID (Khusus Owner)\n\n' +
+    '<b>Ekonomi PSC & Role (Wajib Izin Owner):</b>\n' +
+    '• <code>/givepsc @username 500 alasan</code> — Ajukan/cairkan PSC (Admin masuk antrean izin Owner)\n' +
     '• <code>/cekpsc @username</code> — Cek saldo & role warga\n' +
-    '• <code>/setrole @username admin</code> — Atur role (admin/moderator/member)\n' +
-    '• <code>/delwarga @username</code> — Hapus data PunkID warga (otomatis terhapus saat keluar/di-kick)\n\n' +
-    '<b>Kelola Radio Gang:</b>\n' +
-    '• <code>/done 12</code> | <code>/clearradio</code> — Tandai selesai / kosongkan antrean\n\n' +
+    '• <code>/setrole @username admin</code> — Atur role (Khusus Owner)\n\n' +
+    '<b>Kurasi Lapak & Radio Gang:</b>\n' +
+    '• <code>/list_collab</code> | <code>/acc_collab ID</code> | <code>/tolak_collab ID</code>\n' +
+    '• <code>/restock ID stok</code> | <code>/hapus_lapak ID</code>\n' +
+    '• <code>/done 12</code> | <code>/clearradio</code> — Kelola antrean Radio Gang\n\n' +
     '<b>Atur Sambutan Masuk (Greet) & Keluar (Bye):</b>\n' +
     '• <code>/setgreet teks baru</code> | <code>/setbye teks baru</code>\n' +
     '• <code>/setgreetmedia</code> | <code>/setbyemedia</code> (reply GIF/Stiker)\n' +
