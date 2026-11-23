@@ -93,8 +93,8 @@ export function startBot() {
     { command: 'myid', description: 'Cek Telegram ID Kamu' }
   ]).catch(() => {});
 
-  registerBotHandlers(bot);
   registerSparkAdminSync(bot);
+  registerBotHandlers(bot);
 
   bot.catch((err) => {
     console.error('[Bot Error]:', err.message);
