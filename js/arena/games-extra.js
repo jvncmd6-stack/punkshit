@@ -4,6 +4,22 @@
   var API = window.PunkAPI;
   var S = C.S;
 
+  var OPTION_BTN_STYLE =
+    'margin:0;height:auto;min-height:unset;width:100%;display:block;text-align:left;' +
+    'padding:11px 13px;white-space:normal;line-height:1.35;overflow:visible;';
+
+  function renderChoiceBtn(act, attrName, attrVal, titleText, priceText, descText, extraStyle) {
+    return (
+      '<button class="btn b2" style="' + OPTION_BTN_STYLE + (extraStyle || '') + '" data-act="' + act + '" ' + attrName + '="' + attrVal + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px">' +
+          '<b style="font-size:13px;line-height:1.25">' + titleText + '</b>' +
+          '<span style="color:#FFD633;font-size:11px;font-weight:800;white-space:nowrap;flex-shrink:0">' + priceText + '</span>' +
+        '</div>' +
+        '<div style="font-size:11px;opacity:.78;font-weight:400;line-height:1.35;white-space:normal">' + descText + '</div>' +
+      '</button>'
+    );
+  }
+
   var LOCAL_TRIVIA_BANK = {
     easy: [
       { cat: 'Nusantara', q: 'Apa nama ibu kota Provinsi Jawa Barat?', opts: ['Bandung', 'Bogor', 'Cirebon', 'Bekasi'], ans: 0 },
@@ -40,7 +56,7 @@
       { cat: 'Biologi', q: 'Organel sel yang dijuluki sebagai "powerhouse of the cell" penghasil energi ATP adalah...', opts: ['Ribosom', 'Mitokondria', 'Lisosom', 'Badan Golgi'], ans: 1 },
       { cat: 'Teknologi', q: 'Dalam protokol HTTP, kode status 403 memiliki arti...', opts: ['Not Found', 'Unauthorized', 'Forbidden', 'Bad Gateway'], ans: 2 },
       { cat: 'Geografi Dunia', q: 'Titik terdalam di samudra Bumi yang terletak di Samudra Pasifik adalah Palung...', opts: ['Tonga', 'Mariana', 'Java', 'Puerto Rico'], ans: 1 },
-      { cat: 'Matematika', q: 'Berapa nilai dari $2^5 + 3^3$?', opts: ['59', '57', '61', '55'], ans: 0 },
+      { cat: 'Matematika', q: 'Berapa nilai dari 2^5 + 3^3?', opts: ['59', '57', '61', '55'], ans: 0 },
       { cat: 'Kimia', q: 'Unsur kimia dengan nomor atom 79 yang memiliki simbol Au adalah...', opts: ['Perak', 'Platinum', 'Emas', 'Raksa'], ans: 2 },
       { cat: 'Astronomi', q: 'Jarak rata-rata dari Bumi ke Matahari yang dijadikan satuan astronomi (1 AU) adalah sekitar...', opts: ['15 juta km', '150 juta km', '1,5 miliar km', '384 ribu km'], ans: 1 },
       { cat: 'Sejarah', q: 'Kerajaan maritim besar di Nusantara yang berpusat di Sumatera dan menguasai jalur Selat Malaka adalah...', opts: ['Majapahit', 'Singhasari', 'Sriwijaya', 'Tarumanegara'], ans: 2 },
@@ -53,7 +69,6 @@
     var bank = (LOCAL_TRIVIA_BANK[tier] || LOCAL_TRIVIA_BANK.medium).slice();
     bank.sort(function () { return Math.random() - 0.5; });
     var count = tier === 'hard' ? 6 : 5;
-
     if (tier === 'medium' && Array.isArray(serverQuestions) && serverQuestions.length >= 5) {
       return { questions: serverQuestions, isLocalCheck: false };
     }
@@ -61,7 +76,7 @@
   }
 
   // ==========================================
-  // GAME 4: REACTION RUSH 2.0 (3 TIER KESULITAN)
+  // GAME 4: REACTION RUSH 2.0
   // ==========================================
   A.openReaction2 = function () {
     A.clearGameLoops();
@@ -69,18 +84,9 @@
       '<h2>⚡ Reaction Rush 2.0</h2>' +
       '<p class="sub">Pilih tingkat refleks! Di mode <b>Nightmare</b>, hati-hati terhadap sinyal jebakan <b>ORANYE</b>.</p>' +
       '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="rx-start" data-mode="classic">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟢 Classic (Mudah · 1x)</b><span style="color:#FFD633;font-size:12px">5–10 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">1 ronde pemanasan · Tap begitu kotak berubah hijau</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="rx-start" data-mode="bo5">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟡 Best of Five (Sedang · 5x)</b><span style="color:#FFD633;font-size:12px">12–20 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">Uji konsistensi 5 ronde berturut-turut tanpa false start</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px;border-color:rgba(248,113,113,.4)" data-act="rx-start" data-mode="nightmare">' +
-          '<div style="display:flex;justify-content:space-between"><b>🔴 Nightmare Trap (Sulit · 6x)</b><span style="color:#FFD633;font-size:12px">20–32 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">6 ronde cepat + umpan warna ORANYE palsu (jangan dipencet!)</small>' +
-        '</button>' +
+        renderChoiceBtn('rx-start', 'data-mode', 'classic', '🟢 Classic · Mudah (1x)', '5–10 PSC', '1 ronde pemanasan · Tap begitu kotak berubah hijau') +
+        renderChoiceBtn('rx-start', 'data-mode', 'bo5', '🟡 Best of Five · Sedang (5x)', '12–20 PSC', 'Uji konsistensi 5 ronde berturut-turut tanpa false start') +
+        renderChoiceBtn('rx-start', 'data-mode', 'nightmare', '🔴 Nightmare Trap · Sulit (6x)', '20–32 PSC', '6 ronde cepat + umpan warna ORANYE palsu (jangan dipencet!)', 'border-color:rgba(248,113,113,.45);') +
       '</div>' +
       '<div id="rx-area"></div>' +
       '<div id="ar-res" style="margin-top:8px;font-size:13px;font-weight:700;color:var(--yel)"></div>'
@@ -112,7 +118,7 @@
       round++;
       ready = false;
       area.innerHTML =
-        '<button id="rx-pad" style="width:100%;height:145px;border-radius:18px;background:#EF4444;color:#fff;font-size:18px;font-weight:900;border:none">' +
+        '<button id="rx-pad" style="width:100%;height:145px;border-radius:18px;background:#EF4444;color:#fff;font-size:16px;font-weight:900;border:none;padding:12px">' +
           'Ronde ' + round + '/' + totalRounds + ' — TUNGGU HIJAU...' +
         '</button>';
 
@@ -140,7 +146,7 @@
         if (!ready) {
           A.clearGameLoops();
           pad.style.background = '#64748B';
-          pad.textContent = 'FALSE START! (Terlalu Cepat / Kena Jebakan)';
+          pad.textContent = 'FALSE START! (Terlalu Cepat)';
           out.textContent = 'Klik tingkat kesulitan di atas untuk mengulang.';
           return;
         }
@@ -176,7 +182,7 @@
   };
 
   // ==========================================
-  // GAME 5: PUNK TRIVIA 2.0 (3 TIER + BANK SOAL)
+  // GAME 5: PUNK TRIVIA 2.0
   // ==========================================
   A.openTrivia2 = function () {
     A.clearGameLoops();
@@ -184,18 +190,9 @@
       '<h2>🧠 Punk Trivia 2.0</h2>' +
       '<p class="sub">Pilih level pertanyaan! Makin tinggi levelnya, makin menantang soalnya & makin besar hadiahnya.</p>' +
       '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="triv-tier" data-tier="easy">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟢 Santai (Mudah · 5 Soal)</b><span style="color:#FFD633;font-size:12px">6–12 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">Pengetahuan umum ringan, Nusantara, & budaya sehari-hari</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="triv-tier" data-tier="medium">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟡 Anak Tongkrongan (Sedang · 5 Soal)</b><span style="color:#FFD633;font-size:12px">12–22 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">Musik indie, sejarah, sains populer, & logika dasar</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px;border-color:rgba(248,113,113,.4)" data-act="triv-tier" data-tier="hard">' +
-          '<div style="display:flex;justify-content:space-between"><b>🔴 Otak Encer (Sulit · 6 Soal)</b><span style="color:#FFD633;font-size:12px">20–35 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">Fisika, logika ketat, astronomi, & teka-teki tingkat tinggi</small>' +
-        '</button>' +
+        renderChoiceBtn('triv-tier', 'data-tier', 'easy', '🟢 Santai · Mudah (5 Soal)', '6–12 PSC', 'Pengetahuan umum ringan, Nusantara, & budaya sehari-hari') +
+        renderChoiceBtn('triv-tier', 'data-tier', 'medium', '🟡 Tongkrongan · Sedang (5 Soal)', '12–22 PSC', 'Musik indie, sejarah, sains populer, & logika dasar') +
+        renderChoiceBtn('triv-tier', 'data-tier', 'hard', '🔴 Otak Encer · Sulit (6 Soal)', '20–35 PSC', 'Fisika, logika ketat, astronomi, & teka-teki tingkat tinggi', 'border-color:rgba(248,113,113,.45);') +
       '</div>'
     );
   };
@@ -231,7 +228,7 @@
               : res.resultText;
             box.innerHTML =
               '<div style="padding:14px;background:rgba(56,189,248,.14);border-radius:14px;text-align:center">' +
-                '<div style="font-size:15px;font-weight:900;color:#FFD633;margin-bottom:8px">' + C.esc(summary) + '</div>' +
+                '<div style="font-size:15px;font-weight:900;color:#FFD633;margin-bottom:8px;line-height:1.4">' + C.esc(summary) + '</div>' +
                 '<button class="btn" data-act="shut">SELESAI</button>' +
               '</div>';
             C.notify('Mas Raka', 'Punk Trivia', summary);
@@ -248,10 +245,10 @@
             '<span>SOAL ' + (idx + 1) + ' / ' + questions.length + '</span>' +
             '<span>Kategori: ' + C.esc(q.cat || 'Umum') + '</span>' +
           '</div>' +
-          '<div style="font-size:14.5px;font-weight:700;margin-bottom:10px;line-height:1.4">' + C.esc(q.q) + '</div>' +
+          '<div style="font-size:14px;font-weight:700;margin-bottom:10px;line-height:1.45">' + C.esc(q.q) + '</div>' +
           '<div style="display:flex;flex-direction:column;gap:8px">' +
             q.opts.map(function (opt, optIdx) {
-              return '<button class="btn b2 triv-opt" data-opt="' + optIdx + '" style="margin:0;text-align:left">' + C.esc(opt) + '</button>';
+              return '<button class="btn b2 triv-opt" data-opt="' + optIdx + '" style="' + OPTION_BTN_STYLE + 'font-size:12.5px">' + C.esc(opt) + '</button>';
             }).join('') +
           '</div>';
 
@@ -273,7 +270,7 @@
   }
 
   // ==========================================
-  // GAME 6: GEBUK SIAPA? (3 LEVEL ARENA)
+  // GAME 6: GEBUK SIAPA?
   // ==========================================
   A.openWhackGame = function () {
     A.clearGameLoops();
@@ -281,18 +278,9 @@
       '<h2>🔨 Gebuk Siapa?</h2>' +
       '<p class="sub">Pilih kecepatan arena! Target: 👾 (+15), 👑 Bos (+30), hindari 💣 Bom (-25)!</p>' +
       '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="wk-tier" data-tier="easy">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟢 Santai (Mudah · 3x3)</b><span style="color:#FFD633;font-size:12px">5–10 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">Muncul pelan (800ms) · Sedikit bom</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="wk-tier" data-tier="medium">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟡 Rush (Sedang · 3x3)</b><span style="color:#FFD633;font-size:12px">10–18 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">Muncul cepat (600ms) · Ada Bos 👑 +30 poin</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px;border-color:rgba(248,113,113,.4)" data-act="wk-tier" data-tier="hard">' +
-          '<div style="display:flex;justify-content:space-between"><b>🔴 Brutal (Sulit · 4x4)</b><span style="color:#FFD633;font-size:12px">18–28 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">16 lubang super kilat (460ms) · Bom 35%!</small>' +
-        '</button>' +
+        renderChoiceBtn('wk-tier', 'data-tier', 'easy', '🟢 Santai · Mudah (3x3)', '5–10 PSC', 'Muncul pelan (800ms) · Sedikit bom') +
+        renderChoiceBtn('wk-tier', 'data-tier', 'medium', '🟡 Rush · Sedang (3x3)', '10–18 PSC', 'Muncul cepat (600ms) · Ada Bos 👑 +30 poin') +
+        renderChoiceBtn('wk-tier', 'data-tier', 'hard', '🔴 Brutal · Sulit (4x4)', '18–28 PSC', '16 lubang super kilat (460ms) · Bom 35%!', 'border-color:rgba(248,113,113,.45);') +
       '</div>'
     );
   };
@@ -392,7 +380,7 @@
   }
 
   // ==========================================
-  // GAME 7: ADU INGATAN (3 UKURAN GRID)
+  // GAME 7: ADU INGATAN
   // ==========================================
   A.openMemoryGame = function () {
     A.clearGameLoops();
@@ -400,18 +388,9 @@
       '<h2>🃏 Adu Ingatan</h2>' +
       '<p class="sub">Pilih ukuran papan kartu! Makin sedikit langkah & makin besar papan, makin besar hadiahnya.</p>' +
       '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="mem-tier" data-tier="easy">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟢 Papan 3x4 (Mudah · 6 Pasang)</b><span style="color:#FFD633;font-size:12px">5–10 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">12 kartu pemanasan ingatan singkat</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="mem-tier" data-tier="medium">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟡 Papan 4x4 (Sedang · 8 Pasang)</b><span style="color:#FFD633;font-size:12px">10–18 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">16 kartu standar arcade</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px;border-color:rgba(248,113,113,.4)" data-act="mem-tier" data-tier="hard">' +
-          '<div style="display:flex;justify-content:space-between"><b>🔴 Papan 4x5 (Sulit · 10 Pasang)</b><span style="color:#FFD633;font-size:12px">16–26 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">20 kartu butuh memori tajam!</small>' +
-        '</button>' +
+        renderChoiceBtn('mem-tier', 'data-tier', 'easy', '🟢 Papan 3x4 · Mudah (6 Pasang)', '5–10 PSC', '12 kartu pemanasan ingatan singkat') +
+        renderChoiceBtn('mem-tier', 'data-tier', 'medium', '🟡 Papan 4x4 · Sedang (8 Pasang)', '10–18 PSC', '16 kartu standar arcade') +
+        renderChoiceBtn('mem-tier', 'data-tier', 'hard', '🔴 Papan 4x5 · Sulit (10 Pasang)', '16–26 PSC', '20 kartu butuh memori tajam!', 'border-color:rgba(248,113,113,.45);') +
       '</div>'
     );
   };
@@ -452,7 +431,7 @@
     deck.forEach(function (sym) {
       var card = document.createElement('button');
       card.className = 'btn b2';
-      card.style.cssText = 'margin:0;height:52px;font-size:21px;padding:0';
+      card.style.cssText = 'margin:0;height:52px;font-size:21px;padding:0;display:grid;place-items:center';
       card.textContent = '❓';
       card.onclick = async function () {
         if (lock || card.dataset.open === '1') return;
