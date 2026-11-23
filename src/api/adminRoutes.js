@@ -20,16 +20,35 @@ db.exec(`
     detail TEXT NOT NULL,
     created_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS psc_requests (
+    id TEXT PRIMARY KEY,
+    requester_id TEXT NOT NULL,
+    requester_name TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    target_name TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at INTEGER NOT NULL
+  );
 `);
+
+try { db.exec('ALTER TABLE users ADD COLUMN is_frozen INTEGER DEFAULT 0'); } catch (_) {}
+
+function isOwnerUser(user) {
+  if (!user) return false;
+  const ownerIds = (ENV.OWNER_IDS || []).map(String);
+  return ownerIds.includes(String(user.id)) || user.role === 'owner';
+}
 
 function isAdminUser(user) {
   if (!user) return false;
-  const ownerIds = (ENV.OWNER_IDS || []).map(String);
-  if (ownerIds.includes(String(user.id))) return true;
-  return user.role === 'owner' || user.role === 'admin' || user.role === 'moderator';
+  if (isOwnerUser(user)) return true;
+  return user.role === 'admin' || user.role === 'moderator';
 }
 
 function isOwnerOnly(req) {
+  if (req.dbUser && isOwnerUser(req.dbUser)) return true;
   const uid = String(req.tgUser?.id || req.dbUser?.id || req.query.ownerId || '');
   const ownerIds = (ENV.OWNER_IDS || []).map(String);
   return Boolean(uid && ownerIds.includes(uid));
@@ -53,13 +72,68 @@ adminRouter.get('/admin/overview', requireUser, (req, res) => {
     pendingMenfess = db.prepare("SELECT * FROM menfess WHERE status = 'pending' ORDER BY created_at ASC LIMIT 30").all();
   } catch (e) {}
 
+  let pendingCollabs = [];
+  try {
+    pendingCollabs = db.prepare("SELECT * FROM collab_submissions WHERE status = 'pending' ORDER BY created_at ASC LIMIT 20").all();
+  } catch (e) {}
+
+  let pscRequests = [];
+  try {
+    pscRequests = db.prepare("SELECT * FROM psc_requests WHERE status = 'pending' ORDER BY created_at ASC LIMIT 30").all();
+  } catch (e) {}
+
   const users = db.prepare(
-    'SELECT id, name, username, role, psc, cred, photo_url AS photoUrl FROM users ORDER BY psc DESC LIMIT 100'
+    'SELECT id, name, username, role, psc, cred, COALESCE(is_frozen, 0) AS isFrozen, photo_url AS photoUrl FROM users ORDER BY cred DESC LIMIT 100'
   ).all();
 
   const logs = db.prepare('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 20').all();
 
-  res.json({ pendingMenfess, users, logs });
+  res.json({ pendingMenfess, pendingCollabs, pscRequests, users, logs });
+});
+
+// POST /api/admin/users/freeze -> Bekukan / Pulihkan akun warga bermasalah
+adminRouter.post('/admin/users/freeze', requireUser, (req, res) => {
+  if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
+
+  const rawTarget = String(req.body?.target || '').trim().replace(/^@/, '');
+  const mode = String(req.body?.mode || 'freeze');
+  const reason = String(req.body?.reason || 'Penertiban Markas').trim();
+  if (!rawTarget) return res.status(400).json({ error: 'Target warga wajib diisi.' });
+
+  const targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
+  if (!targetUser) return res.status(404).json({ error: 'Warga tidak ditemukan di database.' });
+  if (isOwnerUser(targetUser)) return res.status(403).json({ error: 'Akun Owner tidak dapat dibekukan.' });
+
+  const flag = mode === 'freeze' ? 1 : 0;
+  db.prepare('UPDATE users SET is_frozen = ? WHERE id = ?').run(flag, targetUser.id);
+  logAudit(req.dbUser.id, flag ? 'FREEZE WARGA' : 'UNFREEZE WARGA', `${targetUser.name} (${reason})`);
+
+  res.json({ ok: true });
+});
+
+// POST /api/admin/collab/review -> Kurasi Item Collab Warga
+adminRouter.post('/admin/collab/review', requireUser, async (req, res) => {
+  if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
+
+  const id = String(req.body?.id || '');
+  const decision = String(req.body?.decision || 'reject');
+  const sub = db.prepare('SELECT * FROM collab_submissions WHERE id = ?').get(id);
+  if (!sub) return res.status(404).json({ error: 'Pengajuan collab tidak ditemukan.' });
+
+  if (decision === 'approve') {
+    const itemId = 'col_' + crypto.randomBytes(4).toString('hex');
+    db.prepare(`
+      INSERT INTO items (id, type, name, price, rarity, stock, desc, image_url, created_at)
+      VALUES (?, ?, ?, ?, 'Collab', -1, ?, ?, ?)
+    `).run(itemId, sub.type || 'gift', sub.name, Number(sub.price) || 100, `Karya Collab oleh ${sub.creator_name}`, sub.image_url || '', Date.now());
+    db.prepare("UPDATE collab_submissions SET status = 'approved' WHERE id = ?").run(id);
+    logAudit(req.dbUser.id, 'ACC COLLAB', `${sub.name} oleh ${sub.creator_name}`);
+  } else {
+    db.prepare("UPDATE collab_submissions SET status = 'rejected' WHERE id = ?").run(id);
+    logAudit(req.dbUser.id, 'TOLAK COLLAB', `${sub.name} oleh ${sub.creator_name}`);
+  }
+
+  res.json({ ok: true, catalog: getCatalog() });
 });
 
 // POST /api/admin/items -> Tambah item ke Lapak Rongsok (tabel items)
@@ -147,8 +221,8 @@ adminRouter.post('/admin/events', requireUser, async (req, res) => {
 
   await broadcastToTelegram({
     target: 'both',
-    text: `<b>EVENT BARU: ${escHtml(title.toUpperCase())}</b>\nWaktu: <b>${escHtml(dateText)}</b>\nHadiah: <b>${escHtml(rewardText)}</b>`,
-    buttonText: 'IKUT RUSUH (RSVP)',
+    text: `<b>EVENT BARU: ${escHtml(title.toUpperCase())}</b>\nWaktu: <b>${escHtml(dateText)}</b>\nApresiasi: <b>${escHtml(rewardText)}</b>`,
+    buttonText: 'IKUT GABUNG (RSVP)',
     startParam: 'event',
     feedText: `Event baru: ${title} (${dateText}).`
   });
@@ -223,30 +297,86 @@ adminRouter.post('/admin/menfess/review', requireUser, async (req, res) => {
   res.json({ ok: true, pendingMenfess });
 });
 
-// POST /api/admin/economy/adjust -> Suntik / Tarik PSC warga
-adminRouter.post('/admin/economy/adjust', requireUser, (req, res) => {
+// ============================================================
+// KEAMANAN KEUANGAN: PENGAJUAN ADMIN -> PERSETUJUAN OWNER
+// ============================================================
+
+// POST /api/admin/economy/request -> Admin mengajukan hadiah/PSC (Menunggu ACC Owner)
+adminRouter.post('/admin/economy/request', requireUser, (req, res) => {
   if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
 
   const rawTarget = String(req.body?.target || '').trim().replace(/^@/, '');
+  const amount = Math.floor(Number(req.body?.amount) || 0);
+  const reason = String(req.body?.reason || '').trim().slice(0, 120);
+
+  if (!rawTarget || amount < 1 || amount > 5000 || reason.length < 3) {
+    return res.status(400).json({ error: 'Target, nominal (1-5000 PSC), dan alasan wajib diisi.' });
+  }
+
+  const targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
+  if (!targetUser) return res.status(404).json({ error: 'Warga penerima tidak ditemukan.' });
+
+  const reqId = 'req_' + crypto.randomBytes(4).toString('hex');
+  db.prepare(`
+    INSERT INTO psc_requests (id, requester_id, requester_name, target_id, target_name, amount, reason, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+  `).run(reqId, String(req.dbUser.id), req.dbUser.name, String(targetUser.id), targetUser.name, amount, reason, Date.now());
+
+  logAudit(req.dbUser.id, 'AJUKAN PSC', `${req.dbUser.name} mengajukan ${amount} PSC untuk ${targetUser.name} (${reason})`);
+  res.json({ ok: true });
+});
+
+// POST /api/admin/economy/review -> KHUSUS OWNER menyetujui atau menolak pengajuan PSC
+adminRouter.post('/admin/economy/review', requireUser, (req, res) => {
+  if (!isOwnerUser(req.dbUser)) {
+    return res.status(403).json({ error: 'Hanya Owner Markas yang berhak memberi izin pencairan PSC.' });
+  }
+
+  const id = String(req.body?.id || '');
+  const decision = String(req.body?.decision || 'reject');
+  const item = db.prepare("SELECT * FROM psc_requests WHERE id = ? AND status = 'pending'").get(id);
+  if (!item) return res.status(404).json({ error: 'Pengajuan sudah diproses atau tidak ditemukan.' });
+
+  if (decision === 'approve') {
+    db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(item.amount, item.target_id);
+    db.prepare("UPDATE psc_requests SET status = 'approved' WHERE id = ?").run(id);
+    logAudit(req.dbUser.id, 'IZIN PSC DISETUJUI', `+${item.amount} PSC ke ${item.target_name} (ajuan ${item.requester_name})`);
+  } else {
+    db.prepare("UPDATE psc_requests SET status = 'rejected' WHERE id = ?").run(id);
+    logAudit(req.dbUser.id, 'IZIN PSC DITOLAK', `Tolak ${item.amount} PSC untuk ${item.target_name}`);
+  }
+
+  res.json({ ok: true });
+});
+
+// POST /api/admin/economy/adjust -> Eksekusi langsung KHUSUS OWNER
+adminRouter.post('/admin/economy/adjust', requireUser, (req, res) => {
+  if (!isOwnerUser(req.dbUser)) {
+    return res.status(403).json({ error: 'Akses ditolak. Eksekusi langsung PSC hanya untuk Owner!' });
+  }
+
+  const rawTarget = String(req.body?.target || '').trim().replace(/^@/, '');
   const amount = Number(req.body?.amount);
-  const reason = String(req.body?.reason || 'Penyesuaian Admin').trim();
+  const reason = String(req.body?.reason || 'Penyesuaian Owner').trim();
 
   if (!rawTarget || !amount || Number.isNaN(amount)) {
     return res.status(400).json({ error: 'Target warga dan nominal PSC wajib valid.' });
   }
 
   const targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
-  if (!targetUser) return res.status(404).json({ error: 'Warga kaga ketemu di database.' });
+  if (!targetUser) return res.status(404).json({ error: 'Warga tidak ditemukan di database.' });
 
   db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(amount, targetUser.id);
-  logAudit(req.dbUser.id, 'EKONOMI PSC', `${amount > 0 ? '+' : ''}${amount} PSC ke ${targetUser.name} (${reason})`);
+  logAudit(req.dbUser.id, 'OWNER PSC', `${amount > 0 ? '+' : ''}${amount} PSC ke ${targetUser.name} (${reason})`);
 
   res.json({ ok: true });
 });
 
-// POST /api/admin/roles -> Atur jabatan pengurus
+// POST /api/admin/roles -> Atur jabatan pengurus (KHUSUS OWNER)
 adminRouter.post('/admin/roles', requireUser, (req, res) => {
-  if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
+  if (!isOwnerUser(req.dbUser)) {
+    return res.status(403).json({ error: 'Akses ditolak. Pengaturan role hanya untuk Owner!' });
+  }
 
   const rawTarget = String(req.body?.target || '').trim().replace(/^@/, '');
   const role = String(req.body?.role || 'member').trim().toLowerCase();
@@ -255,7 +385,7 @@ adminRouter.post('/admin/roles', requireUser, (req, res) => {
   }
 
   const targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
-  if (!targetUser) return res.status(404).json({ error: 'Warga kaga ketemu.' });
+  if (!targetUser) return res.status(404).json({ error: 'Warga tidak ditemukan.' });
 
   db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, targetUser.id);
   logAudit(req.dbUser.id, 'SET ROLE', `${targetUser.name} -> ${role}`);
@@ -267,14 +397,12 @@ adminRouter.post('/admin/roles', requireUser, (req, res) => {
 // MIGRASI SERVER: 1-KLIK BACKUP & RESTORE (KHUSUS OWNER_IDS)
 // ============================================================
 
-// GET /api/admin/backup?ownerId=123456789 -> Unduh arsip .tar.gz berisi Database + Uploads
 adminRouter.get('/admin/backup', (req, res) => {
   if (!isOwnerOnly(req)) {
     return res.status(403).json({ error: 'Akses ditolak. Khusus Owner Markas!' });
   }
 
   try {
-    // Pastikan WAL SQLite di-flush ke file utama sebelum dibungkus
     try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (_) {}
 
     const tmpFile = `/tmp/punkshit_backup_${Date.now()}.tar.gz`;
@@ -289,7 +417,6 @@ adminRouter.get('/admin/backup', (req, res) => {
   }
 });
 
-// GET /api/admin/restore-ui?ownerId=123456789 -> Halaman upload browser tanpa perlu terminal/curl
 adminRouter.get('/admin/restore-ui', (req, res) => {
   if (!isOwnerOnly(req)) {
     return res.status(403).send('Akses ditolak. Khusus Owner Markas!');
@@ -332,7 +459,6 @@ adminRouter.get('/admin/restore-ui', (req, res) => {
   </script></body></html>`);
 });
 
-// POST /api/admin/restore?ownerId=123456789 -> Ekstrak backup ke DATA_DIR & restart otomatis
 adminRouter.post('/admin/restore', uploadRestore.single('backup'), (req, res) => {
   if (!isOwnerOnly(req)) {
     return res.status(403).json({ error: 'Akses ditolak. Khusus Owner Markas!' });
