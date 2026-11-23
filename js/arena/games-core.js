@@ -4,6 +4,10 @@
   var API = window.PunkAPI;
   var S = C.S;
 
+  var OPTION_BTN_STYLE =
+    'margin:0;height:auto;min-height:unset;width:100%;display:block;text-align:left;' +
+    'padding:11px 13px;white-space:normal;line-height:1.35;overflow:visible;';
+
   var FISH_POOLS = {
     pinggir: [
       { key: 'lele_kaleng', name: 'Lele Kaleng Sarden', rarity: 'Common', weight: 0.8, price: 6 },
@@ -32,7 +36,6 @@
     rongsok: {
       title: '🟢 Box Rongsok (Mudah)',
       diff: 0.35,
-      rewardHint: '8–14 PSC',
       items: [
         { name: 'Kaset Pita Walkman Kusut', rarity: 'Common', icon: '📼', price: 8 },
         { name: 'Pin Peniti Tengkorak', rarity: 'Common', icon: '🧷', price: 9 },
@@ -43,7 +46,6 @@
     retro: {
       title: '🟡 Box Retro Y2K (Sedang)',
       diff: 0.65,
-      rewardHint: '15–26 PSC',
       items: [
         { name: 'Tamagotchi Jadul Nyala', rarity: 'Rare', icon: '🥚', price: 16 },
         { name: 'GameBoy Transparan Ungu', rarity: 'Rare', icon: '👾', price: 20 },
@@ -54,7 +56,6 @@
     boss: {
       title: '🔴 Brankas Boss (Sulit)',
       diff: 0.92,
-      rewardHint: '28–45 PSC',
       items: [
         { name: 'Jaket Kulit Studded Edisi Tour', rarity: 'Legendary', icon: '🧥', price: 32 },
         { name: 'Gitar Listrik Mini Gibson', rarity: 'Legendary', icon: '🎸', price: 36 },
@@ -64,30 +65,34 @@
     }
   };
 
+  function renderChoiceBtn(act, attrName, attrVal, titleText, priceText, descText, extraStyle) {
+    return (
+      '<button class="btn b2" style="' + OPTION_BTN_STYLE + (extraStyle || '') + '" data-act="' + act + '" ' + attrName + '="' + attrVal + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px">' +
+          '<b style="font-size:13px;line-height:1.25">' + titleText + '</b>' +
+          '<span style="color:#FFD633;font-size:11px;font-weight:800;white-space:nowrap;flex-shrink:0">' + priceText + '</span>' +
+        '</div>' +
+        '<div style="font-size:11px;opacity:.78;font-weight:400;line-height:1.35;white-space:normal">' + descText + '</div>' +
+      '</button>'
+    );
+  }
+
   // ==========================================
-  // GAME 1: MANCING GALATAMA 2.0 (TENSION METER)
+  // GAME 1: MANCING GALATAMA 2.0
   // ==========================================
   A.openFishing2 = function () {
     A.clearGameLoops();
     var left = A.state.fishQuota.left;
+    var dis = left <= 0 ? 'opacity:.5;pointer-events:none;' : '';
     C.sheet(
       '<h2>🎣 Mancing Galatama 2.0</h2>' +
-      '<p class="sub">Pilih spot memancing sesuai nyali. Makin dalam airnya, makin liar tarikan ikannya tapi makin mahal harga jualnya!</p>' +
-      '<div id="fish-stage" style="background:linear-gradient(180deg,#0369A1,#0F172A);border:1px solid rgba(56,189,248,.35);border-radius:16px;padding:14px;margin:10px 0">' +
+      '<p class="sub">Pilih spot memancing sesuai nyali. Makin dalam airnya, makin liar tarikan ikannya & makin mahal jualnya!</p>' +
+      '<div id="fish-stage" style="background:linear-gradient(180deg,#0369A1,#0F172A);border:1px solid rgba(56,189,248,.35);border-radius:16px;padding:12px;margin:10px 0">' +
         '<div style="text-align:center;font-size:12px;color:#BAE6FD;margin-bottom:10px">Sisa Kail Hari Ini: <b>' + left + ' / 6</b></div>' +
         '<div style="display:flex;flex-direction:column;gap:8px">' +
-          '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="fish-cast" data-spot="pinggir"' + (left <= 0 ? ' disabled' : '') + '>' +
-            '<div style="display:flex;justify-content:space-between"><b>🌿 Pinggir Kali (🟢 Mudah)</b><span style="color:#FFD633;font-size:12px">6–12 PSC</span></div>' +
-            '<small style="display:block;opacity:.75;font-weight:400">Zona hijau lebar · Lele Kaleng, Mujair Mohawk, Gabus Preman</small>' +
-          '</button>' +
-          '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="fish-cast" data-spot="tengah"' + (left <= 0 ? ' disabled' : '') + '>' +
-            '<div style="display:flex;justify-content:space-between"><b>🌊 Tengah Danau (🟡 Sedang)</b><span style="color:#FFD633;font-size:12px">14–32 PSC</span></div>' +
-            '<small style="display:block;opacity:.75;font-weight:400">Ikan mulai berontak · Gurame Asap, Patin Emas, Arwana Super Red</small>' +
-          '</button>' +
-          '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px;border-color:rgba(248,113,113,.4)" data-act="fish-cast" data-spot="palung"' + (left <= 0 ? ' disabled' : '') + '>' +
-            '<div style="display:flex;justify-content:space-between"><b>🕳️ Palung Dalam (🔴 Sulit)</b><span style="color:#FFD633;font-size:12px">34–60 PSC</span></div>' +
-            '<small style="display:block;opacity:.75;font-weight:400">Arus bawah air liar · Hiu Martil, Oarfish Naga, Raja Lele Gaib</small>' +
-          '</button>' +
+          renderChoiceBtn('fish-cast', 'data-spot', 'pinggir', '🌿 Pinggir Kali · Mudah', '6–12 PSC', 'Zona hijau lebar · Lele Kaleng, Mujair Mohawk, Gabus Preman', dis) +
+          renderChoiceBtn('fish-cast', 'data-spot', 'tengah', '🌊 Tengah Danau · Sedang', '14–32 PSC', 'Ikan mulai berontak · Gurame Asap, Patin Emas, Arwana Super Red', dis) +
+          renderChoiceBtn('fish-cast', 'data-spot', 'palung', '🕳️ Palung Dalam · Sulit', '34–60 PSC', 'Arus bawah air liar · Hiu Martil, Oarfish Naga, Raja Lele Gaib', dis + 'border-color:rgba(248,113,113,.45);') +
         '</div>' +
       '</div>' +
       '<div id="ar-res" style="font-size:13px;font-weight:700;color:var(--yel);min-height:20px"></div>'
@@ -302,18 +307,9 @@
       '<h2>🕹️ Mesin Rongsok 2.0</h2>' +
       '<p class="sub">Pilih mesin capit! Di <b>Brankas Boss</b>, kapsul hadiah ikut bergeser jadi butuh timing ekstra presisi.</p>' +
       '<div style="display:flex;flex-direction:column;gap:8px;margin:10px 0">' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="claw-mode" data-box="rongsok">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟢 Box Rongsok (Mudah)</b><span style="color:#FFD633;font-size:12px">8–14 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">Kapsul diam · Kaset Walkman, Pin Peniti, Komik Bekas</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px" data-act="claw-mode" data-box="retro">' +
-          '<div style="display:flex;justify-content:space-between"><b>🟡 Box Retro Y2K (Sedang)</b><span style="color:#FFD633;font-size:12px">16–26 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">Kapsul goyang pelan · Tamagotchi, GameBoy Ungu, Walkman</small>' +
-        '</button>' +
-        '<button class="btn b2" style="margin:0;text-align:left;padding:10px 12px;border-color:rgba(248,113,113,.4)" data-act="claw-mode" data-box="boss">' +
-          '<div style="display:flex;justify-content:space-between"><b>🔴 Brankas Boss (Sulit)</b><span style="color:#FFD633;font-size:12px">32–45 PSC</span></div>' +
-          '<small style="display:block;opacity:.75;font-weight:400">Kapsul bergerak cepat · Jaket Kulit Tour, Gitar Gibson, Helm Chrome</small>' +
-        '</button>' +
+        renderChoiceBtn('claw-mode', 'data-box', 'rongsok', '🟢 Box Rongsok · Mudah', '8–14 PSC', 'Kapsul diam · Kaset Walkman, Pin Peniti, Komik Bekas') +
+        renderChoiceBtn('claw-mode', 'data-box', 'retro', '🟡 Box Retro Y2K · Sedang', '16–26 PSC', 'Kapsul goyang pelan · Tamagotchi, GameBoy Ungu, Walkman') +
+        renderChoiceBtn('claw-mode', 'data-box', 'boss', '🔴 Brankas Boss · Sulit', '32–45 PSC', 'Kapsul bergerak cepat · Jaket Kulit Tour, Gitar Gibson, Helm Chrome', 'border-color:rgba(248,113,113,.45);') +
       '</div>'
     );
   };
