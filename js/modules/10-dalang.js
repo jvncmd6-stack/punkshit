@@ -2,7 +2,6 @@
   var C = window.PunkCore;
   var API = window.PunkAPI;
   var S = C.S;
-  var D = window.PunkDalang || {};
 
   var pendingItemFile = null;
   var adminData = {
@@ -27,7 +26,183 @@
       adminData.users = res.users || [];
       adminData.logs = res.logs || [];
       if (S.curApp === 'dalang') C.refresh();
-    } catch (e) {}
+    } catch (e) {
+      C.notify('Mas Raka', 'Ruang Dalang', e.message || 'Gagal memuat data pengurus.');
+    }
+  }
+
+  function renderSecurityTab() {
+    var mfList = adminData.pendingMenfess.map(function (m) {
+      return '<div class="card" style="padding:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,.1)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<span class="pill">' + C.esc((m.category || 'UMUM').toUpperCase()) + '</span>' +
+          '<small style="opacity:.6">ID: ' + C.esc(m.id) + '</small>' +
+        '</div>' +
+        '<p style="margin:8px 0;font-size:13px;line-height:1.45">"' + C.esc(m.text) + '"</p>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+          '<button class="btn" style="padding:8px;font-size:12px" data-act="dl-mf-approve" data-id="' + C.esc(m.id) + '">✅ Tayangkan</button>' +
+          '<button class="btn b2" style="padding:8px;font-size:12px;color:#FCA5A5" data-act="dl-mf-reject" data-id="' + C.esc(m.id) + '">❌ Tolak</button>' +
+        '</div>' +
+      '</div>';
+    }).join('') || '<div class="rw"><small>Tidak ada antrean Kotak Rahasia pending.</small></div>';
+
+    var frozenList = (adminData.users || []).filter(function (u) { return Number(u.isFrozen) === 1; });
+    var frozenHtml = frozenList.length
+      ? frozenList.map(function (u) {
+          return '<div class="rw"><div><b>🧊 ' + C.esc(u.name) + '</b><small>@' + C.esc(u.username || u.id) + '</small></div>' +
+            '<button class="pill" data-act="dl-unfreeze-quick" data-target="' + C.esc(u.id) + '">Pulihkan</button></div>';
+        }).join('')
+      : '<div class="rw"><small>Tidak ada akun warga yang sedang dibekukan.</small></div>';
+
+    return (
+      '<div class="card">' +
+        '<h3>🧊 Penertiban & Freeze Akun</h3>' +
+        '<p class="sub">Bekukan sementara warga bermasalah agar tidak bisa belanja, kirim menfess, atau transfer PSC.</p>' +
+        '<label>TARGET WARGA (@username atau Telegram ID)</label>' +
+        '<input id="dl-frz-user" placeholder="Contoh: @username atau 123456789">' +
+        '<label>ALASAN PENERTIBAN</label>' +
+        '<input id="dl-frz-reason" placeholder="Contoh: Spam / melanggar pasal">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
+          '<button class="btn" style="background:#DC2626" data-act="dl-freeze" data-mode="freeze">🧊 Bekukan Akun</button>' +
+          '<button class="btn b2" data-act="dl-freeze" data-mode="unfreeze">☀️ Pulihkan Akun</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:12px"><h3>Daftar Akun Dibekukan</h3><div class="grp">' + frozenHtml + '</div></div>' +
+      '<div class="card" style="margin-top:12px"><h3>📮 Moderasi Kotak Rahasia (' + adminData.pendingMenfess.length + ')</h3>' + mfList + '</div>' +
+      '<div class="card" style="margin-top:12px">' +
+        '<h3>🧹 Bersihkan Wanted Board</h3>' +
+        '<p class="sub">Hapus seluruh postingan Wanted mabar/voice yang menumpuk.</p>' +
+        '<button class="btn b2" data-act="dl-clear-wanted">BERSIHKAN WANTED BOARD</button>' +
+      '</div>'
+    );
+  }
+
+  function renderCatalogTab() {
+    var colHtml = adminData.pendingCollabs.map(function (c) {
+      var imgHtml = c.image_url
+        ? '<img src="' + C.esc(API.assetUrl(c.image_url)) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover;background:#0f172a">'
+        : '';
+      return '<div class="card" style="padding:12px;margin-bottom:8px">' +
+        '<div style="display:flex;gap:10px;align-items:center">' +
+          imgHtml +
+          '<div style="flex:1">' +
+            '<span class="pill">' + C.esc((c.type || 'item').toUpperCase()) + '</span> <b>' + C.esc(c.name) + '</b>' +
+            '<div style="font-size:12px;color:#FFD633">' + c.price + ' PSC · oleh ' + C.esc(c.creator_name) + '</div>' +
+            '<small style="opacity:.75">' + C.esc(c.desc || '') + '</small>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
+          '<button class="btn" style="padding:8px;font-size:12px" data-act="dl-collab-acc" data-id="' + C.esc(c.id) + '">✅ ACC & Rilis</button>' +
+          '<button class="btn b2" style="padding:8px;font-size:12px;color:#FCA5A5" data-act="dl-collab-rej" data-id="' + C.esc(c.id) + '">❌ Tolak</button>' +
+        '</div>' +
+      '</div>';
+    }).join('') || '<div class="rw"><small>Belum ada pengajuan item collab baru.</small></div>';
+
+    var catalogRows = (S.catalog || []).map(function (it) {
+      return '<div class="rw">' +
+        '<div><b>' + C.esc(it.name) + '</b><small>' + C.esc(it.type) + ' · ' + it.price + ' PSC (' + C.esc(it.rarity || 'Rare') + ')</small></div>' +
+        '<button class="pill" style="color:#FCA5A5" data-act="dl-del-item" data-id="' + C.esc(it.id) + '">Hapus</button>' +
+      '</div>';
+    }).join('') || '<div class="rw"><small>Katalog kosong.</small></div>';
+
+    return (
+      '<div class="card">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<div><h3>🏪 Lapak Rongsok Resmi</h3><p class="sub">Tambah atau kelola item eksklusif markas.</p></div>' +
+          '<button class="pill" style="background:#2563EB;color:#fff;font-weight:800" data-act="dl-new-item-sheet">+ Item</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:12px"><h3>🎨 Kurasi Collab Warga (' + adminData.pendingCollabs.length + ')</h3>' + colHtml + '</div>' +
+      '<div class="card" style="margin-top:12px"><h3>📦 Daftar Item Aktif (' + (S.catalog || []).length + ')</h3><div class="grp">' + catalogRows + '</div></div>'
+    );
+  }
+
+  function renderAssistantTab() {
+    return (
+      '<div class="card">' +
+        '<h3>📢 Broadcast Pengumuman</h3>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">' +
+          '<button class="pill" data-act="dl-tpl" data-tpl="absen">🔥 Reminder Absen</button>' +
+          '<button class="pill" data-act="dl-tpl" data-tpl="event">🎮 Ajak Mabar</button>' +
+          '<button class="pill" data-act="dl-tpl" data-tpl="lapak">🛍️ Promo Lapak</button>' +
+        '</div>' +
+        '<select id="dl-bc-target"><option value="both">Grup & Channel Resmi</option><option value="group">Grup Markas Saja</option><option value="channel">Channel Info Saja</option></select>' +
+        '<textarea id="dl-bc-text" rows="3" placeholder="Tulis pengumuman resmi dari Mas Raka..."></textarea>' +
+        '<button class="btn" data-act="dl-broadcast">KIRIM PENGUMUMAN</button>' +
+      '</div>' +
+      '<div class="card" style="margin-top:12px">' +
+        '<h3>📅 Buat Jadwal Event</h3>' +
+        '<input id="dl-ev-title" placeholder="Judul Event (mis. Mabar MLBB / Karaoke OS)">' +
+        '<input id="dl-ev-date" placeholder="Waktu (mis. Sabtu, 21.00 WIB)">' +
+        '<input id="dl-ev-reward" placeholder="Hadiah (mis. 300 PSC + Street Cred)">' +
+        '<button class="btn" data-act="dl-create-event">TERBITKAN EVENT</button>' +
+      '</div>' +
+      '<div class="card" style="margin-top:12px">' +
+        '<h3>🗳️ Buka Sidang Warga (Polling)</h3>' +
+        '<input id="dl-pl-q" placeholder="Pertanyaan sidang...">' +
+        '<input id="dl-pl-opts" placeholder="Pilihan dipisah koma (mis. Setuju, Tolak, Netral)">' +
+        '<button class="btn" data-act="dl-create-poll">BUKA SIDANG SEKARANG</button>' +
+      '</div>'
+    );
+  }
+
+  function renderVaultTab() {
+    var ownerMode = isOwner();
+    var reqHtml = adminData.pscRequests.map(function (r) {
+      var btns = ownerMode
+        ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
+            '<button class="btn" style="padding:7px;font-size:12px" data-act="dl-req-approve" data-id="' + C.esc(r.id) + '">✅ ACC Cairkan</button>' +
+            '<button class="btn b2" style="padding:7px;font-size:12px;color:#FCA5A5" data-act="dl-req-reject" data-id="' + C.esc(r.id) + '">❌ Tolak</button>' +
+          '</div>'
+        : '<div style="font-size:11px;color:#FACC15;margin-top:4px">⏳ Menunggu ACC Owner</div>';
+
+      return '<div class="card" style="padding:10px;margin-bottom:8px">' +
+        '<div><b>+' + r.amount + ' PSC</b> untuk <b>' + C.esc(r.target_name) + '</b></div>' +
+        '<small>Diajukan: ' + C.esc(r.requester_name) + ' · Alasan: "' + C.esc(r.reason) + '"</small>' +
+        btns +
+      '</div>';
+    }).join('') || '<div class="rw"><small>Tidak ada antrean pengajuan PSC.</small></div>';
+
+    var logRows = adminData.logs.slice(0, 12).map(function (l) {
+      return '<div class="rw"><div><b>' + C.esc(l.action) + '</b><small>' + C.esc(l.detail) + '</small></div></div>';
+    }).join('') || '<div class="rw"><small>Belum ada catatan audit.</small></div>';
+
+    var userListHtml = adminData.users.slice(0, 30).map(function (usr) {
+      return '<div class="rw">' +
+        '<div><b>' + C.esc(usr.name) + '</b> <small>(' + C.esc(usr.role || 'member') + ')</small>' +
+        '<small style="color:#FFD633">💰 ' + (usr.psc || 0) + ' PSC · ⭐ ' + (usr.cred || 0) + ' Cred · ID: ' + C.esc(usr.id) + '</small></div>' +
+      '</div>';
+    }).join('');
+
+    var topForm = ownerMode
+      ? '<div class="card">' +
+          '<h3>👑 Brankas PSC Langsung (Khusus Owner)</h3>' +
+          '<input id="dl-psc-user" placeholder="Target (@username atau ID)">' +
+          '<input id="dl-psc-amt" type="number" placeholder="Nominal PSC (mis. 500 atau -200)">' +
+          '<input id="dl-psc-reason" placeholder="Catatan audit...">' +
+          '<button class="btn" data-act="dl-adjust-psc">EKSEKUSI SALDO PSC</button>' +
+        '</div>' +
+        '<div class="card" style="margin-top:12px">' +
+          '<h3>🛡️ Atur Jabatan Pengurus</h3>' +
+          '<input id="dl-rl-user" placeholder="Target (@username atau ID)">' +
+          '<select id="dl-rl-role"><option value="member">Member Biasa</option><option value="moderator">Moderator</option><option value="admin">Admin Markas</option></select>' +
+          '<button class="btn b2" data-act="dl-set-role">SIMPAN JABATAN</button>' +
+        '</div>'
+      : '<div class="card">' +
+          '<h3>💰 Ajukan Hadiah / Pencairan PSC</h3>' +
+          '<p class="sub">Pengajuan dari Admin wajib mendapat persetujuan Owner sebelum saldo cair ke warga.</p>' +
+          '<input id="dl-req-user" placeholder="Target penerima (@username atau ID)">' +
+          '<input id="dl-req-amt" type="number" min="1" max="5000" placeholder="Nominal PSC (1 - 5000)">' +
+          '<input id="dl-req-reason" placeholder="Alasan pemberian (mis. Juara Event Mabar)">' +
+          '<button class="btn" data-act="dl-req-psc">KIRIM PENGAJUAN KE OWNER</button>' +
+        '</div>';
+
+    return (
+      topForm +
+      '<div class="card" style="margin-top:12px"><h3>🔐 Antrean Izin Pencairan PSC (' + adminData.pscRequests.length + ')</h3>' + reqHtml + '</div>' +
+      '<div class="card" style="margin-top:12px"><h3>📜 Audit Log Pengurus</h3><div class="grp">' + logRows + '</div></div>' +
+      '<div class="card" style="margin-top:12px"><h3>👥 Data Warga (' + adminData.users.length + ')</h3><div class="grp">' + userListHtml + '</div></div>'
+    );
   }
 
   function renderDalang() {
@@ -52,11 +227,11 @@
     }
     tabsHtml += '</div>';
 
-    if (tab === 'mod') return tabsHtml + D.renderSecurityTab(adminData);
-    if (tab === 'lapak' && isAdminOrOwner()) return tabsHtml + D.renderCatalogTab(adminData);
-    if (tab === 'event' && isAdminOrOwner()) return tabsHtml + D.renderAssistantTab();
-    if (tab === 'owner' && isAdminOrOwner()) return tabsHtml + D.renderVaultTab(adminData, isOwner());
-    return tabsHtml;
+    if (tab === 'mod') return tabsHtml + renderSecurityTab();
+    if (tab === 'lapak' && isAdminOrOwner()) return tabsHtml + renderCatalogTab();
+    if (tab === 'event' && isAdminOrOwner()) return tabsHtml + renderAssistantTab();
+    if (tab === 'owner' && isAdminOrOwner()) return tabsHtml + renderVaultTab();
+    return tabsHtml + renderSecurityTab();
   }
 
   function openNewItemSheet() {
@@ -191,6 +366,13 @@
         fetchAdminPanel();
         C.notify('Mas Raka', 'Keamanan Markas 🛡️', mode === 'freeze' ? 'Akun warga dibekukan sementara demi ketertiban.' : 'Akses akun warga sudah dipulihkan.');
       } catch (err) { C.notify('Mas Raka', 'Info', err.message); } finally { t.disabled = false; }
+    } else if (act === 'dl-unfreeze-quick') {
+      t.disabled = true;
+      try {
+        await API.post('/api/admin/users/freeze', { target: t.getAttribute('data-target'), mode: 'unfreeze', reason: 'Dipulihkan pengurus' });
+        fetchAdminPanel();
+        C.notify('Mas Raka', 'Keamanan Markas 🛡️', 'Akun warga berhasil dipulihkan.');
+      } catch (err) { t.disabled = false; C.notify('Mas Raka', 'Info', err.message); }
     } else if (act === 'dl-clear-wanted') {
       t.disabled = true;
       try {
