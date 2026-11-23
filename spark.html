@@ -10,19 +10,19 @@
 <div class="boot-loader" id="bootLoader">
   <div class="boot-flame">🔥</div>
   <div class="boot-txt">Spark Buddies</div>
-  <div class="boot-sub">Menyiapkan 3 slot api...</div>
+  <div class="boot-sub">Menyiapkan 7 slot api...</div>
 </div>
 
-<!-- LAYAR PERTAMA: LOBBY 3 SLOT & AJAK TEMAN -->
+<!-- LAYAR PERTAMA: LOBBY 7 SLOT & AJAK TEMAN -->
 <section class="pair-gate" id="pairGate">
   <div class="pg-hero">
     <div class="pg-fire">🔥</div>
-    <h2>Spark Buddies (3 Slot)</h2>
+    <h2>Spark Buddies (4/7 Slot)</h2>
     <p>Pilih partner aktif untuk lihat karakter api, atau ajak teman baru ke slot kosong.</p>
     <div class="pg-my-usn" id="myUsnBadge">🆔 Mendeteksi @username...</div>
   </div>
 
-  <!-- 3 Slot Spark Cards -->
+  <!-- 7 Slot Spark Cards (4 Gratis + 3 VIP) -->
   <div class="slots-grid" id="slotsGrid"></div>
 
   <!-- Undangan Masuk -->
@@ -58,8 +58,8 @@
 <button class="exit-clear" id="exitClear">👁️ Tampilkan UI</button>
 <header class="top">
   <div class="top-left">
-    <button class="hub-back" id="hubBackBtn">‹ 3 Slot</button>
-    <div><h1 id="stageTitle">Spark Buddies</h1><p id="stageSub">Slot 1/3 • One Group</p></div>
+    <button class="hub-back" id="hubBackBtn">‹ 7 Slot</button>
+    <div><h1 id="stageTitle">Spark Buddies</h1><p id="stageSub">Slot 1/7 • One Group</p></div>
   </div>
   <div class="top-act">
     <span class="rare" id="rare">Common</span>
@@ -91,7 +91,14 @@
 </section>
 <div class="toast" id="toast"></div></main>
 
-  <script type="module" src="js/spark/main.js"></script>
+<script>
+  // Failsafe anti-stuck jika module lambat dimuat
+  setTimeout(function () {
+    var bl = document.getElementById('bootLoader');
+    if (bl) { bl.classList.add('hide'); setTimeout(function () { bl.remove(); }, 250); }
+  }, 1500);
+</script>
+<script type="module" src="js/spark/main.js"></script>
 <script>
 (function () {
   var lastSparkUser = null;
@@ -150,5 +157,4 @@
   setInterval(syncSetorLock, 1200);
 })();
 </script>
-</body></html>
 </body></html>
