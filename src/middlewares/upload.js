@@ -7,7 +7,7 @@ import { ENV } from '../config/env.js';
 const uploadDir = ENV.UPLOAD_DIR || path.join(process.cwd(), 'data', 'uploads');
 
 // Pastikan folder utama & semua subfolder wajib otomatis dibuat saat server jalan
-['memes', 'shop', 'avatars'].forEach((sub) => {
+['memes', 'shop', 'avatars', 'banners'].forEach((sub) => {
   const fullPath = path.join(uploadDir, sub);
   if (!fs.existsSync(fullPath)) {
     fs.mkdirSync(fullPath, { recursive: true });
@@ -73,3 +73,5 @@ export async function processAndSaveImage(
 
   return `/uploads/${subfolder}/${filename}`;
 }
+
+export const uploadMedia = uploadMem;
