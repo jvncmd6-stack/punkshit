@@ -75,7 +75,7 @@ export function registerSparkAdminSync(bot) {
         `).run(newStreak, hitWeeklyMilestone ? 75 : 25, today, hitWeeklyMilestone ? 'COMPLETED' : 'OPEN', pair.id);
 
         if (hitWeeklyMilestone) {
-          db.prepare('UPDATE users SET psc = psc + 50, cred = cred + 10 WHERE LOWER(username) IN (?, ?)').run(pair.user1, pair.user2);
+          db.prepare('UPDATE users SET psc = psc + 40, cred = cred + 10 WHERE LOWER(username) IN (?, ?)').run(pair.user1, pair.user2);
           summaries.push(
             `• Bareng <b>@${escHtml(partner)}</b>: 🏁 <b>KASUS MINGGUAN SELESAI (${newStreak} Hari)!</b> Masing-masing dapat bonus <b>+50 PSC & +10 Cred</b>!`
           );
