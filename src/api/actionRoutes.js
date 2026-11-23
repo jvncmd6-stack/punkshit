@@ -107,7 +107,7 @@ actionRouter.post('/sawer', requireUser, async (req, res) => {
   res.json({ user: formatUser(updated) });
 });
 
-// POST /api/shop/buy -> Beli item dari Lapak Rongsok (Hanya notif ke PC Bot Pembeli)
+// POST /api/shop/buy -> Beli item dari Lapak Rongsok + Royalti 20% untuk Item Collab
 actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   const u = req.dbUser;
   const itemId = String(req.body?.itemId || '');
@@ -123,6 +123,9 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   }
 
   const now = Date.now();
+  const hasCreatorRoyalty = item.is_collab === 1 && item.creator_id && String(item.creator_id) !== String(u.id);
+  const royaltyAmount = hasCreatorRoyalty ? Math.max(1, Math.floor(item.price * 0.2)) : 0;
+
   const tx = db.transaction(() => {
     db.prepare('UPDATE users SET psc = psc - ? WHERE id = ?').run(item.price, u.id);
     if (item.stock > 0) {
@@ -131,6 +134,12 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
     db.prepare('INSERT INTO inventory (user_id, item_id, acquired_at) VALUES (?, ?, ?)').run(u.id, item.id, now);
     db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(u.id, 'shop_buy', -item.price, `Beli ${item.name}`, now);
+
+    if (royaltyAmount > 0) {
+      db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(royaltyAmount, String(item.creator_id));
+      db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(String(item.creator_id), 'collab_royalty', royaltyAmount, `Royalti Collab: ${item.name}`, now);
+    }
   });
   tx();
 
@@ -145,6 +154,16 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
     `Gaya bertambah! Item sudah masuk ke Gudang Barang lu.`,
     { buttonText: '🛒 BUKA LAPAK RONGSOK', startParam: 'lapak' }
   );
+
+  if (royaltyAmount > 0) {
+    await notifyPrivateUser(
+      item.creator_id,
+      `🎨 <b>ROYALTI COLLAB CAIR!</b>\n\n` +
+      `Warga <b>${escHtml(u.name)}</b> baru saja membeli item collab karyamu: <b>${escHtml(item.name)}</b>!\n` +
+      `• Royalti 20%: <b>+${royaltyAmount} PSC</b>`,
+      { buttonText: '💰 CEK DOMPET', startParam: 'kas' }
+    );
+  }
 
   const inv = db.prepare('SELECT id, item_id AS itemId, acquired_at AS acquiredAt FROM inventory WHERE user_id = ? ORDER BY id DESC').all(u.id);
   res.json({ user: formatUser(updated), inv, catalog: getCatalog() });
@@ -188,7 +207,6 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
     : `<b>${escHtml(u.name)}</b>${u.username ? ` (@${escHtml(u.username)})` : ''}`;
   const recipTag = recipient.username ? ` (@${escHtml(recipient.username)})` : '';
 
-  // Notif khusus ke Penerima Gift
   await notifyPrivateUser(
     recipient.id,
     `🎁 <b>KAMU DAPAT GIFT BARU!</b>\n\n` +
@@ -199,7 +217,6 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
     { buttonText: '🎁 CEK GUDANG & PUNKID', startParam: 'gue' }
   );
 
-  // Struk khusus ke Pengirim Gift
   await notifyPrivateUser(
     u.id,
     `🎁 <b>GIFT ${isAnon ? 'ANONIM ' : ''}TERKIRIM!</b>\n\n` +
