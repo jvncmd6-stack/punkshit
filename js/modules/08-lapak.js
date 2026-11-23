@@ -2,12 +2,128 @@
   var C = window.PunkCore;
   var API = window.PunkAPI;
   var S = C.S;
-  var L = window.PunkLapak || {};
+  var L = window.PunkLapak = window.PunkLapak || {};
 
-  C.Views.lapak = L.renderLapak;
-  C.Views.lapakwarga = L.renderLapakWarga;
+  function isItemEquipped(u, it) {
+    if (!u || !it) return false;
+    if (it.type === 'border') return String(u.equippedBorderId) === String(it.id);
+    if (it.type === 'skin') return String(u.equippedSkinId) === String(it.id);
+    if (it.type === 'gift') return String(u.pinnedGiftId) === String(it.id);
+    return false;
+  }
 
-  // Guard anti-double listener agar tombol tidak pernah ke-trigger 2x
+  function openItemDetail(it) {
+    if (!it) return;
+    var u = S.user || {};
+    var owned = (S.inv || []).indexOf(it.id) !== -1;
+    var equipped = isItemEquipped(u, it);
+    var myPsc = Number(u.psc) || 0;
+    var price = Number(it.price) || 0;
+    var stockInfo = (it.stock == null || Number(it.stock) < 0) ? 'Unlimited' : ('Sisa ' + it.stock);
+
+    var actionBtn = '';
+    if (it.type === 'gift') {
+      actionBtn =
+        '<button class="btn" data-act="lp-toggle-send">🎁 KIRIM GIFT KE WARGA (' + price + ' PSC)</button>' +
+        '<div id="lp-send-box" hidden style="background:rgba(255,255,255,.05);padding:10px;border-radius:12px;margin-top:8px">' +
+          '<label>TARGET PENERIMA (@username)</label>' +
+          '<input id="lp-to" placeholder="@username">' +
+          '<label>PESAN UCAPAN</label>' +
+          '<input id="lp-msg" maxlength="100" placeholder="Tulis pesan manis atau nyindir...">' +
+          '<label style="display:flex;align-items:center;gap:6px;margin:8px 0"><input id="lp-anon" type="checkbox"> Kirim sebagai Anonim</label>' +
+          '<button class="btn" data-act="lp-send-gift" data-id="' + C.esc(it.id) + '">Kirim Gift · ' + price + ' PSC</button>' +
+        '</div>' +
+        (owned
+          ? '<button class="btn b2" data-act="lp-equip-toggle" data-id="' + C.esc(it.id) + '">' + (equipped ? '📌 Lepas Pin dari Avatar' : '📌 Pasang Pin di Avatar') + '</button>'
+          : '');
+    } else if (owned) {
+      actionBtn = '<button class="btn" data-act="lp-equip-toggle" data-id="' + C.esc(it.id) + '">' + (equipped ? '✅ Terpasang (Tap Lepas)' : '✨ Pasang ke Profil') + '</button>';
+    } else {
+      actionBtn = '<button class="btn" data-act="lp-buy" data-id="' + C.esc(it.id) + '"' + (myPsc < price ? ' disabled' : '') + '>Beli Sekarang · ' + price + ' PSC</button>';
+    }
+
+    C.sheet(
+      '<div style="display:grid;place-items:center;padding:12px 0">' + C.renderItemVisual(it, 110, true) + '</div>' +
+      '<div style="text-align:center">' +
+        '<span class="pill">' + C.esc((it.type || 'item').toUpperCase()) + ' · ' + C.esc(it.rarity || 'Rare') + '</span>' +
+        '<h2 style="margin-top:6px">' + C.esc(it.name) + '</h2>' +
+        '<div style="color:#FFD633;font-size:17px;font-weight:800;margin:4px 0">' + price + ' PSC <small style="color:var(--mut);font-weight:500">(' + stockInfo + ')</small></div>' +
+        '<p class="sub">' + C.esc(it.desc || 'Item koleksi eksklusif PUNKSHIT.OS') + '</p>' +
+      '</div>' +
+      actionBtn +
+      '<button class="btn b2" data-act="shut">TUTUP</button>'
+    );
+  }
+
+  function defaultRenderLapak() {
+    var u = S.user || {};
+    var tab = S.curTab.lapak || 'katalog';
+    var catFilter = S.curTab.lpType || 'all';
+    var catalog = S.catalog || [];
+    var inv = S.inv || [];
+
+    var header =
+      '<div class="card" style="background:linear-gradient(135deg,rgba(23,107,255,.22),rgba(15,23,42,.92));border:1px solid rgba(143,199,255,.28)">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+          '<div style="display:flex;align-items:center;gap:10px">' +
+            C.renderAvatar(u, 'mini') +
+            '<div>' +
+              '<div style="font-weight:800;font-size:14px">LAPAK RONGSOK</div>' +
+              '<div style="font-size:11px;opacity:.85">Saldo Lu: <b style="color:#FFD633">' + (u.psc || 0) + ' PSC</b> · Koleksi: <b>' + inv.length + '</b></div>' +
+            '</div>' +
+          '</div>' +
+          '<button class="pill" style="background:#2563EB;color:#fff;font-weight:800" data-act="lp-collab-sheet">+ Collab</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="tabs" style="margin:12px 0">' +
+        '<button class="tab' + (tab === 'katalog' ? ' on' : '') + '" data-act="lp-tab" data-tab="katalog">🏪 Katalog Resmi (' + catalog.length + ')</button>' +
+        '<button class="tab' + (tab === 'lemari' ? ' on' : '') + '" data-act="lp-tab" data-tab="lemari">🎒 Lemari Gue (' + inv.length + ')</button>' +
+      '</div>';
+
+    var list = tab === 'lemari'
+      ? catalog.filter(function (it) { return inv.indexOf(it.id) !== -1; })
+      : catalog.filter(function (it) { return catFilter === 'all' || it.type === catFilter; });
+
+    var filterBar = tab === 'katalog'
+      ? '<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px">' +
+          '<button class="pill" style="' + (catFilter === 'all' ? 'background:#2563EB;color:#fff' : '') + '" data-act="lp-type" data-type="all">Semua</button>' +
+          '<button class="pill" style="' + (catFilter === 'border' ? 'background:#2563EB;color:#fff' : '') + '" data-act="lp-type" data-type="border">🖼️ Border</button>' +
+          '<button class="pill" style="' + (catFilter === 'skin' ? 'background:#2563EB;color:#fff' : '') + '" data-act="lp-type" data-type="skin">🪪 Skin</button>' +
+          '<button class="pill" style="' + (catFilter === 'gift' ? 'background:#2563EB;color:#fff' : '') + '" data-act="lp-type" data-type="gift">🎁 Gift</button>' +
+        '</div>'
+      : '';
+
+    var cards = list.map(function (it) {
+      var owned = inv.indexOf(it.id) !== -1;
+      var eq = isItemEquipped(u, it);
+      var badge = eq
+        ? '<span class="pill" style="background:#34C75933;color:#6df0a0;font-size:9px">DIPAKAI</span>'
+        : (owned
+            ? '<span class="pill" style="background:#38BDF833;color:#7DD3FC;font-size:9px">DIMILIKI</span>'
+            : '<span style="color:#FFD633;font-weight:800;font-size:12px">' + it.price + ' PSC</span>');
+
+      return '<div class="card" data-act="lp-detail" data-id="' + C.esc(it.id) + '" style="padding:12px;text-align:center;cursor:pointer">' +
+        '<div style="display:grid;place-items:center;height:78px">' + C.renderItemVisual(it, 68, false) + '</div>' +
+        '<div style="font-weight:700;font-size:13px;margin-top:6px">' + C.esc(it.name) + '</div>' +
+        '<small style="display:block;opacity:.7;font-size:10px;margin:2px 0 6px">' + C.esc((it.type || '').toUpperCase()) + ' · ' + C.esc(it.rarity || 'Rare') + '</small>' +
+        badge +
+      '</div>';
+    }).join('');
+
+    return header + filterBar +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        (cards || '<div class="card" style="grid-column:1/-1"><p class="sub">' + (tab === 'lemari' ? 'Lemari lu masih kosong. Belanja dulu di Katalog!' : 'Belum ada item di kategori ini.') + '</p></div>') +
+      '</div>';
+  }
+
+  L.isItemEquipped = L.isItemEquipped || isItemEquipped;
+  L.openItemDetail = L.openItemDetail || openItemDetail;
+
+  C.Views.lapak = (typeof L.renderLapak === 'function') ? L.renderLapak : defaultRenderLapak;
+  if (typeof L.renderLapakWarga === 'function') {
+    C.Views.lapakwarga = L.renderLapakWarga;
+  }
+
   if (window.__punkLapakBound) return;
   window.__punkLapakBound = true;
 
@@ -18,6 +134,9 @@
 
     if (act === 'lp-tab') {
       S.curTab.lapak = t.getAttribute('data-tab');
+      C.refresh();
+    } else if (act === 'lp-type') {
+      S.curTab.lpType = t.getAttribute('data-type');
       C.refresh();
     } else if (act === 'lw-tab') {
       S.curTab.lapakwarga = t.getAttribute('data-tab');
