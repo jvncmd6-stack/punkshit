@@ -5,6 +5,8 @@ import { todayWib, formatUser, broadcastToTelegram, escHtml } from '../services/
 
 export const gameRouter = express.Router();
 
+const DAILY_PSC_CAP = 120;
+
 // ==========================================
 // 1. INISIALISASI TABEL ARENA GABUT 2.0
 // ==========================================
@@ -57,45 +59,102 @@ db.exec(`
 `);
 
 // ==========================================
-// 2. DATA MASTER (IKAN, KOLEKSI, BANK SOAL)
+// 2. DATA MASTER (15 SPESIES IKAN, 3 BOX CAPIT, 36+ BANK SOAL)
 // ==========================================
-const FISH_POOL = [
-  { key: 'sendal_jepit', name: 'Sendal Jepit Putus', rarity: 'Common', minW: 0.2, maxW: 0.5, price: 2, xp: 10, tension: 0.35, chance: 28 },
-  { key: 'lele_kumis', name: 'Lele Kumis Panjang', rarity: 'Common', minW: 0.8, maxW: 2.5, price: 4, xp: 15, tension: 0.45, chance: 26 },
-  { key: 'mujair_gang', name: 'Mujair Komplek', rarity: 'Uncommon', minW: 1.2, maxW: 3.8, price: 7, xp: 25, tension: 0.55, chance: 20 },
-  { key: 'bawal_neon', name: 'Bawal Neon Y2K', rarity: 'Rare', minW: 2.5, maxW: 6.0, price: 14, xp: 40, tension: 0.68, chance: 14 },
-  { key: 'arwana_cyber', name: 'Arwana Cyberpunk', rarity: 'Epic', minW: 4.0, maxW: 9.5, price: 28, xp: 70, tension: 0.80, chance: 8 },
-  { key: 'golden_punkfish', name: 'Golden Punkfish', rarity: 'Legendary', minW: 8.5, maxW: 18.0, price: 65, xp: 150, tension: 0.90, chance: 4 }
-];
+const FISH_POOLS = {
+  pinggir: [
+    { key: 'lele_kaleng', name: 'Lele Kaleng Sarden', rarity: 'Common', minW: 0.5, maxW: 1.4, price: 6, xp: 14, tension: 0.34, chance: 34 },
+    { key: 'mujair_punk', name: 'Mujair Mohawk', rarity: 'Common', minW: 0.8, maxW: 1.9, price: 7, xp: 16, tension: 0.38, chance: 30 },
+    { key: 'nila_neon', name: 'Nila Neon', rarity: 'Common', minW: 1.0, maxW: 2.3, price: 8, xp: 18, tension: 0.42, chance: 22 },
+    { key: 'gabus_preman', name: 'Gabus Preman Kali', rarity: 'Uncommon', minW: 1.8, maxW: 3.5, price: 12, xp: 26, tension: 0.48, chance: 14 }
+  ],
+  tengah: [
+    { key: 'bawal_baja', name: 'Bawal Baja', rarity: 'Uncommon', minW: 2.2, maxW: 4.5, price: 14, xp: 28, tension: 0.55, chance: 32 },
+    { key: 'gurame_asap', name: 'Gurame Asap Sunda', rarity: 'Uncommon', minW: 2.8, maxW: 5.2, price: 16, xp: 32, tension: 0.58, chance: 28 },
+    { key: 'patin_emas', name: 'Patin Emas Cipaganti', rarity: 'Rare', minW: 4.0, maxW: 7.5, price: 22, xp: 45, tension: 0.65, chance: 20 },
+    { key: 'kakap_merah', name: 'Kakap Merah Karang', rarity: 'Rare', minW: 4.8, maxW: 8.8, price: 24, xp: 50, tension: 0.68, chance: 13 },
+    { key: 'arwana_super', name: 'Arwana Super Red', rarity: 'Epic', minW: 3.5, maxW: 6.5, price: 32, xp: 70, tension: 0.75, chance: 7 }
+  ],
+  palung: [
+    { key: 'pari_listrik', name: 'Pari Listrik Tegangan Tinggi', rarity: 'Epic', minW: 10.0, maxW: 22.0, price: 34, xp: 75, tension: 0.82, chance: 32 },
+    { key: 'hiu_martil', name: 'Hiu Martil Besi', rarity: 'Epic', minW: 18.0, maxW: 42.0, price: 36, xp: 85, tension: 0.85, chance: 28 },
+    { key: 'tuna_sirip_biru', name: 'Tuna Sirip Biru', rarity: 'Legendary', minW: 30.0, maxW: 65.0, price: 42, xp: 110, tension: 0.89, chance: 18 },
+    { key: 'oarfish_naga', name: 'Oarfish Naga Palung', rarity: 'Legendary', minW: 40.0, maxW: 85.0, price: 45, xp: 125, tension: 0.91, chance: 12 },
+    { key: 'coelacanth_purba', name: 'Coelacanth Purba', rarity: 'Mythic', minW: 50.0, maxW: 95.0, price: 55, xp: 160, tension: 0.94, chance: 6 },
+    { key: 'raja_lele_gaib', name: 'Raja Lele Penunggu Rawa', rarity: 'Mythic', minW: 66.6, maxW: 99.9, price: 60, xp: 180, tension: 0.96, chance: 4 }
+  ]
+};
 
-const CLAW_POOL = [
-  { key: 'stiker_raka', name: 'Stiker Mas Raka Ngopi', rarity: 'Common', price: 3, xp: 12, chance: 35 },
-  { key: 'ganci_kaset', name: 'Gantungan Kaset Rusak', rarity: 'Uncommon', price: 6, xp: 20, chance: 28 },
-  { key: 'boneka_punk', name: 'Boneka Maskot Punkshit', rarity: 'Rare', price: 12, xp: 35, chance: 20 },
-  { key: 'tamagotchi_y2k', name: 'Tamagotchi Y2K', rarity: 'Epic', price: 25, xp: 65, chance: 12 },
-  { key: 'mahkota_rongsok', name: 'Miniatur Mahkota Rongsok', rarity: 'Legendary', price: 50, xp: 120, chance: 5 }
-];
+const ALL_FISH_COUNT = Object.values(FISH_POOLS).reduce((sum, arr) => sum + arr.length, 0);
 
-const TRIVIA_BANK = [
-  { cat: 'Punkshit', q: 'Apa mata uang resmi di dalam ekosistem PUNKSHIT.OS?', opts: ['Punk Coins (PSC)', 'Robux', 'Doge Coin', 'Rupiah Digital'], ans: 0 },
-  { cat: 'Punkshit', q: 'Siapa nama bot penjaga markas PUNKSHIT.OS?', opts: ['Mas Agung', 'Mas Raka', 'Bang Jago', 'Pak RT'], ans: 1 },
-  { cat: 'Punkshit', q: 'Gelar tertinggi saat streak absen tembus 60+ hari adalah...', opts: ['Pentolan Punkshit', 'Fosil Punkshit', 'Biang Kerok', 'Admin Pusat'], ans: 1 },
-  { cat: 'Punkshit', q: 'Gelar awal untuk warga baru dengan streak di bawah 4 hari adalah...', opts: ['Anak Titipan', 'Anak Bawang', 'Tukang Nongki', 'Warga Baru'], ans: 1 },
-  { cat: 'Internet & Meme', q: 'Apa kepanjangan dari AFK dalam istilah game online?', opts: ['Away From Keyboard', 'Always For Killing', 'After First Kill', 'Auto Farm King'], ans: 0 },
-  { cat: 'Internet & Meme', q: 'Error kode HTTP saat halaman web tidak ditemukan adalah...', opts: ['500', '403', '404', '200'], ans: 2 },
-  { cat: 'Internet & Meme', q: 'Tombol shortcut keyboard untuk meng-undo tindakan terakhir adalah...', opts: ['Ctrl + Y', 'Ctrl + Z', 'Ctrl + X', 'Alt + F4'], ans: 1 },
-  { cat: 'Logika Receh', q: 'Jika ada 3 apel dan kamu ambil 2, berapa apel yang kamu punya?', opts: ['1 apel', '2 apel', '3 apel', '5 apel'], ans: 1 },
-  { cat: 'Logika Receh', q: 'Bulan apa yang punya 28 hari?', opts: ['Cuma Februari', 'Februari saat kabisat', 'Semua bulan', 'Desember'], ans: 2 },
-  { cat: 'Logika Receh', q: 'Benda apa yang kalau dipotong malah makin tinggi?', opts: ['Kuku', 'Celana panjang', 'Rambut', 'Tali sepatu'], ans: 1 },
-  { cat: 'Musik & Pop', q: 'Gaya desain awal 2000-an dengan elemen glossy dan transparan disebut...', opts: ['Brutalism', 'Frutiger Aero', 'Minimalist', 'Flat Design'], ans: 1 },
-  { cat: 'Musik & Pop', q: 'Genre musik punk cepat dengan durasi lagu rata-rata di bawah 2 menit adalah...', opts: ['Hardcore Punk', 'Shoegaze', 'City Pop', 'Lo-Fi'], ans: 0 },
-  { cat: 'Random', q: 'Planet terdekat dengan Matahari di tata surya kita adalah...', opts: ['Venus', 'Mars', 'Merkurius', 'Bumi'], ans: 2 },
-  { cat: 'Random', q: 'Berapa jumlah warna dasar pada pelangi (Mejikuhibiniu)?', opts: ['5 warna', '6 warna', '7 warna', '8 warna'], ans: 2 },
-  { cat: 'Tebak Emoji', q: '🎸⚡🔥 — Kombinasi emoji ini paling pas menggambarkan...', opts: ['Konser Rock / Punk', 'Mancing Lele', 'Tidur Siang', 'Masak Mie'], ans: 0 }
-];
+const CLAW_BOX_POOLS = {
+  rongsok: [
+    { key: 'kaset_walkman', name: 'Kaset Pita Walkman Kusut', rarity: 'Common', price: 8, xp: 15, rate: 0.85, chance: 35 },
+    { key: 'pin_peniti', name: 'Pin Peniti Tengkorak', rarity: 'Common', price: 9, xp: 18, rate: 0.82, chance: 30 },
+    { key: 'komik_98', name: 'Komik Bekas Tahun 98', rarity: 'Uncommon', price: 12, xp: 24, rate: 0.76, chance: 20 },
+    { key: 'kacamata_pixel', name: 'Kacamata Hitam Pixel', rarity: 'Uncommon', price: 14, xp: 28, rate: 0.72, chance: 15 }
+  ],
+  retro: [
+    { key: 'tamagotchi_nyala', name: 'Tamagotchi Jadul Nyala', rarity: 'Rare', price: 16, xp: 35, rate: 0.68, chance: 34 },
+    { key: 'gameboy_ungu', name: 'GameBoy Transparan Ungu', rarity: 'Rare', price: 20, xp: 42, rate: 0.64, chance: 30 },
+    { key: 'walkman_sony', name: 'Walkman Sony Kuning', rarity: 'Epic', price: 24, xp: 55, rate: 0.58, chance: 22 },
+    { key: 'techdeck_mini', name: 'Skateboard Mini TechDeck', rarity: 'Epic', price: 26, xp: 62, rate: 0.55, chance: 14 }
+  ],
+  boss: [
+    { key: 'jaket_studded', name: 'Jaket Kulit Studded Edisi Tour', rarity: 'Legendary', price: 32, xp: 85, rate: 0.48, chance: 36 },
+    { key: 'gitar_gibson', name: 'Gitar Listrik Mini Gibson', rarity: 'Legendary', price: 36, xp: 95, rate: 0.44, chance: 30 },
+    { key: 'helm_chrome', name: 'Helm Retro Chrome Punk', rarity: 'Mythic', price: 42, xp: 125, rate: 0.38, chance: 20 },
+    { key: 'kunci_brankas', name: 'Kunci Brankas Mas Raka', rarity: 'Mythic', price: 45, xp: 145, rate: 0.34, chance: 14 }
+  ]
+};
+
+const TRIVIA_BANK = {
+  easy: [
+    { cat: 'Nusantara', q: 'Apa nama ibu kota Provinsi Jawa Barat?', opts: ['Bandung', 'Bogor', 'Cirebon', 'Bekasi'], ans: 0 },
+    { cat: 'Punkshit', q: 'Apa mata uang resmi di dalam ekosistem PUNKSHIT.OS?', opts: ['Punk Coins (PSC)', 'Robux', 'Doge Coin', 'Rupiah Digital'], ans: 0 },
+    { cat: 'Punkshit', q: 'Siapa nama bot penjaga markas PUNKSHIT.OS?', opts: ['Mas Agung', 'Mas Raka', 'Bang Jago', 'Pak RT'], ans: 1 },
+    { cat: 'Sains Dasar', q: 'Planet terdekat dengan Matahari di tata surya kita adalah...', opts: ['Venus', 'Mars', 'Merkurius', 'Bumi'], ans: 2 },
+    { cat: 'Logika', q: 'Jika kemarin adalah hari Rabu, maka lusa adalah hari...', opts: ['Jumat', 'Sabtu', 'Minggu', 'Kamis'], ans: 1 },
+    { cat: 'Umum', q: 'Simbol kimia untuk air murni adalah...', opts: ['CO2', 'H2O', 'O2', 'NaCl'], ans: 1 },
+    { cat: 'Kuliner', q: 'Makanan khas Bandung berbahan dasar aci yang digoreng dan dibumbui pedas adalah...', opts: ['Pempek', 'Cireng', 'Gudeg', 'Rawon'], ans: 1 },
+    { cat: 'Teknologi', q: 'Tombol pintasan keyboard untuk menyalin (Copy) teks di Windows adalah...', opts: ['Ctrl + V', 'Ctrl + X', 'Ctrl + C', 'Ctrl + Z'], ans: 2 },
+    { cat: 'Musik', q: 'Berapa jumlah senar standar pada gitar akustik biasa?', opts: ['4 senar', '5 senar', '6 senar', '7 senar'], ans: 2 },
+    { cat: 'Alam', q: 'Hewan mamalia terbesar yang hidup di lautan adalah...', opts: ['Hiu Paus', 'Paus Biru', 'Orca', 'Cumi Raksasa'], ans: 1 },
+    { cat: 'Nusantara', q: 'Danau vulkanik terbesar di Indonesia yang berada di Sumatera Utara adalah...', opts: ['Danau Maninjau', 'Danau Toba', 'Danau Singkarak', 'Danau Poso'], ans: 1 },
+    { cat: 'Logika', q: 'Bulan apa dalam kalender Masehi yang memiliki 28 atau 29 hari?', opts: ['Januari', 'Februari', 'April', 'September'], ans: 1 }
+  ],
+  medium: [
+    { cat: 'Musik Indie', q: 'Lagu "Cincin" yang populer di skena indie Indonesia dinyanyikan oleh...', opts: ['Sal Priadi', 'Hindia', 'Pamungkas', 'Kunto Aji'], ans: 1 },
+    { cat: 'Sains', q: 'Bagian mata manusia yang berfungsi mengatur banyak sedikitnya cahaya yang masuk adalah...', opts: ['Retina', 'Kornea', 'Pupil & Iris', 'Lensa'], ans: 2 },
+    { cat: 'Sejarah', q: 'Konferensi Asia Afrika (KAA) pertama kali diselenggarakan di kota Bandung pada tahun...', opts: ['1950', '1955', '1960', '1965'], ans: 1 },
+    { cat: 'Teknologi', q: 'Error kode HTTP saat halaman web tidak ditemukan adalah...', opts: ['500', '403', '404', '200'], ans: 2 },
+    { cat: 'Geografi', q: 'Selat yang memisahkan Pulau Jawa dan Pulau Sumatera adalah...', opts: ['Selat Bali', 'Selat Sunda', 'Selat Malaka', 'Selat Makassar'], ans: 1 },
+    { cat: 'Logika', q: 'Lanjutkan deret angka berikut: 2, 6, 12, 20, 30, ...', opts: ['38', '40', '42', '44'], ans: 2 },
+    { cat: 'Astronomi', q: 'Satelit alami terbesar yang mengorbit planet Saturnus bernama...', opts: ['Europa', 'Ganymede', 'Titan', 'Phobos'], ans: 2 },
+    { cat: 'Budaya Pop', q: 'Gaya desain awal 2000-an dengan elemen glossy dan transparan disebut...', opts: ['Brutalism', 'Frutiger Aero', 'Minimalist', 'Flat Design'], ans: 1 },
+    { cat: 'Sains', q: 'Gas yang paling banyak menyusun atmosfer Bumi (sekitar 78%) adalah...', opts: ['Oksigen', 'Karbon Dioksida', 'Nitrogen', 'Argon'], ans: 2 },
+    { cat: 'Teknik', q: 'Satuan standar internasional (SI) untuk mengukur kuat arus listrik adalah...', opts: ['Volt', 'Watt', 'Ampere', 'Ohm'], ans: 2 },
+    { cat: 'Nusantara', q: 'Alat musik tradisional Jawa Barat yang terbuat dari bambu dan dimainkan dengan digoyangkan adalah...', opts: ['Sasando', 'Angklung', 'Kolintang', 'Tifa'], ans: 1 },
+    { cat: 'Logika', q: 'Sebuah jam dinding berbunyi 3 kali dalam 6 detik. Berapa detik waktu yang dibutuhkan untuk berbunyi 6 kali?', opts: ['12 detik', '15 detik', '18 detik', '10 detik'], ans: 1 }
+  ],
+  hard: [
+    { cat: 'Fisika', q: 'Fenomena pembelokan cahaya saat melewati celah sempit atau tepi penghalang disebut...', opts: ['Refraksi', 'Difraksi', 'Polarisasi', 'Dispersi'], ans: 1 },
+    { cat: 'Sejarah Dunia', q: 'Perpustakaan kuno paling terkenal di dunia Mediterania yang terletak di Mesir adalah Perpustakaan...', opts: ['Pergamum', 'Alexandria', 'Nineveh', 'Ephesus'], ans: 1 },
+    { cat: 'Logika Ketat', q: 'Jika semua A adalah B, dan sebagian B adalah C, maka kesimpulan yang PASTI benar adalah...', opts: ['Semua A adalah C', 'Sebagian A adalah C', 'Semua B adalah A', 'Tidak dapat dipastikan A bagian dari C'], ans: 3 },
+    { cat: 'Biologi', q: 'Organel sel yang dijuluki sebagai "powerhouse of the cell" penghasil energi ATP adalah...', opts: ['Ribosom', 'Mitokondria', 'Lisosom', 'Badan Golgi'], ans: 1 },
+    { cat: 'Teknologi', q: 'Dalam protokol HTTP, kode status 403 memiliki arti...', opts: ['Not Found', 'Unauthorized', 'Forbidden', 'Bad Gateway'], ans: 2 },
+    { cat: 'Geografi Dunia', q: 'Titik terdalam di samudra Bumi yang terletak di Samudra Pasifik adalah Palung...', opts: ['Tonga', 'Mariana', 'Java', 'Puerto Rico'], ans: 1 },
+    { cat: 'Matematika', q: 'Berapa nilai dari 2^5 + 3^3?', opts: ['59', '57', '61', '55'], ans: 0 },
+    { cat: 'Kimia', q: 'Unsur kimia dengan nomor atom 79 yang memiliki simbol Au adalah...', opts: ['Perak', 'Platinum', 'Emas', 'Raksa'], ans: 2 },
+    { cat: 'Astronomi', q: 'Jarak rata-rata dari Bumi ke Matahari yang dijadikan satuan astronomi (1 AU) adalah sekitar...', opts: ['15 juta km', '150 juta km', '1,5 miliar km', '384 ribu km'], ans: 1 },
+    { cat: 'Sejarah', q: 'Kerajaan maritim besar di Nusantara yang berpusat di Sumatera dan menguasai jalur Selat Malaka adalah...', opts: ['Majapahit', 'Singhasari', 'Sriwijaya', 'Tarumanegara'], ans: 2 },
+    { cat: 'Logika', q: 'Ada 3 saklar di luar ruangan tertutup untuk 1 bohlam di dalam. Kamu hanya boleh masuk 1 kali untuk tahu saklar mana yang menyalakannya. Caranya?', opts: ['Nyalakan semua', 'Nyalakan 1 lama lalu matikan, nyalakan 1 lagi, cek panas & cahaya bohlam', 'Tebak acak', 'Nyalakan bergantian 1 detik'], ans: 1 },
+    { cat: 'Sains', q: 'Kecepatan cahaya di ruang hampa mendekati angka...', opts: ['300.000 km/detik', '30.000 km/detik', '3.000 km/detik', '150.000 km/detik'], ans: 0 }
+  ]
+};
 
 const PASS_MILESTONES = [
-  { level: 3, type: 'psc', amount: 100, label: '100 PSC' },
+  { level: 3, type: 'psc', amount: 80, label: '80 PSC' },
   { level: 5, type: 'collectible', key: 'frame_arcade_y2k', name: 'Frame Profil: Arcade Y2K', rarity: 'Rare', label: 'Frame Profil Arcade Y2K' },
   { level: 10, type: 'collectible', key: 'item_console_retro', name: 'Konsol Genggam Retro', rarity: 'Epic', label: 'Item Koleksi Spesial' },
   { level: 15, type: 'collectible', key: 'title_raja_gabut', name: 'Title: Raja Gabut', rarity: 'Epic', label: 'Title Eksklusif' },
@@ -129,7 +188,6 @@ function weightedPick(pool) {
 }
 
 function calcLevelFromXp(xp) {
-  // Setiap kelipatan 150 XP naik 1 level
   return Math.max(1, Math.floor((Number(xp) || 0) / 150) + 1);
 }
 
@@ -166,6 +224,16 @@ function getOrCreateArcadeProfile(userId) {
     personalBests: JSON.parse(row.personal_bests || '{}'),
     lastFishBatchAt: row.last_fish_batch_at || 0
   };
+}
+
+function clampDailyPsc(userId, desiredPsc) {
+  const want = Math.max(0, Math.round(Number(desiredPsc) || 0));
+  if (want <= 0) return { awarded: 0, capped: false };
+  const prof = getOrCreateArcadeProfile(userId);
+  const earnedSoFar = Number(prof.dailyStats.pscEarnedToday || 0);
+  const remaining = Math.max(0, DAILY_PSC_CAP - earnedSoFar);
+  const awarded = Math.min(want, remaining);
+  return { awarded, capped: awarded < want };
 }
 
 function updateArcadeProgress(userId, { addXp = 0, statsInc = {}, newBest = null }) {
@@ -220,8 +288,6 @@ function getLeaderboards() {
 // ==========================================
 // 4. ENDPOINT UTAMA ARENA GABUT 2.0
 // ==========================================
-
-// GET /api/arena/state — Muat seluruh status Arena, XP, Quest, Fishdex, Leaderboard
 gameRouter.get('/arena/state', (req, res) => {
   const user = getAuthUser(req, res);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -229,7 +295,6 @@ gameRouter.get('/arena/state', (req, res) => {
   const today = todayWib();
   const profile = getOrCreateArcadeProfile(user.id);
 
-  // Cek kuota mancing (maks 6x per sesi, cooldown 4 jam jika habis)
   const fourHoursMs = 4 * 3600 * 1000;
   let fishUsed = user.fish_date === today ? (user.fish_today || 0) : 0;
   if (fishUsed >= 6 && profile.lastFishBatchAt && (Date.now() - profile.lastFishBatchAt) >= fourHoursMs) {
@@ -266,13 +331,14 @@ gameRouter.get('/arena/state', (req, res) => {
       cooldownEndsAt: fishUsed >= 6 ? (profile.lastFishBatchAt + fourHoursMs) : 0
     },
     scratchedToday: user.scratched_date === today,
+    dailyPscEarned: Number(profile.dailyStats.pscEarnedToday || 0),
+    dailyPscCap: DAILY_PSC_CAP,
     collections,
-    fishdexTotal: FISH_POOL.length,
+    fishdexTotal: ALL_FISH_COUNT,
     leaderboards: getLeaderboards()
   });
 });
 
-// POST /api/arena/session/start — Mulai sesi permainan tervalidasi server
 gameRouter.post('/arena/session/start', (req, res) => {
   const user = getAuthUser(req, res);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -283,7 +349,6 @@ gameRouter.post('/arena/session/start', (req, res) => {
   const sessionId = crypto.randomUUID();
   const profile = getOrCreateArcadeProfile(user.id);
 
-  // Bersihkan sesi kedaluwarsa milik user
   db.prepare('DELETE FROM arcade_sessions WHERE user_id = ? AND expires_at < ?').run(user.id, now);
 
   if (game === 'fish') {
@@ -300,9 +365,10 @@ gameRouter.post('/arena/session/start', (req, res) => {
       }
     }
 
-    const pickedFish = weightedPick(FISH_POOL);
+    const spotKey = FISH_POOLS[mode] ? mode : 'pinggir';
+    const pickedFish = weightedPick(FISH_POOLS[spotKey]);
     const weight = Number((pickedFish.minW + Math.random() * (pickedFish.maxW - pickedFish.minW)).toFixed(2));
-    const biteDelayMs = 1500 + Math.floor(Math.random() * 2500);
+    const biteDelayMs = 1400 + Math.floor(Math.random() * 2200);
 
     db.prepare(`
       INSERT INTO arcade_sessions (id, user_id, game, mode, payload, status, created_at, expires_at)
@@ -310,8 +376,8 @@ gameRouter.post('/arena/session/start', (req, res) => {
     `).run(
       sessionId,
       user.id,
-      mode,
-      JSON.stringify({ fish: pickedFish, weight }),
+      spotKey,
+      JSON.stringify({ fish: pickedFish, weight, spot: spotKey }),
       now,
       now + 3 * 60 * 1000
     );
@@ -320,7 +386,11 @@ gameRouter.post('/arena/session/start', (req, res) => {
       sessionId,
       biteDelayMs,
       tensionDifficulty: pickedFish.tension,
-      rarityHint: pickedFish.rarity === 'Legendary' || pickedFish.rarity === 'Epic' ? 'Tarikan berat banget!' : 'Ada pergerakan di air...'
+      rarityHint: pickedFish.rarity === 'Mythic' || pickedFish.rarity === 'Legendary'
+        ? 'Tarikan monster kedalaman!'
+        : pickedFish.rarity === 'Epic'
+          ? 'Tarikan berat banget!'
+          : 'Pelampung mulai bergerak...'
     });
   }
 
@@ -330,10 +400,10 @@ gameRouter.post('/arena/session/start', (req, res) => {
     }
 
     const roll = Math.random();
-    let prize = { type: 'psc', psc: 5, xp: 20, label: '+5 PSC' };
-    if (roll < 0.08) prize = { type: 'psc', psc: 35, xp: 60, label: 'JACKPOT +35 PSC!' };
-    else if (roll < 0.28) prize = { type: 'psc', psc: 15, xp: 35, label: '+15 PSC' };
-    else if (roll < 0.60) prize = { type: 'psc', psc: 8, xp: 25, label: '+8 PSC' };
+    let prize = { type: 'psc', psc: 6, xp: 20, label: '+6 PSC' };
+    if (roll < 0.06) prize = { type: 'psc', psc: 40, xp: 65, label: 'JACKPOT +40 PSC!' };
+    else if (roll < 0.24) prize = { type: 'psc', psc: 18, xp: 35, label: '+18 PSC' };
+    else if (roll < 0.58) prize = { type: 'psc', psc: 10, xp: 25, label: '+10 PSC' };
 
     db.prepare(`
       INSERT INTO arcade_sessions (id, user_id, game, mode, payload, status, created_at, expires_at)
@@ -347,11 +417,8 @@ gameRouter.post('/arena/session/start', (req, res) => {
   }
 
   if (game === 'claw') {
-    const pickedItem = weightedPick(CLAW_POOL);
-    // Peluang capit berhasil berdasarkan rarity
-    const grabSuccessRate = pickedItem.rarity === 'Legendary' ? 0.45
-      : pickedItem.rarity === 'Epic' ? 0.60
-      : 0.80;
+    const boxKey = CLAW_BOX_POOLS[mode] ? mode : 'rongsok';
+    const pickedItem = weightedPick(CLAW_BOX_POOLS[boxKey]);
 
     db.prepare(`
       INSERT INTO arcade_sessions (id, user_id, game, mode, payload, status, created_at, expires_at)
@@ -359,8 +426,8 @@ gameRouter.post('/arena/session/start', (req, res) => {
     `).run(
       sessionId,
       user.id,
-      mode,
-      JSON.stringify({ item: pickedItem, grabSuccessRate }),
+      boxKey,
+      JSON.stringify({ item: pickedItem, grabSuccessRate: pickedItem.rate, box: boxKey }),
       now,
       now + 3 * 60 * 1000
     );
@@ -373,16 +440,19 @@ gameRouter.post('/arena/session/start', (req, res) => {
   }
 
   if (game === 'react') {
+    const tierKey = ['classic', 'bo5', 'nightmare'].includes(mode) ? mode : 'classic';
     db.prepare(`
       INSERT INTO arcade_sessions (id, user_id, game, mode, payload, status, created_at, expires_at)
       VALUES (?, ?, 'react', ?, '{}', 'active', ?, ?)
-    `).run(sessionId, user.id, mode, now, now + 3 * 60 * 1000);
+    `).run(sessionId, user.id, tierKey, now, now + 3 * 60 * 1000);
 
-    return res.json({ sessionId, mode });
+    return res.json({ sessionId, mode: tierKey });
   }
 
   if (game === 'trivia') {
-    const shuffled = [...TRIVIA_BANK].sort(() => Math.random() - 0.5).slice(0, 5);
+    const tierKey = TRIVIA_BANK[mode] ? mode : 'medium';
+    const count = tierKey === 'hard' ? 6 : 5;
+    const shuffled = [...TRIVIA_BANK[tierKey]].sort(() => Math.random() - 0.5).slice(0, count);
     const answers = shuffled.map(q => q.ans);
     const clientQuestions = shuffled.map((q, idx) => ({
       index: idx,
@@ -394,7 +464,7 @@ gameRouter.post('/arena/session/start', (req, res) => {
     db.prepare(`
       INSERT INTO arcade_sessions (id, user_id, game, mode, payload, status, created_at, expires_at)
       VALUES (?, ?, 'trivia', ?, ?, 'active', ?, ?)
-    `).run(sessionId, user.id, mode, JSON.stringify({ answers }), now, now + 5 * 60 * 1000);
+    `).run(sessionId, user.id, tierKey, JSON.stringify({ answers, tier: tierKey }), now, now + 5 * 60 * 1000);
 
     return res.json({
       sessionId,
@@ -402,7 +472,6 @@ gameRouter.post('/arena/session/start', (req, res) => {
     });
   }
 
-  // Game Ekspansi (Gebuk Siapa, Adu Ingatan, Kabur Duluan, Ketuk Beat, Pantul Mania)
   const expansionGames = ['whack', 'memory', 'runner', 'beat', 'paddle'];
   if (expansionGames.includes(game)) {
     db.prepare(`
@@ -416,7 +485,6 @@ gameRouter.post('/arena/session/start', (req, res) => {
   return res.status(400).json({ error: 'Jenis game tidak dikenali.' });
 });
 
-// POST /api/arena/session/finish — Validasi hasil permainan & berikan hadiah secara atomik
 gameRouter.post('/arena/session/finish', async (req, res) => {
   const user = getAuthUser(req, res);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -446,7 +514,6 @@ gameRouter.post('/arena/session/finish', async (req, res) => {
   let announceGroup = '';
 
   const runTx = db.transaction(() => {
-    // Kunci sesi agar tidak bisa di-replay (Idempotency)
     db.prepare("UPDATE arcade_sessions SET status = 'finished' WHERE id = ?").run(sessionId);
 
     if (session.game === 'fish') {
@@ -464,8 +531,8 @@ gameRouter.post('/arena/session/finish', async (req, res) => {
       }
 
       if (!result.caught) {
-        xpEarned = 5;
-        resultText = 'Yah, ikannya lepas! Tarikan kurang pas. (+5 Arcade XP)';
+        xpEarned = 6;
+        resultText = 'Yah, ikannya lepas! Tarikan kurang pas. (+6 Arcade XP)';
         return;
       }
 
@@ -478,11 +545,11 @@ gameRouter.post('/arena/session/finish', async (req, res) => {
         VALUES (?, 'fish', ?, ?, ?, ?, ?, 0, ?)
       `).run(user.id, fish.key, fish.name, fish.rarity, weight, fish.price, now);
 
-      resultText = `🎣 Dapat ${fish.name} [${fish.rarity}] seberat ${weight} kg! (+${xpEarned} XP)`;
+      resultText = `🎣 Dapat ${fish.name} [${fish.rarity}] seberat ${weight} kg! Nilai jual: ${fish.price} PSC (+${xpEarned} XP)`;
 
-      if (fish.rarity === 'Legendary') {
+      if (fish.rarity === 'Legendary' || fish.rarity === 'Mythic') {
         announceGroup =
-          `🎣 <b>TANGKAPAN LEGENDARY!</b>\n` +
+          `🎣 <b>TANGKAPAN ${fish.rarity.toUpperCase()}!</b>\n` +
           `<b>${escHtml(user.name)}</b> baru aja narik <b>${escHtml(fish.name)} (${weight} kg)</b> di Mancing Galatama!`;
       }
     }
@@ -492,21 +559,23 @@ gameRouter.post('/arena/session/finish', async (req, res) => {
         throw new Error('Kartu hari ini sudah diklaim.');
       }
       const { prize } = payload;
-      pscEarned = prize.psc || 0;
+      const capped = clampDailyPsc(user.id, prize.psc || 0);
+      pscEarned = capped.awarded;
       xpEarned = prize.xp || 20;
+      if (pscEarned > 0) statsInc.pscEarnedToday = pscEarned;
 
       db.prepare('UPDATE users SET scratched_date = ?, psc = psc + ? WHERE id = ?').run(today, pscEarned, user.id);
-      resultText = `🎟️ Kartu terbuka: ${prize.label} (+${xpEarned} Arcade XP)`;
+      resultText = `🎟️ Kartu terbuka: +${pscEarned} PSC (+${xpEarned} Arcade XP)` + (capped.capped ? ' [Limit harian tercapai]' : '');
     }
 
     else if (session.game === 'claw') {
-      // Evaluasi ketepatan posisi capit dari client (0..100, tengah = 50) + peluang server
-      const accuracy = Math.max(0, 1 - (Math.abs(Number(result.dropPos ?? 50) - 50) / 50));
+      const targetCenter = Number(result.targetPos ?? 50);
+      const accuracy = Math.max(0, 1 - (Math.abs(Number(result.dropPos ?? 50) - targetCenter) / 45));
       const success = accuracy >= 0.45 && Math.random() <= (payload.grabSuccessRate || 0.7);
 
       if (!success) {
         xpEarned = 8;
-        resultText = '🕹️ Capit meleset! Barang jatuh lagi ke tumpukan rongsok. (+8 XP)';
+        resultText = '🕹️ Capit meleset! Barang jatuh lagi ke dalam kotak. (+8 XP)';
         return;
       }
 
@@ -519,34 +588,38 @@ gameRouter.post('/arena/session/finish', async (req, res) => {
         VALUES (?, 'claw', ?, ?, ?, 0, ?, 0, ?)
       `).run(user.id, item.key, item.name, item.rarity, item.price, now);
 
-      resultText = `🕹️ Mantap! Berhasil nyapit ${item.name} [${item.rarity}]! (+${xpEarned} XP)`;
+      resultText = `🕹️ Mantap! Berhasil nyapit ${item.name} [${item.rarity}]! Nilai jual: ${item.price} PSC (+${xpEarned} XP)`;
     }
 
     else if (session.game === 'react') {
       const avgMs = Math.round(Number(result.avgMs) || 0);
-      // Anti-cheat: waktu reaksi manusia wajar >= 110ms
       if (avgMs < 110 || avgMs > 5000) {
         throw new Error('Skor refleks tidak valid atau terdeteksi anomali.');
       }
 
+      const tier = result.tier || session.mode || 'classic';
       db.prepare(`
         INSERT INTO arcade_scores (user_id, user_name, game, mode, score, created_at)
         VALUES (?, ?, 'react', ?, ?, ?)
-      `).run(user.id, user.name, session.mode, avgMs, now);
+      `).run(user.id, user.name, tier, avgMs, now);
 
       newBest = { game: 'react', score: avgMs };
-      xpEarned = avgMs <= 260 ? 35 : avgMs <= 340 ? 25 : 15;
-      pscEarned = avgMs <= 250 ? 4 : avgMs <= 320 ? 2 : 0;
-
+      const mult = tier === 'nightmare' ? 2.2 : tier === 'bo5' ? 1.5 : 1;
+      xpEarned = Math.round((avgMs <= 260 ? 32 : avgMs <= 340 ? 22 : 14) * mult);
+      const rawPsc = avgMs <= 250 ? Math.round(6 * mult) : avgMs <= 320 ? Math.round(3 * mult) : 1;
+      const capped = clampDailyPsc(user.id, rawPsc);
+      pscEarned = capped.awarded;
       if (pscEarned > 0) {
+        statsInc.pscEarnedToday = pscEarned;
         db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(pscEarned, user.id);
       }
-      resultText = `⚡ Rata-rata refleks: ${avgMs} ms! (+${xpEarned} XP${pscEarned ? `, +${pscEarned} PSC` : ''})`;
+      resultText = `⚡ Rata-rata refleks (${tier.toUpperCase()}): ${avgMs} ms! (+${xpEarned} XP${pscEarned ? `, +${pscEarned} PSC` : ''})`;
     }
 
     else if (session.game === 'trivia') {
       const userAnswers = Array.isArray(result.answers) ? result.answers : [];
       const correctAnswers = payload.answers || [];
+      const tier = payload.tier || session.mode || 'medium';
       let correctCount = 0;
       let maxCombo = 0;
       let curCombo = 0;
@@ -562,42 +635,50 @@ gameRouter.post('/arena/session/finish', async (req, res) => {
       }
 
       statsInc.triviaCorrect = correctCount;
-      xpEarned = correctCount * 12 + maxCombo * 5;
-      pscEarned = correctCount >= 4 ? 5 : correctCount >= 2 ? 2 : 0;
+      const tierMult = tier === 'hard' ? 2.0 : tier === 'medium' ? 1.4 : 1.0;
+      xpEarned = Math.round((correctCount * 12 + maxCombo * 5) * tierMult);
+      const rawPsc = correctCount >= 4 ? Math.round(8 * tierMult) : correctCount >= 2 ? Math.round(4 * tierMult) : 0;
+      const capped = clampDailyPsc(user.id, rawPsc);
+      pscEarned = capped.awarded;
 
       if (pscEarned > 0) {
+        statsInc.pscEarnedToday = pscEarned;
         db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(pscEarned, user.id);
       }
 
-      const finalScore = correctCount * 100 + maxCombo * 20;
+      const finalScore = Math.round((correctCount * 100 + maxCombo * 20) * tierMult);
       db.prepare(`
         INSERT INTO arcade_scores (user_id, user_name, game, mode, score, created_at)
         VALUES (?, ?, 'trivia', ?, ?, ?)
-      `).run(user.id, user.name, session.mode, finalScore, now);
+      `).run(user.id, user.name, tier, finalScore, now);
 
       newBest = { game: 'trivia', score: finalScore };
-      resultText = `🧠 Benar ${correctCount}/5 soal (Max Combo ${maxCombo}x)! (+${xpEarned} XP${pscEarned ? `, +${pscEarned} PSC` : ''})`;
+      resultText = `🧠 Benar ${correctCount}/${correctAnswers.length} soal [${tier.toUpperCase()}] (Combo ${maxCombo}x)! (+${xpEarned} XP${pscEarned ? `, +${pscEarned} PSC` : ''})`;
     }
 
     else {
-      // Game Ekspansi: whack, memory, runner, beat, paddle
       if (elapsedMs < 3000) {
         throw new Error('Durasi permainan terlalu singkat.');
       }
+      const tier = result.tier || session.mode || 'medium';
+      const tierMult = tier === 'hard' ? 1.8 : tier === 'medium' ? 1.3 : 1.0;
       const cleanScore = Math.max(0, Math.min(99999, Math.round(Number(result.score) || 0)));
       db.prepare(`
         INSERT INTO arcade_scores (user_id, user_name, game, mode, score, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
-      `).run(user.id, user.name, session.game, session.mode, cleanScore, now);
+      `).run(user.id, user.name, session.game, tier, cleanScore, now);
 
       newBest = { game: session.game, score: cleanScore };
-      xpEarned = Math.min(50, Math.max(10, Math.floor(cleanScore / 20)));
-      pscEarned = cleanScore >= 200 ? 3 : cleanScore >= 80 ? 1 : 0;
+      xpEarned = Math.min(70, Math.max(12, Math.round((cleanScore / 18) * tierMult)));
+      const rawPsc = cleanScore >= 220 ? Math.round(8 * tierMult) : cleanScore >= 100 ? Math.round(4 * tierMult) : 1;
+      const capped = clampDailyPsc(user.id, rawPsc);
+      pscEarned = capped.awarded;
 
       if (pscEarned > 0) {
+        statsInc.pscEarnedToday = pscEarned;
         db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(pscEarned, user.id);
       }
-      resultText = `🎮 Skor tercatat: ${cleanScore}! (+${xpEarned} XP${pscEarned ? `, +${pscEarned} PSC` : ''})`;
+      resultText = `🎮 Skor [${tier.toUpperCase()}]: ${cleanScore}! (+${xpEarned} XP${pscEarned ? `, +${pscEarned} PSC` : ''})`;
     }
   });
 
@@ -619,7 +700,7 @@ gameRouter.post('/arena/session/finish', async (req, res) => {
       text: announceGroup,
       buttonText: '🎣 IKUT MANCING',
       startParam: 'arena',
-      feedText: `${user.name} narik tangkapan Legendary di Mancing Galatama!`
+      feedText: `${user.name} narik tangkapan langka di Mancing Galatama!`
     }).catch(() => {});
   }
 
@@ -629,12 +710,13 @@ gameRouter.post('/arena/session/finish', async (req, res) => {
     resultText,
     pscEarned,
     xpEarned,
+    dailyPscEarned: Number(updatedProfile.dailyStats.pscEarnedToday || 0),
+    dailyPscCap: DAILY_PSC_CAP,
     profile: updatedProfile,
     user: formatUser(freshUser)
   });
 });
 
-// POST /api/arena/fish/sell — Jual ikan atau item koleksi dari inventaris arena
 gameRouter.post('/arena/fish/sell', (req, res) => {
   const user = getAuthUser(req, res);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -664,7 +746,6 @@ gameRouter.post('/arena/fish/sell', (req, res) => {
   });
 });
 
-// POST /api/arena/pass/claim — Klaim hadiah Arcade Pass Gratis berdasarkan Level
 gameRouter.post('/arena/pass/claim', (req, res) => {
   const user = getAuthUser(req, res);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -706,7 +787,6 @@ gameRouter.post('/arena/pass/claim', (req, res) => {
   });
 });
 
-// POST /api/arena/quest/claim — Klaim hadiah Daily Quest
 gameRouter.post('/arena/quest/claim', (req, res) => {
   const user = getAuthUser(req, res);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -743,9 +823,6 @@ gameRouter.post('/arena/quest/claim', (req, res) => {
   });
 });
 
-// ==========================================
-// 5. COMPATIBILITY ENDPOINTS (VERSI LAMA)
-// ==========================================
 gameRouter.post('/game/play', (req, res) => {
   const user = getAuthUser(req, res);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
