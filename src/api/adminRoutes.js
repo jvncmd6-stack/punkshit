@@ -7,7 +7,7 @@ import { db } from '../database/db.js';
 import { ENV } from '../config/env.js';
 import { requireUser } from '../middlewares/authTma.js';
 import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
-import { broadcastToTelegram, getCatalog, escHtml } from '../services/syncEngine.js';
+import { broadcastToTelegram, getCatalog, escHtml, notifyPrivateUser } from '../services/syncEngine.js';
 
 export const adminRouter = Router();
 const uploadRestore = multer({ dest: '/tmp' });
@@ -74,7 +74,7 @@ adminRouter.get('/admin/overview', requireUser, (req, res) => {
 
   let pendingCollabs = [];
   try {
-    pendingCollabs = db.prepare("SELECT * FROM collab_submissions WHERE status = 'pending' ORDER BY created_at ASC LIMIT 20").all();
+    pendingCollabs = db.prepare("SELECT * FROM item_submissions WHERE status = 'pending' ORDER BY created_at ASC LIMIT 20").all();
   } catch (e) {}
 
   let pscRequests = [];
@@ -111,32 +111,56 @@ adminRouter.post('/admin/users/freeze', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/admin/collab/review -> Kurasi Item Collab Warga
+// POST /api/admin/collab/review -> Kurasi Item Collab Warga (tabel item_submissions + royalti 20%)
 adminRouter.post('/admin/collab/review', requireUser, async (req, res) => {
   if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
 
   const id = String(req.body?.id || '');
   const decision = String(req.body?.decision || 'reject');
-  const sub = db.prepare('SELECT * FROM collab_submissions WHERE id = ?').get(id);
-  if (!sub) return res.status(404).json({ error: 'Pengajuan collab tidak ditemukan.' });
+  const sub = db.prepare('SELECT * FROM item_submissions WHERE id = ?').get(id);
+  if (!sub || sub.status !== 'pending') {
+    return res.status(404).json({ error: 'Pengajuan collab tidak ditemukan atau sudah diproses.' });
+  }
 
   if (decision === 'approve') {
-    const itemId = 'col_' + crypto.randomBytes(4).toString('hex');
-    db.prepare(`
-      INSERT INTO items (id, type, name, price, rarity, stock, desc, image_url, created_at)
-      VALUES (?, ?, ?, ?, 'Collab', -1, ?, ?, ?)
-    `).run(itemId, sub.type || 'gift', sub.name, Number(sub.price) || 100, `Karya Collab oleh ${sub.creator_name}`, sub.image_url || '', Date.now());
-    db.prepare("UPDATE collab_submissions SET status = 'approved' WHERE id = ?").run(id);
-    logAudit(req.dbUser.id, 'ACC COLLAB', `${sub.name} oleh ${sub.creator_name}`);
+    const itemId = 'collab-' + crypto.randomBytes(3).toString('hex');
+    const finalPrice = Number(sub.price) || 100;
+    const creatorLabel = sub.creator_username ? `@${sub.creator_username}` : sub.creator_name;
+    const fullDesc = `${sub.desc || 'Item spesial kolaborasi warga.'} (Collab by ${creatorLabel})`;
+
+    db.transaction(() => {
+      db.prepare(`
+        INSERT INTO items (id, type, name, price, rarity, stock, desc, image_url, creator_id, creator_name, is_collab, created_at)
+        VALUES (?, ?, ?, ?, 'Collab', -1, ?, ?, ?, ?, 1, ?)
+      `).run(itemId, sub.type, sub.name, finalPrice, fullDesc, sub.image_url || '', sub.creator_id, creatorLabel, Date.now());
+
+      db.prepare("UPDATE item_submissions SET status = 'approved', reviewed_by = ? WHERE id = ?").run(String(req.dbUser.id), id);
+      db.prepare('INSERT INTO inventory (user_id, item_id, acquired_at) VALUES (?, ?, ?)').run(sub.creator_id, itemId, Date.now());
+    })();
+
+    logAudit(req.dbUser.id, 'ACC COLLAB', `Setujui ${sub.name} (${itemId}) oleh ${creatorLabel}`);
+
+    await notifyPrivateUser(
+      sub.creator_id,
+      `🎉 <b>ITEM COLLAB KAMU DI-ACC!</b>\n\nKarya <b>${escHtml(sub.name)}</b> resmi rilis di <b>Lapak Rongsok</b> seharga <b>${finalPrice} PSC</b>!\n` +
+      `• Kamu otomatis dapat 1 item gratis di gudang.\n` +
+      `• Tiap kali warga lain beli, kamu dapat <b>royalti 20% PSC</b> otomatis!`,
+      { buttonText: '🛍️ CEK LAPAK RONGSOK', startParam: 'lapak' }
+    ).catch(() => {});
   } else {
-    db.prepare("UPDATE collab_submissions SET status = 'rejected' WHERE id = ?").run(id);
+    db.prepare("UPDATE item_submissions SET status = 'rejected', reviewed_by = ? WHERE id = ?").run(String(req.dbUser.id), id);
     logAudit(req.dbUser.id, 'TOLAK COLLAB', `${sub.name} oleh ${sub.creator_name}`);
+
+    await notifyPrivateUser(
+      sub.creator_id,
+      `❌ <b>PENGAJUAN COLLAB DITOLAK</b>\nItem: <b>${escHtml(sub.name)}</b>\nAlasan: <i>Belum sesuai kriteria tema markas.</i>`
+    ).catch(() => {});
   }
 
   res.json({ ok: true, catalog: getCatalog() });
 });
 
-// POST /api/admin/items -> Tambah item ke Lapak Rongsok (tabel items)
+// POST /api/admin/items -> Tambah item resmi ke Lapak Rongsok (tabel items)
 adminRouter.post('/admin/items', requireUser, uploadMem.single('asset'), async (req, res) => {
   if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
 
