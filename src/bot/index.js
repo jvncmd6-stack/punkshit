@@ -3,6 +3,7 @@ import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { bindBotInstance } from '../services/syncEngine.js';
 import { registerBotHandlers } from './handlers.js';
+import { registerSparkAdminSync } from './sparkAdminSync.js';
 
 let botInstance = null;
 
@@ -38,6 +39,7 @@ db.exec(`
     streak INTEGER DEFAULT 0,
     xp INTEGER DEFAULT 0,
     last_qualified_date TEXT DEFAULT '',
+    case_status TEXT DEFAULT 'OPEN',
     created_at INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS spark_daily (
@@ -48,10 +50,23 @@ db.exec(`
     last_msg_ts INTEGER DEFAULT 0,
     PRIMARY KEY (date, username)
   );
+  CREATE TABLE IF NOT EXISTS psc_requests (
+    id TEXT PRIMARY KEY,
+    requester_id TEXT NOT NULL,
+    requester_name TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    target_name TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at INTEGER NOT NULL
+  );
 `);
 
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN source_type TEXT DEFAULT 'spotify'"); } catch (e) {}
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN file_id TEXT DEFAULT ''"); } catch (e) {}
+try { db.exec("ALTER TABLE spark_pairs ADD COLUMN case_status TEXT DEFAULT 'OPEN'"); } catch (e) {}
+try { db.exec('ALTER TABLE users ADD COLUMN is_frozen INTEGER DEFAULT 0'); } catch (e) {}
 
 export function startBot() {
   if (!ENV.BOT_TOKEN) {
@@ -67,6 +82,7 @@ export function startBot() {
     { command: 'start', description: 'Menu Utama Markas PUNKSHIT.OS' },
     { command: 'tutor', description: 'Panduan Cara Pakai Semua App Mini App' },
     { command: 'spark', description: 'Buka Spark Buddies' },
+    { command: 'setor', description: 'Setor Harian Api Spark (1x Sehari)' },
     { command: 'acc', description: 'Terima Ajakan Spark Buddies' },
     { command: 'cekpsc', description: 'Cek Saldo PSC Warga' },
     { command: 'antrean', description: 'Cek Antrean Lagu Radio Gang' },
@@ -78,6 +94,7 @@ export function startBot() {
   ]).catch(() => {});
 
   registerBotHandlers(bot);
+  registerSparkAdminSync(bot);
 
   bot.catch((err) => {
     console.error('[Bot Error]:', err.message);
