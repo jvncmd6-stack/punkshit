@@ -21,7 +21,7 @@ fs.mkdirSync(ENV.UPLOAD_DIR, { recursive: true });
 
 initDb();
 
-// Tabel Spark Buddies di database SQLite utama
+// Tabel Spark Buddies & Keamanan Akun di database SQLite utama
 db.exec(`
   CREATE TABLE IF NOT EXISTS spark_pairs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,6 +31,7 @@ db.exec(`
     streak INTEGER DEFAULT 0,
     xp INTEGER DEFAULT 0,
     last_qualified_date TEXT DEFAULT '',
+    case_status TEXT DEFAULT 'OPEN',
     created_at INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS spark_daily (
@@ -43,8 +44,11 @@ db.exec(`
   );
 `);
 
-// Auto-Cleanup data kadaluarsa (Wanted > 24 jam, Arsip Menfess > 7 hari)
-function cleanupExpiredSocialData() {
+try { db.exec("ALTER TABLE spark_pairs ADD COLUMN case_status TEXT DEFAULT 'OPEN'"); } catch (_) {}
+try { db.exec('ALTER TABLE users ADD COLUMN is_frozen INTEGER DEFAULT 0'); } catch (_) {}
+
+// Auto-Cleanup data kadaluarsa + Reset Kasus Mingguan Spark tiap Senin WIB
+function cleanupAndMaintenance() {
   try {
     const oneDayAgo = Date.now() - 24 * 3600 * 1000;
     const sevenDaysAgo = Date.now() - 7 * 24 * 3600 * 1000;
@@ -54,26 +58,30 @@ function cleanupExpiredSocialData() {
 
     db.prepare('DELETE FROM menfess_replies WHERE menfess_id IN (SELECT id FROM menfess WHERE created_at < ?)').run(sevenDaysAgo);
     db.prepare("DELETE FROM menfess WHERE status = 'approved' AND created_at < ?").run(sevenDaysAgo);
+
+    // Buka kembali kasus mingguan Spark yang sudah selesai saat masuk hari Senin (WIB)
+    const nowWib = new Date(Date.now() + 7 * 3600 * 1000);
+    if (nowWib.getUTCDay() === 1) {
+      db.prepare("UPDATE spark_pairs SET case_status = 'OPEN' WHERE case_status = 'COMPLETED'").run();
+    }
   } catch (err) {
-    console.error('[Auto-Cleanup Error]:', err.message);
+    console.error('[Maintenance Error]:', err.message);
   }
 }
 
-cleanupExpiredSocialData();
-setInterval(cleanupExpiredSocialData, 3 * 3600 * 1000);
+cleanupAndMaintenance();
+setInterval(cleanupAndMaintenance, 3 * 3600 * 1000);
 
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
-// 1. Security Headers dasar
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   next();
 });
 
-// 2. Penguncian CORS sesuai domain Mini App
 const rawCors = (process.env.CORS_ORIGINS || '').trim();
 const allowedOrigins = [
   ...rawCors.split(','),
@@ -98,7 +106,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-telegram-init-data']
 }));
 
-// 3. Anti-Spam Rate Limiter ringan (maks 90 req / menit per IP)
 const rateBuckets = new Map();
 function apiRateLimit(req, res, next) {
   const ip = req.ip || req.socket?.remoteAddress || 'unknown';
@@ -122,7 +129,6 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// 4. Anti-Spam Cooldown khusus aksi broadcast ke Grup/Channel
 const socialCooldowns = new Map();
 function socialBotCooldown(req, res, next) {
   if (req.method !== 'POST') return next();
