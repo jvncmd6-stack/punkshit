@@ -96,7 +96,7 @@ sparkRouter.post('/spark/action', async (req, res) => {
 
       if (String(pair.case_status || '').toUpperCase() === 'COMPLETED') {
         const list = getSparkListForUser(actor);
-        return res.json({ ok: false, message: 'Kasus Spark ini sudah selesai.', sparkBuddies: list, sparkBuddy: list[0] || null });
+        return res.json({ ok: false, message: 'Kasus Spark mingguan ini sudah selesai!', sparkBuddies: list, sparkBuddy: list[0] || null });
       }
 
       const existing = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, actor);
@@ -114,25 +114,40 @@ sparkRouter.post('/spark/action', async (req, res) => {
       const partner = pair.user1 === actor ? pair.user2 : pair.user1;
       const partnerDaily = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, partner);
       const partnerDone = partnerDaily && (partnerDaily.gap > 0 || partnerDaily.msg > 0);
+      let hitWeeklyMilestone = false;
+      let newStreak = pair.streak || 0;
 
       if (partnerDone && pair.last_qualified_date !== today) {
+        newStreak = (pair.streak || 0) + 1;
+        hitWeeklyMilestone = newStreak > 0 && newStreak % 7 === 0;
+
         db.prepare(`
           UPDATE spark_pairs
-          SET streak = COALESCE(streak, 0) + 1,
-              xp = COALESCE(xp, 0) + 25,
-              last_qualified_date = ?
+          SET streak = ?,
+              xp = COALESCE(xp, 0) + ?,
+              last_qualified_date = ?,
+              case_status = ?
           WHERE id = ?
-        `).run(today, pair.id);
+        `).run(newStreak, hitWeeklyMilestone ? 100 : 25, today, hitWeeklyMilestone ? 'COMPLETED' : 'OPEN', pair.id);
+
+        if (hitWeeklyMilestone) {
+          db.prepare('UPDATE users SET psc = psc + 100, cred = cred + 15 WHERE LOWER(username) IN (?, ?)').run(pair.user1, pair.user2);
+        }
       } else {
         db.prepare('UPDATE spark_pairs SET xp = COALESCE(xp, 0) + 10 WHERE id = ?').run(pair.id);
       }
 
       const list = getSparkListForUser(actor);
+      let msg = `Setoran tercatat! Menunggu @${partner} ikut menyalakan api hari ini.`;
+      if (partnerDone && hitWeeklyMilestone) {
+        msg = `🏁 KASUS MINGGUAN SELESAI (${newStreak} Hari)! Kamu & @${partner} dapat bonus +100 PSC & +15 Cred!`;
+      } else if (partnerDone) {
+        msg = `Api Spark hari ini menyala penuh bareng @${partner}! Streak ${newStreak} hari 🔥`;
+      }
+
       return res.json({
         ok: true,
-        message: partnerDone
-          ? `Api Spark hari ini menyala penuh bareng @${partner}! Streak bertambah 🔥`
-          : `Setoran tercatat! Menunggu @${partner} ikut menyalakan api hari ini.`,
+        message: msg,
         sparkBuddies: list,
         sparkBuddy: list[0] || null
       });
@@ -175,8 +190,8 @@ sparkRouter.post('/spark/action', async (req, res) => {
       }
 
       db.prepare(`
-        INSERT INTO spark_pairs (user1, user2, status, streak, xp, last_qualified_date, created_at)
-        VALUES (?, ?, 'pending', 0, 0, '', ?)
+        INSERT INTO spark_pairs (user1, user2, status, streak, xp, last_qualified_date, case_status, created_at)
+        VALUES (?, ?, 'pending', 0, 0, '', 'OPEN', ?)
       `).run(actor, target, Date.now());
 
       const bot = typeof botMod.getBotInstance === 'function' ? botMod.getBotInstance() : null;
