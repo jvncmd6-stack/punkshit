@@ -21,7 +21,7 @@ function isOwnerId(uid) {
 }
 
 export function registerSparkAdminSync(bot) {
-  // 1. Command /setor (Sinkron 100% dengan tombol Setor di WebApp + Bonus Mingguan)
+  // 1. Command /setor (Sinkron 100% dengan tombol Setor di WebApp + Bonus Mingguan +50 PSC)
   bot.command('setor', async (ctx) => {
     const usn = cleanUsn(ctx.from?.username);
     if (!usn) {
@@ -72,12 +72,12 @@ export function registerSparkAdminSync(bot) {
               last_qualified_date = ?,
               case_status = ?
           WHERE id = ?
-        `).run(newStreak, hitWeeklyMilestone ? 100 : 25, today, hitWeeklyMilestone ? 'COMPLETED' : 'OPEN', pair.id);
+        `).run(newStreak, hitWeeklyMilestone ? 75 : 25, today, hitWeeklyMilestone ? 'COMPLETED' : 'OPEN', pair.id);
 
         if (hitWeeklyMilestone) {
-          db.prepare('UPDATE users SET psc = psc + 100, cred = cred + 15 WHERE LOWER(username) IN (?, ?)').run(pair.user1, pair.user2);
+          db.prepare('UPDATE users SET psc = psc + 50, cred = cred + 10 WHERE LOWER(username) IN (?, ?)').run(pair.user1, pair.user2);
           summaries.push(
-            `• Bareng <b>@${escHtml(partner)}</b>: 🏁 <b>KASUS MINGGUAN SELESAI (${newStreak} Hari)!</b> Masing-masing dapat bonus <b>+100 PSC & +15 Cred</b>!`
+            `• Bareng <b>@${escHtml(partner)}</b>: 🏁 <b>KASUS MINGGUAN SELESAI (${newStreak} Hari)!</b> Masing-masing dapat bonus <b>+50 PSC & +10 Cred</b>!`
           );
         } else {
           summaries.push(`• Bareng <b>@${escHtml(partner)}</b>: 🔥 Api menyala penuh! (Streak ${newStreak} hari)`);
