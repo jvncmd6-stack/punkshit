@@ -1,4 +1,6 @@
-export const MAX_SLOTS = 3;
+export const FREE_SLOTS = 4;
+export const MAX_SLOTS = 7;
+export const SLOT_PRICES = { 5: 150, 6: 300, 7: 500 };
 export const OL = "#26101c";
 
 export const TH = {
