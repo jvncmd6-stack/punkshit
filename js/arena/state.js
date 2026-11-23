@@ -13,8 +13,10 @@
     quests: [],
     fishQuota: { used: 0, max: 6, left: 6, cooldownEndsAt: 0 },
     scratchedToday: false,
+    dailyPscEarned: 0,
+    dailyPscCap: 120,
     collections: [],
-    fishdexTotal: 6,
+    fishdexTotal: 15,
     leaderboards: { react: [], xp: [] }
   };
 
@@ -52,8 +54,10 @@
       st.quests = res.quests || [];
       st.fishQuota = res.fishQuota || st.fishQuota;
       st.scratchedToday = Boolean(res.scratchedToday);
+      if (typeof res.dailyPscEarned === 'number') st.dailyPscEarned = res.dailyPscEarned;
+      if (typeof res.dailyPscCap === 'number') st.dailyPscCap = res.dailyPscCap;
       st.collections = res.collections || [];
-      st.fishdexTotal = res.fishdexTotal || 6;
+      st.fishdexTotal = Math.max(15, Number(res.fishdexTotal) || 15);
       st.leaderboards = res.leaderboards || { react: [], xp: [] };
       st.loaded = true;
       if (S.curApp === 'arena' && forceRefresh) C.refresh();
@@ -65,6 +69,7 @@
   };
 
   A.rarityColor = function (r) {
+    if (r === 'Mythic') return '#F43F5E';
     if (r === 'Legendary') return '#FFD633';
     if (r === 'Epic') return '#C084FC';
     if (r === 'Rare') return '#38BDF8';
