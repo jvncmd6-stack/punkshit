@@ -279,6 +279,7 @@
       var buyId = t.getAttribute('data-id');
       var noteEl = document.getElementById('lw-buy-note');
       var buyNote = noteEl ? noteEl.value.trim() : '';
+      var boughtItem = (S.market || []).find(function (x) { return String(x.id) === String(buyId); }) || {};
       t.disabled = true;
       t.textContent = 'Memproses Transaksi...';
       try {
@@ -288,7 +289,20 @@
         if (bRes.orders) S.marketOrders = bRes.orders;
         C.shut();
         C.refresh();
-        C.notify('Mas Raka', 'Lapak Warga', bRes.message || 'Transaksi berhasil! Pelapak sudah dikabari.');
+
+        var sellerUsn = (bRes.sellerUsername || boughtItem.seller_username || boughtItem.sellerUsername || '').replace(/^@/, '');
+        var sellerLabel = sellerUsn ? ('@' + sellerUsn) : (boughtItem.seller_name || 'Pelapak');
+
+        if (sellerUsn) {
+          C.sheet(
+            '<h2>✅ Pembelian Berhasil!</h2>' +
+            '<p class="sub">Detail transaksi sudah dikirim ke <b>PM Bot</b>. Silakan hubungi penjual <b>@' + C.esc(sellerUsn) + '</b> untuk serah-terima item/jasa.</p>' +
+            '<button class="btn" onclick="if(window.Telegram&&window.Telegram.WebApp){window.Telegram.WebApp.openTelegramLink(\'https://t.me/' + C.esc(sellerUsn) + '\')}else{window.open(\'https://t.me/' + C.esc(sellerUsn) + '\',\'_blank\')}">💬 CHAT PENJUAL (@' + C.esc(sellerUsn).toUpperCase() + ')</button>' +
+            '<button class="btn b2" data-act="shut">TUTUP</button>'
+          );
+        } else {
+          C.notify('Mas Raka', 'Lapak Warga', bRes.message || ('Transaksi berhasil! Cek PM Bot untuk kontak ' + sellerLabel + '.'));
+        }
       } catch (err) {
         t.disabled = false;
         t.textContent = 'COBA BELI LAGI';
