@@ -1,7 +1,3 @@
-/* ==========================================================
-   ARENA GABUT · LIQUID GLASS THEME
-   Di-scope ke `.lg` (aktif otomatis saat membuka Arena Gabut).
-   ========================================================== */
 
 .lg {
   --lg-cyan: #5CE1FF;
@@ -23,11 +19,17 @@
 }
 .lg b { font-weight: 600; }
 
-/* Latar aurora & bintang saat di dalam Arena */
+/* Latar aurora & bintang pas sesuai ukuran layar WebApp (.av) */
+.lg .av {
+  overflow: hidden;
+  background: #0A0F28 !important;
+}
 .lg .av::before {
   content: "";
-  position: fixed; inset: -20% -10%;
-  z-index: 0; pointer-events: none;
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  pointer-events: none;
   background:
     radial-gradient(42% 34% at 15% 10%, rgba(92,225,255,.45), transparent 70%),
     radial-gradient(38% 32% at 90% 25%, rgba(255,92,170,.38), transparent 70%),
@@ -37,11 +39,15 @@
   animation: lg-drift 26s ease-in-out infinite alternate;
 }
 @keyframes lg-drift {
-  to { transform: translate3d(-3%, 2%, 0) scale(1.08) rotate(2deg); }
+  to { transform: translate3d(-3%, 2%, 0) scale(1.06) rotate(2deg); }
 }
 
 .lg .av::after {
-  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background-image:
     radial-gradient(2px 2px at 12% 18%, #fff, transparent), radial-gradient(2px 2px at 78% 12%, #fff, transparent),
     radial-gradient(1.5px 1.5px at 44% 34%, #CFF4FF, transparent), radial-gradient(2px 2px at 90% 58%, #fff, transparent),
@@ -51,7 +57,24 @@
 }
 @keyframes lg-twinkle { from { opacity: .25; } to { opacity: .95; } }
 
-.lg .av .sc, .lg .av .nav { position: relative; z-index: 1; }
+/* Pertahankan scroll & navbar persis seperti layout WebApp */
+.lg .av .sc {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 54px) !important;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 36px) !important;
+}
+.lg .av .nav {
+  z-index: 5;
+}
+.lg .av .lt {
+  margin-top: 4px !important;
+  margin-bottom: 12px !important;
+}
 
 /* Permukaan kaca */
 .lg .grp,
@@ -304,8 +327,11 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
 }
 
-/* Bottom sheet saat di Arena */
+/* Bottom sheet saat di Arena (bisa di-scroll & pas layar WebApp) */
 .lg .sh {
+  max-height: 86dvh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
   background: linear-gradient(160deg, rgba(30,41,75,.82), rgba(10,15,35,.88)) !important;
   -webkit-backdrop-filter: blur(34px) saturate(190%); backdrop-filter: blur(34px) saturate(190%);
   border: 1px solid rgba(255,255,255,.2) !important;
