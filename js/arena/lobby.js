@@ -22,9 +22,9 @@
   ];
 
   function diffBadge(level) {
-    if (level === 'easy') return '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(52,199,89,.18);color:#6DF0A0;white-space:nowrap;flex-shrink:0">🟢 MUDAH</span>';
-    if (level === 'hard') return '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(239,68,68,.2);color:#FCA5A5;white-space:nowrap;flex-shrink:0">🔴 SULIT</span>';
-    return '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(250,204,21,.18);color:#FDE047;white-space:nowrap;flex-shrink:0">🟡 SEDANG</span>';
+    if (level === 'easy') return '<span style="font-size:10px;font-weight:800;padding:3px 7px;border-radius:99px;background:rgba(109,240,160,.16);color:#6DF0A0;border:1px solid rgba(109,240,160,.25);white-space:nowrap;flex-shrink:0">🟢 MUDAH</span>';
+    if (level === 'hard') return '<span style="font-size:10px;font-weight:800;padding:3px 7px;border-radius:99px;background:rgba(255,107,107,.16);color:#FF9E9E;border:1px solid rgba(255,107,107,.25);white-space:nowrap;flex-shrink:0">🔴 SULIT</span>';
+    return '<span style="font-size:10px;font-weight:800;padding:3px 7px;border-radius:99px;background:rgba(255,214,51,.16);color:#FFE270;border:1px solid rgba(255,214,51,.25);white-space:nowrap;flex-shrink:0">🟡 SEDANG</span>';
   }
 
   function renderGamesTab() {
@@ -83,37 +83,37 @@
 
     function buildCard(g) {
       return (
-        '<button class="game-card" data-act="ar-open" data-game="' + g.id + '" style="position:relative;width:100%;height:auto;min-height:unset;box-sizing:border-box;overflow:hidden;text-align:left;padding:11px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;white-space:normal;line-height:1.35">' +
+        '<button class="game-card" data-act="ar-open" data-game="' + g.id + '" style="display:flex;flex-direction:column;justify-content:space-between;gap:8px;white-space:normal">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;width:100%;flex-wrap:wrap">' +
             diffBadge(g.diff) +
-            '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(56,189,248,.16);color:#7DD3FC;white-space:nowrap;flex-shrink:0">' + C.esc(g.tag) + '</span>' +
+            '<span style="font-size:10px;font-weight:800;padding:3px 7px;border-radius:99px;background:rgba(255,255,255,.1);color:#E0F2FE;white-space:nowrap;flex-shrink:0">' + C.esc(g.tag) + '</span>' +
           '</div>' +
-          '<div style="display:flex;align-items:center;gap:8px;width:100%;min-width:0">' +
-            '<em style="font-size:24px;font-style:normal;line-height:1;flex-shrink:0">' + g.em + '</em>' +
+          '<div style="display:flex;align-items:center;gap:9px;width:100%;min-width:0">' +
+            '<em style="font-style:normal;line-height:1;flex-shrink:0">' + g.em + '</em>' +
             '<div style="min-width:0;flex:1">' +
-              '<b style="display:block;font-size:12.5px;line-height:1.25;word-break:break-word">' + C.esc(g.title) + '</b>' +
-              '<span style="display:block;font-size:10px;color:#FFD633;font-weight:800;margin-top:2px">💰 ' + C.esc(g.reward) + '</span>' +
+              '<b style="display:block;line-height:1.25;word-break:break-word">' + C.esc(g.title) + '</b>' +
+              '<span style="display:block;font-size:11px;color:#FFD633;font-weight:800;margin-top:2px">💰 ' + C.esc(g.reward) + '</span>' +
             '</div>' +
           '</div>' +
-          '<small style="display:block;font-size:10.5px;line-height:1.35;opacity:.78;white-space:normal;word-break:break-word">' + C.esc(g.desc) + '</small>' +
+          '<small style="display:block;font-size:11px;line-height:1.38;opacity:.76;white-space:normal;word-break:break-word">' + C.esc(g.desc) + '</small>' +
         '</button>'
       );
     }
 
     var antiGrindBanner =
-      '<div class="card" style="padding:11px 12px;margin-bottom:12px;background:rgba(15,23,42,.85);border:1px solid rgba(255,214,51,.22);box-sizing:border-box">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11.5px;line-height:1.3">' +
+      '<div class="card lg-ticker" style="margin-bottom:12px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;line-height:1.3">' +
           '<span style="min-width:0">⚖️ <b>Fair Economy Harian</b></span>' +
           '<b style="color:#FFD633;white-space:nowrap;flex-shrink:0">' + dailyEarned + ' / ' + dailyCap + ' PSC</b>' +
         '</div>' +
-        '<small style="display:block;opacity:.74;font-size:10.5px;line-height:1.38;margin-top:4px">Makin sulit mode & makin tinggi skor, makin besar hadiahnya. Jika limit harian penuh, tetap bisa main untuk XP & Fishdex!</small>' +
+        '<small style="display:block;opacity:.76;font-size:11px;line-height:1.4;margin-top:5px">Makin sulit mode & makin tinggi skor, makin besar hadiahnya. Jika limit harian penuh, tetap bisa main untuk XP & Fishdex!</small>' +
       '</div>';
 
     return (
       antiGrindBanner +
       '<h3 class="gh">MAIN ARCADE (UPGRADE 2.0)</h3>' +
       '<div class="game-grid" style="align-items:stretch">' + coreGames.map(buildCard).join('') + '</div>' +
-      '<h3 class="gh" style="margin-top:14px">ARCADE EKSPANSI</h3>' +
+      '<h3 class="gh">ARCADE EKSPANSI</h3>' +
       '<div class="game-grid" style="align-items:stretch">' + extraGames.map(buildCard).join('') + '</div>'
     );
   }
@@ -156,7 +156,7 @@
     return (
       '<h3 class="gh">DAILY QUEST (RESET 00.00 WIB)</h3>' +
       '<div class="grp">' + questsHtml + '</div>' +
-      '<h3 class="gh" style="margin-top:14px">ARCADE PASS GRATIS</h3>' +
+      '<h3 class="gh">ARCADE PASS GRATIS</h3>' +
       '<div class="grp">' + passHtml + '</div>'
     );
   }
@@ -182,7 +182,7 @@
       return (
         '<div class="rw" style="gap:10px">' +
           '<div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">' +
-            '<span style="font-size:22px;flex-shrink:0">' + icon + '</span>' +
+            '<span style="font-size:24px;flex-shrink:0">' + icon + '</span>' +
             '<div style="min-width:0;flex:1">' +
               '<b style="display:block;line-height:1.3;word-break:break-word">' + C.esc(it.name) + '</b>' +
               '<small style="color:' + col + ';font-weight:700;display:block;line-height:1.3">' + subText + C.esc(it.rarity) + '</small>' +
@@ -197,21 +197,21 @@
       var found = !!uniqueFishKeys[sp.key];
       var rCol = A.rarityColor(sp.rarity);
       return (
-        '<div style="padding:8px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid ' + (found ? rCol + '66' : 'rgba(255,255,255,.07)') + ';opacity:' + (found ? '1' : '.5') + ';min-width:0;overflow:hidden">' +
-          '<div style="font-size:16px;line-height:1.1">' + (found ? '🐟' : '❓') + '</div>' +
-          '<div style="font-size:10.5px;font-weight:700;margin-top:3px;line-height:1.25;word-break:break-word">' + (found ? C.esc(sp.name) : '???') + '</div>' +
-          '<small style="display:block;font-size:9px;color:' + rCol + ';margin-top:2px;line-height:1.2">' + sp.rarity + ' · ' + sp.spot + '</small>' +
+        '<div style="padding:10px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid ' + (found ? rCol + '77' : 'rgba(255,255,255,.08)') + ';opacity:' + (found ? '1' : '.52') + ';min-width:0;overflow:hidden">' +
+          '<div style="font-size:18px;line-height:1.1">' + (found ? '🐟' : '❓') + '</div>' +
+          '<div style="font-size:11px;font-weight:700;margin-top:4px;line-height:1.25;word-break:break-word">' + (found ? C.esc(sp.name) : '???') + '</div>' +
+          '<small style="display:block;font-size:9.5px;color:' + rCol + ';margin-top:2px;line-height:1.2">' + sp.rarity + ' · ' + sp.spot + '</small>' +
         '</div>'
       );
     }).join('');
 
     return (
       '<div class="card" style="margin-bottom:12px">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px">' +
           '<div style="min-width:0"><b>📖 Ensiklopedia Fishdex</b><small style="display:block;line-height:1.3">Koleksi seluruh spesies ikan Nusantara & mistis</small></div>' +
-          '<b style="color:#38BDF8;white-space:nowrap;flex-shrink:0">' + discoveredCount + ' / ' + totalSpecies + '</b>' +
+          '<b style="color:#5CE1FF;white-space:nowrap;flex-shrink:0">' + discoveredCount + ' / ' + totalSpecies + '</b>' +
         '</div>' +
-        '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">' + fishdexGrid + '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">' + fishdexGrid + '</div>' +
       '</div>' +
       '<h3 class="gh">TAS KOLEKSI & TANGKAPAN (' + activeItems.length + ')</h3>' +
       '<div class="grp">' + itemsHtml + '</div>'
@@ -230,13 +230,13 @@
 
     var reactHtml = reactList.map(function (r, i) {
       var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1);
-      return '<div class="rw" style="gap:8px"><div style="min-width:0;flex:1"><b style="display:block;word-break:break-word">' + medal + ' ' + C.esc(r.name) + '</b></div><b style="color:#38BDF8;white-space:nowrap;flex-shrink:0">' + Math.round(r.score) + ' ms</b></div>';
+      return '<div class="rw" style="gap:8px"><div style="min-width:0;flex:1"><b style="display:block;word-break:break-word">' + medal + ' ' + C.esc(r.name) + '</b></div><b style="color:#5CE1FF;white-space:nowrap;flex-shrink:0">' + Math.round(r.score) + ' ms</b></div>';
     }).join('') || '<div class="rw"><small>Belum ada rekor refleks.</small></div>';
 
     return (
       '<h3 class="gh">🏆 TOP ARCADE XP</h3>' +
       '<div class="grp">' + xpHtml + '</div>' +
-      '<h3 class="gh" style="margin-top:14px">⚡ REKOR REACTION RUSH</h3>' +
+      '<h3 class="gh">⚡ REKOR REACTION RUSH</h3>' +
       '<div class="grp">' + reactHtml + '</div>'
     );
   }
@@ -257,23 +257,23 @@
     var badgeCount = claimableQuestCount + claimablePassCount;
 
     var headerCard =
-      '<div class="grp" style="margin-bottom:12px;background:linear-gradient(135deg,#0284C744,#0F172A 65%,#EAB30822);border:1px solid rgba(56,189,248,.28)">' +
+      '<div class="grp lg-hero" style="margin-bottom:12px">' +
         '<div class="rw" style="align-items:flex-start;gap:10px">' +
           '<div style="min-width:0;flex:1">' +
-            '<small style="display:block;color:#38BDF8;font-weight:800;letter-spacing:.05em;line-height:1.3">🕹️ ARENA GABUT 2.0 · Y2K ARCADE</small>' +
-            '<div style="font-size:18px;font-weight:900;margin-top:2px;line-height:1.25">LEVEL ' + p.level + ' <span style="font-size:12px;color:var(--yel);font-weight:700">(' + (p.xp || 0) + ' XP)</span></div>' +
-            '<small style="display:block;line-height:1.35;margin-top:2px">Pilih tingkat kesulitan · Hadiah makin gede di mode Sulit</small>' +
+            '<small style="display:block;color:#5CE1FF;font-weight:800;letter-spacing:.05em;line-height:1.3">🕹️ ARENA GABUT 2.0 · LIQUID ARCADE</small>' +
+            '<div style="font-size:18px;font-weight:900;margin-top:3px;line-height:1.2">LEVEL ' + p.level + ' <span style="font-size:13px;color:var(--yel);font-weight:700">(' + (p.xp || 0) + ' XP)</span></div>' +
+            '<small style="display:block;line-height:1.35;margin-top:4px;opacity:.85">Pilih tingkat kesulitan · Hadiah makin gede di mode Sulit</small>' +
           '</div>' +
           '<div style="text-align:right;flex-shrink:0">' +
             '<span class="pill" style="background:#FFD63326;color:#FFD633;white-space:nowrap">💰 ' + (S.user ? S.user.psc : 0) + ' PSC</span>' +
           '</div>' +
         '</div>' +
-        '<div style="padding:0 14px 12px">' +
-          '<div style="display:flex;justify-content:space-between;font-size:10px;opacity:.8;margin-bottom:4px">' +
+        '<div style="padding:2px 15px 15px">' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;opacity:.88;margin-bottom:6px">' +
             '<span>Progress Lv.' + (p.level + 1) + '</span><span>' + xpInLevel + ' / 150 XP</span>' +
           '</div>' +
-          '<div style="height:7px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden">' +
-            '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#38BDF8,#FFD633);border-radius:99px;transition:width .3s"></div>' +
+          '<div class="lg-xp">' +
+            '<i style="width:' + pct + '%"></i>' +
           '</div>' +
         '</div>' +
       '</div>';
