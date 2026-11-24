@@ -144,7 +144,7 @@ marketRouter.post('/warga-shop/boost', requireUser, (req, res) => {
   res.json({ ok: true, user: getFreshUser(u.id), ...getShopSnapshot(u.id) });
 });
 
-// POST /api/warga-shop/buy -> Beli produk warga (potong stok + pajak 5%)
+// POST /api/warga-shop/buy -> Beli produk warga (potong stok + pajak 5%, notif PM bot only)
 marketRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
   const buyer = req.dbUser;
   const itemId = String(req.body?.itemId || '');
@@ -183,16 +183,58 @@ marketRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
   });
   tx();
 
-  await broadcastToTelegram({
-    target: 'group',
-    text: `💸 <b>TRANSAKSI LAPAK!</b>\n<b>${escHtml(buyer.name)}</b> membeli <b>${escHtml(item.title)}</b> dari <b>${escHtml(item.seller_name)}</b> seharga <b>${item.price} PSC</b>!`,
-    buttonText: '🧾 CEK ORDER',
-    startParam: 'lapak'
-  });
+  const sellerRow = db.prepare('SELECT id, telegram_id, username, name FROM users WHERE id = ?').get(String(item.seller_id));
+  const buyerRow = db.prepare('SELECT id, telegram_id, username, name FROM users WHERE id = ?').get(String(buyer.id));
+
+  const sellerUsn = String(sellerRow?.username || item.seller_username || '').replace(/^@/, '').trim();
+  const buyerUsn = String(buyerRow?.username || buyer.username || '').replace(/^@/, '').trim();
+  const noteLine = note ? `\n• Catatan: <i>${escHtml(note)}</i>` : '';
+
+  // 1. Kirim PM Bot ke PEMBELI & arahkan ke @username penjual
+  if (buyerRow?.telegram_id) {
+    await broadcastToTelegram({
+      target: 'user',
+      chatId: buyerRow.telegram_id,
+      text:
+        `🛒 <b>TRANSAKSI LAPAK WARGA BERHASIL!</b>\n` +
+        `• ID Order: <code>${orderId}</code>\n` +
+        `• Produk: <b>${escHtml(item.title)}</b>\n` +
+        `• Total Bayar: <b>${item.price} PSC</b>\n` +
+        `• Penjual: ${sellerUsn ? '@' + escHtml(sellerUsn) : escHtml(sellerRow?.name || item.seller_name)}` +
+        `${noteLine}\n\n` +
+        `Silakan langsung hubungi penjual di atas untuk serah-terima item/jasa.`,
+      buttonText: sellerUsn ? `💬 CHAT PENJUAL (@${sellerUsn})` : '🧾 CEK ORDER',
+      buttonUrl: sellerUsn ? `https://t.me/${sellerUsn}` : undefined,
+      startParam: sellerUsn ? undefined : 'lapak'
+    }).catch(() => {});
+  }
+
+  // 2. Kirim PM Bot ke PENJUAL & arahkan ke @username pembeli
+  if (sellerRow?.telegram_id) {
+    await broadcastToTelegram({
+      target: 'user',
+      chatId: sellerRow.telegram_id,
+      text:
+        `💰 <b>DAGANGAN LAPAK WARGA TERJUAL!</b>\n` +
+        `• ID Order: <code>${orderId}</code>\n` +
+        `• Produk: <b>${escHtml(item.title)}</b>\n` +
+        `• Pendapatan Bersih: <b>+${sellerNet} PSC</b> (pajak 5%)\n` +
+        `• Pembeli: ${buyerUsn ? '@' + escHtml(buyerUsn) : escHtml(buyerRow?.name || buyer.name)}` +
+        `${noteLine}\n\n` +
+        `Pembeli sudah diarahkan ke username kamu via bot.`,
+      buttonText: buyerUsn ? `📩 HUBUNGI PEMBELI (@${buyerUsn})` : '🧾 CEK ORDER',
+      buttonUrl: buyerUsn ? `https://t.me/${buyerUsn}` : undefined,
+      startParam: buyerUsn ? undefined : 'lapak'
+    }).catch(() => {});
+  }
 
   res.json({
     ok: true,
-    message: `Berhasil beli ${item.title}! Pelapak terima ${sellerNet} PSC (pajak lapak 5%).`,
+    orderId,
+    sellerUsername: sellerUsn,
+    message: sellerUsn
+      ? `Berhasil beli ${item.title}! Cek PM Bot atau langsung chat @${sellerUsn}.`
+      : `Berhasil beli ${item.title}! Detail pesanan sudah dikirim via PM Bot.`,
     user: getFreshUser(buyer.id),
     ...getShopSnapshot(buyer.id)
   });
