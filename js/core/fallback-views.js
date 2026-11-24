@@ -34,6 +34,7 @@ window.PunkCoreFallback = (function () {
     if (id === 'lapakwarga') {
       var uShop = S.user || {};
       var shopTab = S.curTab.lapakwarga || 'etalase';
+      var catFilter = S.curTab.lwCat || 'all';
       var items = S.market || [];
       var orders = S.marketOrders || [];
 
@@ -47,12 +48,12 @@ window.PunkCoreFallback = (function () {
                 '<div style="font-size:11px;opacity:.85">Saldo Lu: <b style="color:#FFD633">' + (uShop.psc || 0) + ' PSC</b></div>' +
               '</div>' +
             '</div>' +
-            '<button class="pill" style="background:#EA580C;color:#fff;font-weight:800" data-act="core-shop-modal">+ Jual</button>' +
+            '<button class="pill" style="background:#EA580C;color:#fff;font-weight:800" data-act="lw-new-sheet">+ Jual</button>' +
           '</div>' +
         '</div>' +
         '<div class="tabs" style="margin:12px 0">' +
-          '<button class="tab' + (shopTab === 'etalase' ? ' on' : '') + '" data-act="core-shop-tab" data-tab="etalase">🛍️ Etalase (' + items.length + ')</button>' +
-          '<button class="tab' + (shopTab === 'orders' ? ' on' : '') + '" data-act="core-shop-tab" data-tab="orders">📦 Riwayat Order (' + orders.length + ')</button>' +
+          '<button class="tab' + (shopTab === 'etalase' ? ' on' : '') + '" data-act="lw-tab" data-tab="etalase">🛍️ Etalase (' + items.length + ')</button>' +
+          '<button class="tab' + (shopTab === 'orders' ? ' on' : '') + '" data-act="lw-tab" data-tab="orders">📦 Riwayat Order (' + orders.length + ')</button>' +
         '</div>';
 
       if (shopTab === 'orders') {
@@ -67,37 +68,67 @@ window.PunkCoreFallback = (function () {
         return headerBanner + '<div class="grp">' + orderRows + '</div>';
       }
 
-      var cardsHtml = items.map(function (m) {
+      var cats = ['all', 'Barang', 'Stiker / GIF', 'WebM / Video', 'Jasa'];
+      var catBar = '<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px">' +
+        cats.map(function (c) {
+          var active = catFilter === c;
+          return '<button class="pill" style="' + (active ? 'background:#EA580C;color:#fff' : '') + ';white-space:nowrap" data-act="lw-cat" data-cat="' + esc(c) + '">' + (c === 'all' ? 'Semua' : esc(c)) + '</button>';
+        }).join('') +
+      '</div>';
+
+      var filtered = items.filter(function (m) {
+        return catFilter === 'all' || (m.category || 'Barang') === catFilter;
+      });
+
+      var cardsHtml = filtered.map(function (m) {
         var mediaUrl = m.image_url || m.imageUrl || '';
         var isWebm = /\.webm$/i.test(mediaUrl);
-        var isSold = m.status === 'sold';
+        var stockNum = (m.stock == null) ? 1 : Number(m.stock);
+        var isSold = m.status === 'sold' || stockNum === 0;
         var isMine = String(m.seller_id) === String(uShop.id);
+        var isBoosted = Number(m.boosted_until || 0) > Date.now();
+
         var mediaHtml = mediaUrl
           ? (isWebm
-              ? '<video src="' + esc(API.assetUrl(mediaUrl)) + '" autoplay loop muted playsinline style="width:100%;height:130px;object-fit:cover;border-radius:10px;background:#0f172a' + (isSold ? ';opacity:.45' : '') + '"></video>'
-              : '<img src="' + esc(API.assetUrl(mediaUrl)) + '" alt="" style="width:100%;height:130px;object-fit:cover;border-radius:10px;background:#0f172a' + (isSold ? ';opacity:.45' : '') + '">')
+              ? '<video src="' + esc(API.assetUrl(mediaUrl)) + '" autoplay loop muted playsinline style="width:100%;height:124px;object-fit:cover;border-radius:10px;background:#0f172a' + (isSold ? ';opacity:.45' : '') + '"></video>'
+              : '<img src="' + esc(API.assetUrl(mediaUrl)) + '" alt="" style="width:100%;height:124px;object-fit:cover;border-radius:10px;background:#0f172a' + (isSold ? ';opacity:.45' : '') + '">')
           : '<div style="width:100%;height:105px;border-radius:10px;background:linear-gradient(135deg,#1e293b,#0f172a);display:grid;place-items:center;color:#64748b;font-size:12px">Tanpa Foto</div>';
 
-        var actionBtn = isSold
-          ? '<button class="btn b2" disabled style="margin-top:8px;padding:7px;font-size:11px;opacity:.6">TERJUAL' + (m.buyer_name ? ' KE ' + esc(m.buyer_name.toUpperCase()) : '') + '</button>'
-          : (isMine
-              ? '<button class="btn b2" data-act="core-warga-del" data-id="' + esc(m.id) + '" style="margin-top:8px;padding:7px;font-size:11px;color:#FCA5A5">🗑️ Hapus Dagangan</button>'
-              : '<button class="btn" data-act="core-warga-buy-modal" data-id="' + esc(m.id) + '" style="margin-top:8px;padding:8px;font-size:12px">' + (m.category === 'Jasa' ? '🛒 Pesan Jasa' : '🛒 Beli Sekarang') + '</button>');
+        var topBadges =
+          (isBoosted && !isSold ? '<span style="position:absolute;top:8px;left:8px;background:#F59E0B;color:#111;font-size:9px;font-weight:900;padding:2px 6px;border-radius:6px">⚡ TOP</span>' : '') +
+          (isSold
+            ? '<span style="position:absolute;top:8px;right:8px;background:#EF4444;color:#fff;font-size:9px;font-weight:900;padding:3px 7px;border-radius:6px">SOLD OUT</span>'
+            : '<span style="position:absolute;top:8px;right:8px;background:rgba(15,23,42,.82);color:#93C5FD;font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px">' + (stockNum < 0 ? '∞ Stok' : ('Stok ' + stockNum)) + '</span>');
+
+        var actionBtn = '';
+        if (isMine) {
+          actionBtn =
+            '<div style="display:grid;grid-template-columns:1fr auto;gap:5px;margin-top:8px">' +
+              '<button class="btn b2" data-act="lw-detail" data-id="' + esc(m.id) + '" style="padding:7px;font-size:11px">✏️ Kelola</button>' +
+              '<button class="btn b2" data-act="lw-delete" data-id="' + esc(m.id) + '" style="padding:7px 9px;font-size:11px;color:#FCA5A5" title="Hapus Produk">🗑️</button>' +
+            '</div>';
+        } else if (isSold) {
+          actionBtn = '<button class="btn b2" disabled style="margin-top:8px;padding:7px;font-size:11px;opacity:.6">TERJUAL' + (m.buyer_name ? ' KE ' + esc(m.buyer_name.toUpperCase()) : '') + '</button>';
+        } else {
+          actionBtn = '<button class="btn" data-act="lw-detail" data-id="' + esc(m.id) + '" style="margin-top:8px;padding:8px;font-size:12px">' + (m.category === 'Jasa' ? '🛒 Pesan Jasa' : '🛒 Beli Sekarang') + '</button>';
+        }
 
         return '<div class="card" style="padding:10px;display:flex;flex-direction:column;justify-content:space-between">' +
-          '<div style="position:relative">' + mediaHtml + (isSold ? '<span style="position:absolute;top:8px;right:8px;background:#EF4444;color:#fff;font-size:9px;font-weight:900;padding:3px 7px;border-radius:6px">SOLD OUT</span>' : '') + '</div>' +
-          '<div style="margin-top:8px">' +
-            '<span class="pill" style="font-size:10px;padding:2px 7px">' + esc(m.category || 'Barang') + '</span>' +
-            '<div style="font-weight:700;font-size:13px;margin-top:4px;line-height:1.25">' + esc(m.title) + '</div>' +
-            '<div style="color:#FFD633;font-weight:800;font-size:14px;margin-top:4px">' + esc(m.price) + ' PSC</div>' +
-            '<p class="sub" style="font-size:11px;margin:4px 0 6px;line-height:1.3">' + esc(m.description || '') + '</p>' +
+          '<div data-act="lw-detail" data-id="' + esc(m.id) + '" style="cursor:pointer">' +
+            '<div style="position:relative">' + mediaHtml + topBadges + '</div>' +
+            '<div style="margin-top:8px">' +
+              '<span class="pill" style="font-size:10px;padding:2px 7px">' + esc(m.category || 'Barang') + '</span>' +
+              '<div style="font-weight:700;font-size:13px;margin-top:4px;line-height:1.25">' + esc(m.title) + '</div>' +
+              '<div style="color:#FFD633;font-weight:800;font-size:14px;margin-top:4px">' + esc(m.price) + ' PSC</div>' +
+              '<p class="sub" style="font-size:11px;margin:4px 0 6px;line-height:1.3">' + esc(m.description || '') + '</p>' +
+            '</div>' +
           '</div>' +
-          '<div><small style="font-size:10px;opacity:.8">' + esc(m.seller_name || 'Warga') + '</small>' + actionBtn + '</div>' +
+          '<div><small style="font-size:10px;opacity:.8">🏪 ' + esc(m.seller_name || 'Warga') + '</small>' + actionBtn + '</div>' +
         '</div>';
       }).join('');
 
-      return headerBanner + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
-        (cardsHtml || '<div class="card" style="grid-column:1/-1"><p class="sub">Etalase masih kosong. Jadi pelapak pertama di markas!</p></div>') +
+      return headerBanner + catBar + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        (cardsHtml || '<div class="card" style="grid-column:1/-1"><p class="sub">Etalase kategori ini masih kosong. Tap <b>+ Jual</b> di atas buat pajang barang!</p></div>') +
       '</div>';
     }
 
