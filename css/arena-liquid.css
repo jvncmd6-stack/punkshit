@@ -26,7 +26,11 @@
 
 /* Latar aurora & bintang pas sesuai ukuran layar WebApp (.av) */
 .lg .av {
-  overflow: hidden;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
   background: #0A0F28 !important;
 }
 .lg .av::before {
@@ -62,27 +66,33 @@
 }
 @keyframes lg-twinkle { from { opacity: .25; } to { opacity: .95; } }
 
-/* Kembalikan posisi absolute bawaan .sc & .nav agar scroll berjalan mulus */
+/* Navbar & Area Scroll: sama-sama rapi di HP & Desktop tanpa menempel < Home */
 .lg .av .nav {
-  position: absolute !important;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  flex-shrink: 0 !important;
   z-index: 5;
+  margin-top: calc(env(safe-area-inset-top, 0px) + 46px) !important;
+  min-height: 36px;
 }
 .lg .av .sc {
-  position: absolute !important;
-  inset: 0 !important;
+  position: relative !important;
+  inset: auto !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
   z-index: 1;
   overflow-y: auto !important;
   overflow-x: hidden !important;
+  overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 74px) !important;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px) !important;
+  padding-top: 6px !important;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 44px) !important;
 }
 .lg .av .lt {
   font-size: 26px !important;
-  margin: 0 0 10px !important;
+  margin: 0 0 12px !important;
   line-height: 1.15;
 }
 
@@ -102,7 +112,7 @@
 }
 .lg .card { padding: 11px 12px; }
 
-/* Kilau mengikuti jari / kursor */
+/* Kilau statis + hanya aktif saat hover desktop atau klik tab/tombol (bukan saat scroll) */
 .lg .grp::before,
 .lg .card::before,
 .lg .game-card::before,
@@ -111,9 +121,8 @@
   position: absolute; inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(150px circle at var(--mx, 25%) var(--my, -10%), rgba(255,255,255,.24), transparent 62%);
-  opacity: .8;
-  transition: opacity .3s;
+  background: radial-gradient(150px circle at var(--mx, 25%) var(--my, -10%), rgba(255,255,255,.22), transparent 62%);
+  opacity: .75;
 }
 .lg .grp > *, .lg .card > *, .lg .game-card > * { position: relative; }
 
@@ -126,7 +135,7 @@
 .lg .grp > .rw + .rw { border-top: 1px solid rgba(255,255,255,.09); }
 .lg .sub { color: var(--mut); font-size: 12px; line-height: 1.4; }
 
-/* Judul seksi stiker miring (compact) */
+/* Judul seksi stiker miring */
 .lg .gh {
   display: flex; align-items: center; gap: 6px;
   width: fit-content; margin: 14px 2px 9px; padding: 5px 11px 5px 9px;
@@ -143,7 +152,7 @@
   box-shadow: 0 0 8px #FFD633;
 }
 
-/* Grid & Kartu Game (pas 2 kolom tanpa kepotong) */
+/* Grid & Kartu Game */
 .lg .game-grid {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px;
 }
@@ -160,7 +169,7 @@
     var(--lg-fill) !important;
   border-color: rgba(var(--acrgb), .48) !important;
   box-shadow: var(--lg-rim), 0 10px 22px -10px rgba(var(--acrgb), .65);
-  transition: transform .45s var(--lg-spring), box-shadow .3s, border-color .3s;
+  transition: transform .35s var(--lg-spring), box-shadow .25s, border-color .25s;
   -webkit-tap-highlight-color: transparent;
 }
 .lg .game-card[data-game="fish"]    { --acrgb: 56,189,248; }
@@ -171,10 +180,9 @@
 .lg .game-card[data-game="whack"]   { --acrgb: 74,222,128; }
 .lg .game-card[data-game="memory"]  { --acrgb: 244,114,182; }
 
-.lg .game-card:active { transform: scale(.94) rotate(-1deg); }
 .lg .game-card em {
   display: inline-block; font-size: 25px !important;
-  transition: transform .45s var(--lg-spring);
+  transition: transform .35s var(--lg-spring);
   filter: drop-shadow(0 3px 6px rgba(0,0,0,.35));
   animation: lg-bob 3.4s ease-in-out infinite;
   transform-origin: 50% 80%;
@@ -187,14 +195,11 @@
 }
 .lg .game-card b { font-size: 12.5px !important; letter-spacing: -.005em; }
 .lg .game-card small { font-size: 10.5px !important; line-height: 1.32 !important; }
-.lg .game-card:active em { transform: scale(1.25) rotate(-10deg); }
 
-.lg .game-card::after {
-  content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);
-  transform: skewX(-18deg); pointer-events: none; opacity: 0;
+@media (hover: hover) {
+  .lg .game-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.34) !important; }
+  .lg .game-card:hover em { transform: scale(1.1) rotate(-6deg); }
 }
-.lg .game-card:active::after { opacity: 1; left: 130%; transition: left .55s ease-out; }
 
 /* Tombol */
 .lg .btn {
@@ -207,10 +212,10 @@
     linear-gradient(135deg, #22C1F2, #3B82F6 70%, #7C5CFF);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -6px 12px rgba(2,6,23,.25), 0 8px 18px -6px rgba(59,130,246,.65);
   text-shadow: 0 1px 2px rgba(2,6,23,.45);
-  transition: transform .4s var(--lg-spring), box-shadow .25s, filter .2s;
+  transition: transform .35s var(--lg-spring), box-shadow .2s, filter .2s;
   -webkit-tap-highlight-color: transparent;
 }
-.lg .btn:active:not(:disabled) { transform: scale(.95); filter: brightness(1.1); }
+.lg .btn:active:not(:disabled) { transform: scale(.96); filter: brightness(1.08); }
 .lg .btn:disabled { opacity: .45; filter: saturate(.5); }
 .lg .btn.b2 {
   border-radius: 16px;
@@ -229,7 +234,7 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 10px -5px rgba(2,6,23,.6);
   transition: transform .35s var(--lg-spring);
 }
-.lg .pill:active:not(:disabled) { transform: scale(.92); }
+.lg .pill:active:not(:disabled) { transform: scale(.93); }
 .lg .pill[data-act="ar-claim-quest"],
 .lg .pill[data-act="ar-claim-pass"],
 .lg .pill[data-act="ar-shield-open"] {
@@ -242,7 +247,7 @@
   50%      { box-shadow: inset 0 1px 0 #fff, 0 6px 12px -5px rgba(255,138,0,.8), 0 0 0 4px rgba(255,214,51,.28); }
 }
 
-/* Tab Kapsul (compact, 4 tab sejajar tanpa kepotong) */
+/* Tab Kapsul (animasi pop hanya saat ditekan) */
 .lg .tabs {
   display: flex; overflow: visible; gap: 2px; padding: 3px;
   border-radius: 99px;
@@ -257,19 +262,20 @@
   background: transparent; color: var(--mut);
   font-weight: 700; white-space: nowrap;
   transition: color .2s, background .3s, transform .35s var(--lg-spring);
+  -webkit-tap-highlight-color: transparent;
 }
-.lg .tab:active { transform: scale(.94); }
+.lg .tab:active { transform: scale(.92); }
 .lg .tab.on {
   color: #fff;
   background: linear-gradient(180deg, rgba(255,255,255,.55) 0, rgba(255,255,255,.1) 45%, rgba(255,255,255,0) 50%), linear-gradient(135deg, #FF5CAA, #7C5CFF);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -4px 10px rgba(40,10,90,.3), 0 6px 14px -5px rgba(255,92,170,.8);
   text-shadow: 0 1px 2px rgba(60,0,60,.5);
-  animation: lg-pop .45s var(--lg-spring);
+  animation: lg-pop .4s var(--lg-spring);
   overflow: hidden;
 }
-@keyframes lg-pop { from { transform: scale(.88); } }
+@keyframes lg-pop { from { transform: scale(.86); } }
 
-/* Hero Card (ringkas sesuai layar HP) */
+/* Hero Card */
 .lg .lg-hero {
   min-height: 0;
   background:
