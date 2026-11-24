@@ -62,22 +62,23 @@
 }
 @keyframes lg-twinkle { from { opacity: .25; } to { opacity: .95; } }
 
-/* Kembalikan struktur scroll bawaan WebApp (.nav di atas, .sc flex di bawahnya) */
+/* Kembalikan posisi absolute bawaan .sc & .nav agar scroll berjalan mulus */
 .lg .av .nav {
-  position: relative;
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 5;
-  flex-shrink: 0;
 }
 .lg .av .sc {
-  position: relative;
+  position: absolute !important;
+  inset: 0 !important;
   z-index: 1;
-  flex: 1 1 auto;
-  min-height: 0;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch;
-  padding-top: 2px !important;
-  padding-bottom: 36px !important;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 74px) !important;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px) !important;
 }
 .lg .av .lt {
   font-size: 26px !important;
