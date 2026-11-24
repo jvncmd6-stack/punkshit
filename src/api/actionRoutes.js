@@ -166,38 +166,45 @@ actionRouter.post('/sawer', requireUser, async (req, res) => {
   res.json({ user: attachExtraFields(updated) });
 });
 
-// POST /api/shop/buy -> Beli item dari Lapak Rongsok + Royalti 20% untuk Item Collab
+// POST /api/shop/buy -> Beli item dari Lapak Rongsok (Mendukung qty & pengurangan stok) + Royalti 20% Collab
 actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   const u = req.dbUser;
   const itemId = String(req.body?.itemId || '');
+  const qty = Math.max(1, Math.min(99, Math.floor(Number(req.body?.qty) || 1)));
   const item = db.prepare('SELECT * FROM items WHERE id = ?').get(itemId);
 
   if (!item) return res.status(404).json({ error: 'Item tidak ditemukan di Lapak.' });
-  if (item.stock === 0) return res.status(400).json({ error: 'Waduh, stok item ini baru aja habis!' });
-  if (u.psc < item.price) return res.status(400).json({ error: 'Saldo PSC belum cukup cuy, kumpulin dulu yuk!' });
+  const currentStock = item.stock == null ? -1 : Number(item.stock);
+  if (currentStock === 0) return res.status(400).json({ error: 'Waduh, stok item ini baru aja habis!' });
+  if (currentStock > 0 && qty > currentStock) {
+    return res.status(400).json({ error: `Stok tidak cukup! Sisa stok cuma ${currentStock}x.` });
+  }
 
-  if (item.type !== 'gift') {
-    const already = db.prepare('SELECT 1 FROM inventory WHERE user_id = ? AND item_id = ?').get(u.id, item.id);
-    if (already) return res.status(400).json({ error: 'Item ini udah ada di Gudang Barang lo cuy.' });
+  const totalCost = Number(item.price || 0) * qty;
+  if ((u.psc || 0) < totalCost) {
+    return res.status(400).json({ error: `Saldo PSC belum cukup cuy! Butuh ${totalCost} PSC.` });
   }
 
   const now = Date.now();
   const hasCreatorRoyalty = item.is_collab === 1 && item.creator_id && String(item.creator_id) !== String(u.id);
-  const royaltyAmount = hasCreatorRoyalty ? Math.max(1, Math.floor(item.price * 0.2)) : 0;
+  const royaltyAmount = hasCreatorRoyalty ? Math.max(1, Math.floor(totalCost * 0.2)) : 0;
 
   const tx = db.transaction(() => {
-    db.prepare('UPDATE users SET psc = psc - ? WHERE id = ?').run(item.price, u.id);
-    if (item.stock > 0) {
-      db.prepare('UPDATE items SET stock = stock - 1 WHERE id = ?').run(item.id);
+    db.prepare('UPDATE users SET psc = psc - ? WHERE id = ?').run(totalCost, u.id);
+    if (currentStock > 0) {
+      db.prepare('UPDATE items SET stock = MAX(0, stock - ?) WHERE id = ?').run(qty, item.id);
     }
-    db.prepare('INSERT INTO inventory (user_id, item_id, acquired_at) VALUES (?, ?, ?)').run(u.id, item.id, now);
+    const insInv = db.prepare('INSERT INTO inventory (user_id, item_id, acquired_at) VALUES (?, ?, ?)');
+    for (let i = 0; i < qty; i++) {
+      insInv.run(u.id, item.id, now + i);
+    }
     db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(u.id, 'shop_buy', -item.price, `Beli ${item.name}`, now);
+      .run(u.id, 'shop_buy', -totalCost, `Beli ${item.name} (${qty}x)`, now);
 
     if (royaltyAmount > 0) {
       db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(royaltyAmount, String(item.creator_id));
       db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(String(item.creator_id), 'collab_royalty', royaltyAmount, `Royalti Collab: ${item.name}`, now);
+        .run(String(item.creator_id), 'collab_royalty', royaltyAmount, `Royalti Collab: ${item.name} (${qty}x)`, now);
     }
   });
   tx();
@@ -207,10 +214,10 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   await notifyPrivateUser(
     u.id,
     `🛒 <b>TRANSAKSI BERHASIL!</b>\n\n` +
-    `• Item: <b>${escHtml(item.name)}</b> (Lapak Rongsok)\n` +
-    `• Harga: <b>-${item.price} PSC</b>\n` +
+    `• Item: <b>${escHtml(item.name)}</b> (${qty}x · Lapak Rongsok)\n` +
+    `• Total Harga: <b>-${totalCost} PSC</b>\n` +
     `• Sisa Saldo: <b>${updated.psc} PSC</b>\n\n` +
-    `Mantap! Item sudah masuk ke Gudang Barang lo.`,
+    `Mantap! Item sudah masuk ke Lemari Gue.`,
     { buttonText: '🛒 BUKA LAPAK RONGSOK', startParam: 'lapak' }
   );
 
@@ -218,7 +225,7 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
     await notifyPrivateUser(
       item.creator_id,
       `🎨 <b>ROYALTI COLLAB CAIR!</b>\n\n` +
-      `Warga <b>${escHtml(u.name)}</b> baru saja membeli item collab karyamu: <b>${escHtml(item.name)}</b>!\n` +
+      `Warga <b>${escHtml(u.name)}</b> baru saja membeli item collab karyamu: <b>${escHtml(item.name)}</b> (${qty}x)!\n` +
       `• Royalti 20%: <b>+${royaltyAmount} PSC</b>`,
       { buttonText: '💰 CEK DOMPET', startParam: 'kas' }
     );
