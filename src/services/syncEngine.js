@@ -1,231 +1,293 @@
-import fs from 'fs';
-import path from 'path';
-import { InlineKeyboard } from 'grammy';
-import { ENV } from '../config/env.js';
-import { db, addFeed } from '../database/db.js';
+import { Router } from 'express';
+import crypto from 'crypto';
+import { db, addFeed, addAuditLog } from '../database/db.js';
+import { requireUser } from '../middlewares/authTma.js';
+import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
+import { broadcastToTelegram, notifyPrivateUser, escHtml } from '../services/syncEngine.js';
 
-let botInstance = null;
+export const marketRouter = Router();
 
-export function bindBotInstance(bot) {
-  botInstance = bot;
+function getShopSnapshot(userId) {
+  const items = db.prepare(`
+    SELECT * FROM warga_shop_items
+    WHERE status != 'deleted'
+    ORDER BY (CASE WHEN boosted_until > ? THEN 1 ELSE 0 END) DESC, created_at DESC
+    LIMIT 60
+  `).all(Date.now());
+
+  const orders = userId
+    ? db.prepare(`
+        SELECT * FROM warga_shop_orders
+        WHERE buyer_id = ? OR seller_id = ?
+        ORDER BY created_at DESC LIMIT 30
+      `).all(String(userId), String(userId))
+    : [];
+
+  return { items, orders };
 }
 
-export function getBot() {
-  return botInstance;
-}
-
-export function todayWib() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-}
-
-export function escHtml(s = '') {
-  return String(s).replace(/[&<>]/g, c => ({ '&': '&', '<': '<', '>': '>' }[c]));
-}
-
-export function parsePinnedGifts(raw) {
-  if (!raw) return [];
-  const str = String(raw).trim();
-  if (!str) return [];
-  if (str.startsWith('[')) {
-    try {
-      const arr = JSON.parse(str);
-      return Array.isArray(arr) ? arr.map(String).filter(Boolean) : [];
-    } catch {
-      return [];
-    }
-  }
-  return [str];
-}
-
-export function buildMiniAppUrl(startParam = '') {
-  if (!ENV.MINIAPP_LINK) return '';
-  const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : (process.env.API_URL || '').trim();
-
-  // Ambil subdomain-nya saja agar total parameter startapp selalu < 64 karakter (limit Telegram)
-  const slugMatch = railwayApi.match(/^https?:\/\/([a-zA-Z0-9-]+)\.up\.railway\.app/i);
-  let payload = startParam || 'home';
-
-  if (slugMatch) {
-    payload = `${payload}__r_${slugMatch[1]}`;
-  } else if (railwayApi) {
-    payload = `${payload}__${Buffer.from(railwayApi).toString('base64url')}`;
-  }
-
-  return `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(payload)}`;
-}
-
-// Kirim notif personal khusus ke PC Bot penerima (tidak spam ke Grup/Channel)
-export async function notifyPrivateUser(targetUserId, text, { buttonText = '🪪 BUKA PUNKSHIT.OS', startParam = 'home' } = {}) {
-  if (!botInstance || !targetUserId || !text) return;
-  try {
-    const url = buildMiniAppUrl(startParam);
-    const kb = url ? new InlineKeyboard().url(buttonText, url) : undefined;
-    await botInstance.api.sendMessage(String(targetUserId), text, {
-      parse_mode: 'HTML',
-      reply_markup: kb,
-      disable_web_page_preview: true
-    });
-  } catch (err) {
-    // Abaikan jika user belum pernah /start bot di PC
-  }
-}
-
-export async function syncTelegramAvatar(userId, tgUserObj = null) {
-  const uid = String(userId);
-  if (tgUserObj && tgUserObj.username !== undefined) {
-    db.prepare('UPDATE users SET username = ? WHERE id = ?').run(tgUserObj.username || '', uid);
-  }
-
-  if (!botInstance) return null;
-  try {
-    const photos = await botInstance.api.getUserProfilePhotos(Number(uid), { limit: 1 });
-    if (!photos || !photos.total_count || !photos.photos[0]?.length) return null;
-
-    const sizes = photos.photos[0];
-    const picked = sizes[Math.min(1, sizes.length - 1)];
-    const fileInfo = await botInstance.api.getFile(picked.file_id);
-    if (!fileInfo.file_path) return null;
-
-    const fileUrl = `https://api.telegram.org/file/bot${ENV.BOT_TOKEN}/${fileInfo.file_path}`;
-    const resp = await fetch(fileUrl);
-    if (!resp.ok) return null;
-
-    const buf = Buffer.from(await resp.arrayBuffer());
-    const filename = `pfp-${uid}.jpg`;
-    const savePath = path.join(ENV.UPLOAD_DIR, 'banners', filename);
-    await fs.promises.writeFile(savePath, buf);
-
-    const publicUrl = `/uploads/banners/${filename}?v=${Date.now()}`;
-    db.prepare('UPDATE users SET photo_url = ? WHERE id = ?').run(publicUrl, uid);
-    return publicUrl;
-  } catch {
-    return null;
-  }
-}
-
-export function formatUser(row) {
+function getFreshUser(userId) {
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(String(userId));
   if (!row) return null;
-  const today = todayWib();
-
-  let equippedBorderUrl = '';
-  if (row.equipped_border_id) {
-    const bItem = db.prepare('SELECT image_url FROM items WHERE id = ?').get(row.equipped_border_id);
-    if (bItem) equippedBorderUrl = bItem.image_url || '';
-  }
-
-  const pinnedGifts = parsePinnedGifts(row.pinned_gift_id);
-
-  const sixHours = 6 * 3600 * 1000;
-  const activePresence = (Date.now() - (row.presence_at || 0) < sixHours)
-    ? row.presence
-    : '☕ Nongki Dulu';
-
   return {
-    id: row.id,
-    username: row.username,
-    name: row.name,
-    memberNo: row.member_no,
+    ...row,
     photoUrl: row.photo_url,
     bannerUrl: row.banner_url,
-    bio: row.bio,
-    spotifyUrl: row.spotify_url,
-    birthday: row.birthday,
-    role: row.role,
-    psc: row.psc,
-    streak: row.streak,
-    best: row.best,
-    cred: row.cred,
-    absenToday: row.last_absen === today,
-    presence: activePresence,
-    ringStyle: row.ring_style,
+    memberNo: row.member_no,
     equippedBorderId: row.equipped_border_id,
-    equippedBorderUrl,
     equippedSkinId: row.equipped_skin_id,
-    pinnedGiftId: pinnedGifts[0] || '',
-    pinnedGifts,
-    fishToday: row.fish_date === today ? row.fish_today : 0,
-    fishCount: row.fish_count,
-    scratchedToday: row.scratched_date === today,
-    hasShared: Boolean(row.has_shared)
+    pinnedGiftId: row.pinned_gift_id
   };
 }
 
-export function getCatalog() {
-  return db.prepare('SELECT * FROM items ORDER BY created_at DESC').all().map(it => ({
-    id: it.id,
-    type: it.type,
-    name: it.name,
-    price: it.price,
-    rarity: it.rarity,
-    stock: it.stock,
-    desc: it.desc,
-    imageUrl: it.image_url,
-    colors: it.colors ? JSON.parse(it.colors) : null,
-    svgPath: it.svg_path,
-    skinClass: it.skin_class
-  }));
-}
+// GET /api/shop -> Ambil etalase Lapak Warga + riwayat order
+marketRouter.get('/shop', requireUser, (req, res) => {
+  res.json(getShopSnapshot(req.dbUser.id));
+});
 
-export function getOnlineUsers() {
-  const cutoff = Date.now() - 6 * 3600 * 1000;
-  const rows = db.prepare('SELECT * FROM users WHERE presence_at >= ? OR last_absen = ? ORDER BY presence_at DESC LIMIT 40')
-    .all(cutoff, todayWib());
-  return rows.map(formatUser);
-}
+// POST /api/shop -> Pajang produk baru ke Lapak Warga (dengan stok)
+marketRouter.post('/shop', requireUser, uploadMem.single('media'), async (req, res) => {
+  try {
+    const u = req.dbUser;
+    const title = String(req.body?.title || '').trim().slice(0, 60);
+    const price = Math.max(1, Math.min(100000, parseInt(req.body?.price, 10) || 0));
+    const category = String(req.body?.category || 'Barang').trim().slice(0, 30);
+    const description = String(req.body?.description || '').trim().slice(0, 220);
+    let stock = parseInt(req.body?.stock, 10);
+    if (Number.isNaN(stock)) stock = category === 'Jasa' ? -1 : 1;
+    stock = Math.max(-1, Math.min(999, stock));
 
-export async function broadcastToTelegram({ target = 'group', text = '', buttonText = '🪪 BUKA MARKAS', startParam = '', feedText = '' }) {
-  if (feedText) addFeed(feedText);
-  if (!botInstance || !text) return;
-
-  const upperText = text.toUpperCase();
-
-  // 1. Blokir total notif personal/spam agar TIDAK pernah dikirim ke Grup maupun Channel
-  const blockedKeywords = [
-    'MASIH HIDUP TERNYATA',
-    'ABSEN HARI KE-',
-    'SAPAAN MARKAS',
-    'KIRIM GIFT',
-    'MENGIRIM GIFT',
-    'HADIAH MARKAS',
-    'TRANSFER PSC',
-    'SAWERAN PSC',
-    'SPARK SECURED',
-    'AJAKAN SPARK'
-  ];
-  if (blockedKeywords.some(kw => upperText.includes(kw))) {
-    return;
-  }
-
-  // 2. Pisahkan tujuan Channel Confess vs Channel Pengumuman
-  const confessChannelId = (ENV.MENFESS_CHANNEL_ID || process.env.MENFESS_CHANNEL_ID || ENV.CHANNEL_ID || '').trim();
-  const announceChannelId = (ENV.CHANNEL_ID || '').trim();
-
-  let finalTarget = target;
-  if (upperText.includes('KOTAK RAHASIA') || upperText.includes('CONFESS')) {
-    finalTarget = 'confess';
-  } else if (upperText.includes('PENGUMUMAN MARKAS')) {
-    finalTarget = 'both';
-  }
-
-  const url = buildMiniAppUrl(startParam);
-  const kb = url ? new InlineKeyboard().url(buttonText, url) : undefined;
-
-  const sendSafe = async chatId => {
-    if (!chatId) return;
-    try {
-      await botInstance.api.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: kb });
-    } catch (err) {
-      console.error(`[Broadcaster] Gagal kirim ke ${chatId}:`, err.message);
+    if (title.length < 3 || !price) {
+      return res.status(400).json({ error: 'Nama produk minimal 3 huruf & harga wajib diisi.' });
     }
-  };
 
-  if (finalTarget === 'confess') {
-    await sendSafe(confessChannelId);
-    return;
+    const activeCount = db.prepare(`SELECT COUNT(*) AS c FROM warga_shop_items WHERE seller_id = ? AND status = 'open'`).get(String(u.id)).c;
+    if (activeCount >= 8) {
+      return res.status(400).json({ error: 'Maksimal 8 produk aktif di etalase. Hapus atau habiskan dulu yang lama.' });
+    }
+
+    const id = 'ws_' + crypto.randomBytes(4).toString('hex');
+    const imageUrl = req.file
+      ? await processAndSaveImage(req.file, 'shop', { width: 900, height: 900, fit: 'inside' })
+      : '';
+    const now = Date.now();
+
+    db.prepare(`
+      INSERT INTO warga_shop_items (id, seller_id, seller_name, seller_username, category, title, price, stock, description, image_url, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)
+    `).run(id, String(u.id), u.name, u.username || '', category, title, price, stock, description, imageUrl, now);
+
+    addFeed(`${u.name} buka lapak baru: ${title} (${price} PSC).`);
+    await broadcastToTelegram({
+      target: 'group',
+      text: `🏪 <b>LAPAK WARGA BARU!</b>\n• Produk: <b>${escHtml(title)}</b> (${escHtml(category)})\n• Harga: <b>${price} PSC</b> · Stok: <b>${stock < 0 ? 'Unlimited' : stock}</b>\n• Pelapak: ${u.username ? '@' + escHtml(u.username) : escHtml(u.name)}`,
+      buttonText: '🛍️ INTIP ETALASE',
+      startParam: 'lapak'
+    });
+
+    res.json({ ok: true, id, ...getShopSnapshot(u.id) });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Gagal memasang produk.' });
+  }
+});
+
+// POST /api/warga-shop/edit -> Edit harga, judul, deskripsi, & restock barang
+marketRouter.post('/warga-shop/edit', requireUser, (req, res) => {
+  const u = req.dbUser;
+  const itemId = String(req.body?.itemId || '');
+  const item = db.prepare('SELECT * FROM warga_shop_items WHERE id = ?').get(itemId);
+  if (!item) return res.status(404).json({ error: 'Produk tidak ditemukan.' });
+
+  const isAdmin = u.role === 'owner' || u.role === 'admin';
+  if (String(item.seller_id) !== String(u.id) && !isAdmin) {
+    return res.status(403).json({ error: 'Bukan produk lo cuy!' });
   }
 
-  if (finalTarget === 'group' || finalTarget === 'both') await sendSafe(ENV.GROUP_ID);
-  if (finalTarget === 'channel' || finalTarget === 'both') await sendSafe(announceChannelId);
-}
+  const title = String(req.body?.title || item.title).trim().slice(0, 60);
+  const price = Math.max(1, Math.min(100000, parseInt(req.body?.price, 10) || item.price));
+  const description = String(req.body?.description ?? item.description).trim().slice(0, 220);
+  let stock = parseInt(req.body?.stock, 10);
+  if (Number.isNaN(stock)) stock = item.stock;
+  stock = Math.max(-1, Math.min(999, stock));
+
+  const nextStatus = (stock === 0) ? 'sold' : 'open';
+
+  db.prepare(`
+    UPDATE warga_shop_items
+    SET title = ?, price = ?, description = ?, stock = ?, status = ?
+    WHERE id = ?
+  `).run(title, price, description, stock, nextStatus, itemId);
+
+  res.json({ ok: true, ...getShopSnapshot(u.id) });
+});
+
+// POST /api/warga-shop/boost -> Sundul produk ke paling atas etalase (15 PSC / 12 jam)
+marketRouter.post('/warga-shop/boost', requireUser, (req, res) => {
+  const u = req.dbUser;
+  const itemId = String(req.body?.itemId || '');
+  const item = db.prepare('SELECT * FROM warga_shop_items WHERE id = ?').get(itemId);
+  if (!item || String(item.seller_id) !== String(u.id)) {
+    return res.status(404).json({ error: 'Produk tidak ditemukan atau bukan milikmu.' });
+  }
+  if ((u.psc || 0) < 15) {
+    return res.status(400).json({ error: 'Saldo kurang! Butuh 15 PSC buat sundul dagangan.' });
+  }
+
+  const boostUntil = Date.now() + 12 * 3600 * 1000;
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE users SET psc = psc - 15 WHERE id = ?').run(String(u.id));
+    db.prepare('UPDATE warga_shop_items SET boosted_until = ? WHERE id = ?').run(boostUntil, itemId);
+    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)').run(String(u.id), 'boost', -15, `Sundul: ${item.title}`, Date.now());
+  });
+  tx();
+
+  res.json({ ok: true, user: getFreshUser(u.id), ...getShopSnapshot(u.id) });
+});
+
+// POST /api/warga-shop/buy -> Beli produk warga (potong stok + pajak 5%, notif PM bot only)
+marketRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
+  const buyer = req.dbUser;
+  const itemId = String(req.body?.itemId || '');
+  const note = String(req.body?.note || '').trim().slice(0, 100);
+  const item = db.prepare('SELECT * FROM warga_shop_items WHERE id = ?').get(itemId);
+
+  if (!item || item.status === 'deleted') return res.status(404).json({ error: 'Produk tidak tersedia.' });
+  if (String(item.seller_id) === String(buyer.id)) return res.status(400).json({ error: 'Masa beli dagangan sendiri?' });
+  if (item.status === 'sold' || item.stock === 0) return res.status(400).json({ error: 'Stok produk sudah habis!' });
+  if ((buyer.psc || 0) < item.price) return res.status(400).json({ error: 'Saldo PSC tidak cukup!' });
+
+  const fee = Math.floor(item.price * 0.05);
+  const sellerNet = Math.max(1, item.price - fee);
+  const orderId = 'ord_' + crypto.randomBytes(4).toString('hex');
+  const now = Date.now();
+
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE users SET psc = psc - ? WHERE id = ?').run(item.price, String(buyer.id));
+    db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(sellerNet, String(item.seller_id));
+
+    const newStock = item.stock > 0 ? item.stock - 1 : -1;
+    const newStatus = newStock === 0 ? 'sold' : 'open';
+    db.prepare(`
+      UPDATE warga_shop_items
+      SET stock = ?, sold_count = sold_count + 1, status = ?, buyer_name = ?
+      WHERE id = ?
+    `).run(newStock, newStatus, buyer.name, itemId);
+
+    db.prepare(`
+      INSERT INTO warga_shop_orders (id, item_id, item_title, seller_id, seller_name, buyer_id, buyer_name, price, note, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(orderId, item.id, item.title, item.seller_id, item.seller_name, String(buyer.id), buyer.name, item.price, note, now);
+
+    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)').run(String(buyer.id), 'market_buy', -item.price, `Beli: ${item.title}`, now);
+    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)').run(String(item.seller_id), 'market_sell', sellerNet, `Laku: ${item.title} (potong pajak 5%)`, now);
+  });
+  tx();
+
+  const sellerRow = db.prepare('SELECT id, username, name FROM users WHERE id = ?').get(String(item.seller_id));
+  const buyerRow = db.prepare('SELECT id, username, name FROM users WHERE id = ?').get(String(buyer.id));
+
+  const sellerUsn = String(sellerRow?.username || item.seller_username || '').replace(/^@/, '').trim();
+  const buyerUsn = String(buyerRow?.username || buyer.username || '').replace(/^@/, '').trim();
+  const noteLine = note ? `\n• Catatan: <i>${escHtml(note)}</i>` : '';
+
+  // 1. Kirim PM Bot ke PEMBELI & arahkan langsung ke @username penjual
+  await notifyPrivateUser(
+    buyer.id,
+    `🛒 <b>TRANSAKSI LAPAK WARGA BERHASIL!</b>\n` +
+    `• ID Order: <code>${orderId}</code>\n` +
+    `• Produk: <b>${escHtml(item.title)}</b>\n` +
+    `• Total Bayar: <b>${item.price} PSC</b>\n` +
+    `• Penjual: ${sellerUsn ? '@' + escHtml(sellerUsn) : escHtml(sellerRow?.name || item.seller_name)}` +
+    `${noteLine}\n\n` +
+    `Silakan hubungi penjual di atas untuk serah-terima item/jasa.`,
+    {
+      buttonText: sellerUsn ? `💬 CHAT PENJUAL (@${sellerUsn})` : '🧾 CEK ORDER',
+      buttonUrl: sellerUsn ? `https://t.me/${sellerUsn}` : '',
+      startParam: 'lapak'
+    }
+  );
+
+  // 2. Kirim PM Bot ke PENJUAL & arahkan langsung ke @username pembeli
+  await notifyPrivateUser(
+    item.seller_id,
+    `💰 <b>DAGANGAN LAPAK WARGA TERJUAL!</b>\n` +
+    `• ID Order: <code>${orderId}</code>\n` +
+    `• Produk: <b>${escHtml(item.title)}</b>\n` +
+    `• Pendapatan Bersih: <b>+${sellerNet} PSC</b> (pajak 5%)\n` +
+    `• Pembeli: ${buyerUsn ? '@' + escHtml(buyerUsn) : escHtml(buyerRow?.name || buyer.name)}` +
+    `${noteLine}\n\n` +
+    `Pembeli sudah diarahkan ke username kamu lewat bot.`,
+    {
+      buttonText: buyerUsn ? `📩 CHAT PEMBELI (@${buyerUsn})` : '🧾 CEK ORDER',
+      buttonUrl: buyerUsn ? `https://t.me/${buyerUsn}` : '',
+      startParam: 'lapak'
+    }
+  );
+
+  res.json({
+    ok: true,
+    orderId,
+    sellerUsername: sellerUsn,
+    message: sellerUsn
+      ? `Berhasil beli ${item.title}! Cek PM Bot atau langsung chat @${sellerUsn}.`
+      : `Berhasil beli ${item.title}! Detail pesanan sudah dikirim via PM Bot.`,
+    user: getFreshUser(buyer.id),
+    ...getShopSnapshot(buyer.id)
+  });
+});
+
+// POST /api/warga-shop/delete -> Hapus dagangan
+marketRouter.post('/warga-shop/delete', requireUser, (req, res) => {
+  const u = req.dbUser;
+  const itemId = String(req.body?.itemId || '');
+  const item = db.prepare('SELECT * FROM warga_shop_items WHERE id = ?').get(itemId);
+  if (!item) return res.status(404).json({ error: 'Produk tidak ditemukan.' });
+
+  const isAdmin = u.role === 'owner' || u.role === 'admin';
+  if (String(item.seller_id) !== String(u.id) && !isAdmin) {
+    return res.status(403).json({ error: 'Tidak punya akses hapus produk ini.' });
+  }
+
+  db.prepare(`UPDATE warga_shop_items SET status = 'deleted' WHERE id = ?`).run(itemId);
+  res.json({ ok: true, ...getShopSnapshot(u.id) });
+});
+
+// POST /api/shop/collab-submit -> Warga mengajukan item Collab untuk Lapak Rongsok
+marketRouter.post('/shop/collab-submit', requireUser, uploadMem.single('media'), async (req, res) => {
+  try {
+    const u = req.dbUser;
+    const type = ['border', 'skin', 'gift'].includes(req.body?.type) ? req.body.type : 'border';
+    const name = String(req.body?.name || '').trim().slice(0, 40);
+    const price = Math.max(50, Math.min(5000, parseInt(req.body?.price, 10) || 150));
+    const desc = String(req.body?.desc || '').trim().slice(0, 140);
+
+    if (name.length < 3 || !req.file) {
+      return res.status(400).json({ error: 'Nama item minimal 3 huruf dan wajib upload gambar/WebM desainnya!' });
+    }
+
+    const subId = 'col_' + crypto.randomBytes(3).toString('hex');
+    const imageUrl = await processAndSaveImage(req.file, 'shop', { width: 512, height: 512, fit: 'inside' });
+
+    db.prepare(`
+      INSERT INTO item_submissions (id, creator_id, creator_name, creator_username, type, name, price, desc, image_url, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+    `).run(subId, String(u.id), u.name, u.username || '', type, name, price, desc, imageUrl, Date.now());
+
+    addAuditLog(u.id, 'COLLAB_SUBMIT', `Ajukan item collab ${name} (${type}) ID: ${subId}`);
+
+    await broadcastToTelegram({
+      target: 'group',
+      text:
+        `🎨 <b>PENGAJUAN ITEM COLLAB BARU!</b>\n` +
+        `• ID Pengajuan: <code>${subId}</code>\n` +
+        `• Kreator: ${u.username ? '@' + escHtml(u.username) : escHtml(u.name)}\n` +
+        `• Kategori: <b>${type.toUpperCase()}</b>\n` +
+        `• Nama Item: <b>${escHtml(name)}</b> (${price} PSC)\n\n` +
+        `<i>Admin tinggal ketik command bot:</i>\n<code>/acc_collab ${subId}</code> atau <code>/tolak_collab ${subId}</code>`
+    });
+
+    res.json({ ok: true, id: subId });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Gagal mengajukan item collab.' });
+  }
+});
