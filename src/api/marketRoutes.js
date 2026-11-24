@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { db, addFeed, addAuditLog } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
 import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
-import { broadcastToTelegram, escHtml } from '../services/syncEngine.js';
+import { broadcastToTelegram, notifyPrivateUser, escHtml } from '../services/syncEngine.js';
 
 export const marketRouter = Router();
 
@@ -183,50 +183,46 @@ marketRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
   });
   tx();
 
-  const sellerRow = db.prepare('SELECT id, telegram_id, username, name FROM users WHERE id = ?').get(String(item.seller_id));
-  const buyerRow = db.prepare('SELECT id, telegram_id, username, name FROM users WHERE id = ?').get(String(buyer.id));
+  const sellerRow = db.prepare('SELECT id, username, name FROM users WHERE id = ?').get(String(item.seller_id));
+  const buyerRow = db.prepare('SELECT id, username, name FROM users WHERE id = ?').get(String(buyer.id));
 
   const sellerUsn = String(sellerRow?.username || item.seller_username || '').replace(/^@/, '').trim();
   const buyerUsn = String(buyerRow?.username || buyer.username || '').replace(/^@/, '').trim();
   const noteLine = note ? `\n• Catatan: <i>${escHtml(note)}</i>` : '';
 
-  // 1. Kirim PM Bot ke PEMBELI & arahkan ke @username penjual
-  if (buyerRow?.telegram_id) {
-    await broadcastToTelegram({
-      target: 'user',
-      chatId: buyerRow.telegram_id,
-      text:
-        `🛒 <b>TRANSAKSI LAPAK WARGA BERHASIL!</b>\n` +
-        `• ID Order: <code>${orderId}</code>\n` +
-        `• Produk: <b>${escHtml(item.title)}</b>\n` +
-        `• Total Bayar: <b>${item.price} PSC</b>\n` +
-        `• Penjual: ${sellerUsn ? '@' + escHtml(sellerUsn) : escHtml(sellerRow?.name || item.seller_name)}` +
-        `${noteLine}\n\n` +
-        `Silakan langsung hubungi penjual di atas untuk serah-terima item/jasa.`,
+  // 1. Kirim PM Bot ke PEMBELI & arahkan langsung ke @username penjual
+  await notifyPrivateUser(
+    buyer.id,
+    `🛒 <b>TRANSAKSI LAPAK WARGA BERHASIL!</b>\n` +
+    `• ID Order: <code>${orderId}</code>\n` +
+    `• Produk: <b>${escHtml(item.title)}</b>\n` +
+    `• Total Bayar: <b>${item.price} PSC</b>\n` +
+    `• Penjual: ${sellerUsn ? '@' + escHtml(sellerUsn) : escHtml(sellerRow?.name || item.seller_name)}` +
+    `${noteLine}\n\n` +
+    `Silakan hubungi penjual di atas untuk serah-terima item/jasa.`,
+    {
       buttonText: sellerUsn ? `💬 CHAT PENJUAL (@${sellerUsn})` : '🧾 CEK ORDER',
-      buttonUrl: sellerUsn ? `https://t.me/${sellerUsn}` : undefined,
-      startParam: sellerUsn ? undefined : 'lapak'
-    }).catch(() => {});
-  }
+      buttonUrl: sellerUsn ? `https://t.me/${sellerUsn}` : '',
+      startParam: 'lapak'
+    }
+  );
 
-  // 2. Kirim PM Bot ke PENJUAL & arahkan ke @username pembeli
-  if (sellerRow?.telegram_id) {
-    await broadcastToTelegram({
-      target: 'user',
-      chatId: sellerRow.telegram_id,
-      text:
-        `💰 <b>DAGANGAN LAPAK WARGA TERJUAL!</b>\n` +
-        `• ID Order: <code>${orderId}</code>\n` +
-        `• Produk: <b>${escHtml(item.title)}</b>\n` +
-        `• Pendapatan Bersih: <b>+${sellerNet} PSC</b> (pajak 5%)\n` +
-        `• Pembeli: ${buyerUsn ? '@' + escHtml(buyerUsn) : escHtml(buyerRow?.name || buyer.name)}` +
-        `${noteLine}\n\n` +
-        `Pembeli sudah diarahkan ke username kamu via bot.`,
-      buttonText: buyerUsn ? `📩 HUBUNGI PEMBELI (@${buyerUsn})` : '🧾 CEK ORDER',
-      buttonUrl: buyerUsn ? `https://t.me/${buyerUsn}` : undefined,
-      startParam: buyerUsn ? undefined : 'lapak'
-    }).catch(() => {});
-  }
+  // 2. Kirim PM Bot ke PENJUAL & arahkan langsung ke @username pembeli
+  await notifyPrivateUser(
+    item.seller_id,
+    `💰 <b>DAGANGAN LAPAK WARGA TERJUAL!</b>\n` +
+    `• ID Order: <code>${orderId}</code>\n` +
+    `• Produk: <b>${escHtml(item.title)}</b>\n` +
+    `• Pendapatan Bersih: <b>+${sellerNet} PSC</b> (pajak 5%)\n` +
+    `• Pembeli: ${buyerUsn ? '@' + escHtml(buyerUsn) : escHtml(buyerRow?.name || buyer.name)}` +
+    `${noteLine}\n\n` +
+    `Pembeli sudah diarahkan ke username kamu lewat bot.`,
+    {
+      buttonText: buyerUsn ? `📩 CHAT PEMBELI (@${buyerUsn})` : '🧾 CEK ORDER',
+      buttonUrl: buyerUsn ? `https://t.me/${buyerUsn}` : '',
+      startParam: 'lapak'
+    }
+  );
 
   res.json({
     ok: true,
