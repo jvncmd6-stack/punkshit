@@ -4,22 +4,107 @@
   var S = C.S;
   var L = window.PunkLapak = window.PunkLapak || {};
 
+  function extractInvMap() {
+    var rawInv = Array.isArray(S.inv) ? S.inv : [];
+    var map = {};
+    var order = [];
+
+    rawInv.forEach(function (entry) {
+      if (!entry) return;
+      var id = '';
+      var qty = 1;
+      var meta = null;
+
+      if (typeof entry === 'string' || typeof entry === 'number') {
+        id = String(entry).trim();
+      } else if (typeof entry === 'object') {
+        id = String(entry.itemId || entry.item_id || entry.id || entry.key || '').trim();
+        qty = Math.max(1, Number(entry.qty || entry.count || entry.amount || 1));
+        meta = entry;
+      }
+
+      if (!id) return;
+      if (!map[id]) {
+        map[id] = { id: id, qty: 0, meta: meta };
+        order.push(id);
+      }
+      map[id].qty += qty;
+      if (meta && !map[id].meta) map[id].meta = meta;
+    });
+
+    return { map: map, order: order, totalCount: order.length };
+  }
+
+  function resolveCatalogItem(id, fallbackMeta) {
+    var cleanId = String(id || '').trim();
+    var catalog = Array.isArray(S.catalog) ? S.catalog : [];
+    var found = catalog.find(function (c) {
+      return String(c.id || c.itemId || '').trim() === cleanId;
+    });
+    if (found) return found;
+
+    if (typeof C.findItem === 'function') {
+      var viaCore = C.findItem(cleanId);
+      if (viaCore) return viaCore;
+    }
+
+    var m = fallbackMeta || {};
+    return {
+      id: cleanId,
+      name: m.name || m.title || cleanId.replace(/[_-]+/g, ' ').toUpperCase(),
+      type: m.type || (cleanId.indexOf('skin') !== -1 ? 'skin' : cleanId.indexOf('gift') !== -1 ? 'gift' : 'border'),
+      rarity: m.rarity || 'Rare',
+      price: Number(m.price) || 0,
+      stock: m.stock != null ? m.stock : -1,
+      imageUrl: m.imageUrl || m.image_url || m.url || '',
+      cssClass: m.cssClass || m.css_class || '',
+      desc: m.desc || 'Item koleksi warga PUNKSHIT.OS'
+    };
+  }
+
   function isItemEquipped(u, it) {
     if (!u || !it) return false;
-    if (it.type === 'border') return String(u.equippedBorderId) === String(it.id);
-    if (it.type === 'skin') return String(u.equippedSkinId) === String(it.id);
-    if (it.type === 'gift') return String(u.pinnedGiftId) === String(it.id);
+    var id = String(it.id);
+    if (it.type === 'border') return String(u.equippedBorderId || u.equipped_border_id || '') === id;
+    if (it.type === 'skin') return String(u.equippedSkinId || u.equipped_skin_id || '') === id;
+    if (it.type === 'gift') return String(u.pinnedGiftId || u.pinned_gift_id || '') === id;
     return false;
+  }
+
+  function getStockNum(it) {
+    if (!it || it.stock === null || it.stock === undefined || it.stock === '') return -1;
+    var n = Number(it.stock);
+    return Number.isNaN(n) ? -1 : n;
   }
 
   function openItemDetail(it) {
     if (!it) return;
     var u = S.user || {};
-    var owned = (S.inv || []).indexOf(it.id) !== -1;
+    var invInfo = extractInvMap();
+    var ownedEntry = invInfo.map[String(it.id)];
+    var ownedQty = ownedEntry ? ownedEntry.qty : 0;
+    var owned = ownedQty > 0;
     var equipped = isItemEquipped(u, it);
     var myPsc = Number(u.psc) || 0;
     var price = Number(it.price) || 0;
-    var stockInfo = (it.stock == null || Number(it.stock) < 0) ? 'Unlimited' : ('Sisa ' + it.stock);
+    var stockNum = getStockNum(it);
+    var isOutOfStock = stockNum === 0;
+    var maxBuyable = stockNum < 0 ? Math.max(1, Math.min(99, Math.floor(myPsc / Math.max(1, price)))) : Math.min(stockNum, Math.max(1, Math.floor(myPsc / Math.max(1, price))));
+    var stockInfo = stockNum < 0 ? 'Stok: Unlimited' : (isOutOfStock ? 'STOK HABIS' : ('Sisa Stok: ' + stockNum));
+
+    var qtySelectorHtml = (!isOutOfStock && price > 0)
+      ? '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 6px">' +
+          '<button type="button" class="pill" id="lp-qty-minus" style="font-size:15px;padding:4px 12px;font-weight:900">−</button>' +
+          '<span style="font-size:13px;font-weight:800">Jumlah: <b id="lp-qty-val" data-max="' + Math.max(1, maxBuyable) + '" data-price="' + price + '">1</b>x</span>' +
+          '<button type="button" class="pill" id="lp-qty-plus" style="font-size:15px;padding:4px 12px;font-weight:900">+</button>' +
+        '</div>'
+      : '';
+
+    var buyBtnHtml = isOutOfStock
+      ? '<button class="btn b2" disabled>🚫 Stok Habis</button>'
+      : '<button class="btn" id="lp-buy-btn" data-act="lp-buy" data-id="' + C.esc(it.id) + '"' + (myPsc < price ? ' disabled' : '') + '>' +
+          (owned ? '➕ Beli Lagi (1x) · ' : '🛒 Beli Sekarang (1x) · ') + price + ' PSC' +
+        '</button>';
 
     var actionBtn = '';
     if (it.type === 'gift') {
@@ -33,55 +118,82 @@
           '<label style="display:flex;align-items:center;gap:6px;margin:8px 0"><input id="lp-anon" type="checkbox"> Kirim sebagai Anonim</label>' +
           '<button class="btn" data-act="lp-send-gift" data-id="' + C.esc(it.id) + '">Kirim Gift · ' + price + ' PSC</button>' +
         '</div>' +
+        qtySelectorHtml +
+        buyBtnHtml +
         (owned
           ? '<button class="btn b2" data-act="lp-equip-toggle" data-id="' + C.esc(it.id) + '">' + (equipped ? '📌 Lepas Pin dari Avatar' : '📌 Pasang Pin di Avatar') + '</button>'
           : '');
     } else if (owned) {
-      actionBtn = '<button class="btn" data-act="lp-equip-toggle" data-id="' + C.esc(it.id) + '">' + (equipped ? '✅ Terpasang (Tap Lepas)' : '✨ Pasang ke Profil') + '</button>';
+      actionBtn =
+        '<button class="btn" data-act="lp-equip-toggle" data-id="' + C.esc(it.id) + '">' + (equipped ? '✅ Terpasang (Tap Lepas)' : '✨ Pasang ke Profil') + '</button>' +
+        qtySelectorHtml +
+        buyBtnHtml;
     } else {
-      actionBtn = '<button class="btn" data-act="lp-buy" data-id="' + C.esc(it.id) + '"' + (myPsc < price ? ' disabled' : '') + '>Beli Sekarang · ' + price + ' PSC</button>';
+      actionBtn = qtySelectorHtml + buyBtnHtml;
     }
 
     C.sheet(
       '<div style="display:grid;place-items:center;padding:12px 0">' + C.renderItemVisual(it, 110, true) + '</div>' +
       '<div style="text-align:center">' +
         '<span class="pill">' + C.esc((it.type || 'item').toUpperCase()) + ' · ' + C.esc(it.rarity || 'Rare') + '</span>' +
+        (owned ? ' <span class="pill" style="background:#38BDF833;color:#7DD3FC">Dimiliki: ' + ownedQty + 'x</span>' : '') +
         '<h2 style="margin-top:6px">' + C.esc(it.name) + '</h2>' +
-        '<div style="color:#FFD633;font-size:17px;font-weight:800;margin:4px 0">' + price + ' PSC <small style="color:var(--mut);font-weight:500">(' + stockInfo + ')</small></div>' +
+        '<div style="color:#FFD633;font-size:16px;font-weight:800;margin:4px 0">' + price + ' PSC <small style="color:' + (isOutOfStock ? '#FCA5A5' : 'var(--mut)') + ';font-weight:600">(' + stockInfo + ')</small></div>' +
         '<p class="sub">' + C.esc(it.desc || 'Item koleksi eksklusif PUNKSHIT.OS') + '</p>' +
       '</div>' +
       actionBtn +
       '<button class="btn b2" data-act="shut">TUTUP</button>'
     );
+
+    var minusBtn = document.getElementById('lp-qty-minus');
+    var plusBtn = document.getElementById('lp-qty-plus');
+    var qtyEl = document.getElementById('lp-qty-val');
+    var buyBtn = document.getElementById('lp-buy-btn');
+    if (minusBtn && plusBtn && qtyEl && buyBtn) {
+      var updateQtyUi = function (nextQty) {
+        var maxQ = Number(qtyEl.getAttribute('data-max')) || 1;
+        var unitPrice = Number(qtyEl.getAttribute('data-price')) || price;
+        var q = Math.max(1, Math.min(maxQ, nextQty));
+        qtyEl.textContent = String(q);
+        var total = q * unitPrice;
+        buyBtn.disabled = myPsc < total;
+        buyBtn.textContent = (owned ? '➕ Beli Lagi (' : '🛒 Beli Sekarang (') + q + 'x) · ' + total + ' PSC';
+      };
+      minusBtn.onclick = function () { updateQtyUi((Number(qtyEl.textContent) || 1) - 1); };
+      plusBtn.onclick = function () { updateQtyUi((Number(qtyEl.textContent) || 1) + 1); };
+    }
   }
 
   function defaultRenderLapak() {
     var u = S.user || {};
     var tab = S.curTab.lapak || 'katalog';
     var catFilter = S.curTab.lpType || 'all';
-    var catalog = S.catalog || [];
-    var inv = S.inv || [];
+    var catalog = Array.isArray(S.catalog) ? S.catalog : [];
+    var invInfo = extractInvMap();
 
     var header =
       '<div class="card" style="background:linear-gradient(135deg,rgba(23,107,255,.22),rgba(15,23,42,.92));border:1px solid rgba(143,199,255,.28)">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
-          '<div style="display:flex;align-items:center;gap:10px">' +
+          '<div style="display:flex;align-items:center;gap:10px;min-width:0">' +
             C.renderAvatar(u, 'mini') +
-            '<div>' +
+            '<div style="min-width:0">' +
               '<div style="font-weight:800;font-size:14px">LAPAK RONGSOK</div>' +
-              '<div style="font-size:11px;opacity:.85">Saldo Lu: <b style="color:#FFD633">' + (u.psc || 0) + ' PSC</b> · Koleksi: <b>' + inv.length + '</b></div>' +
+              '<div style="font-size:11px;opacity:.85">Saldo Lu: <b style="color:#FFD633">' + (u.psc || 0) + ' PSC</b> · Koleksi: <b>' + invInfo.totalCount + '</b></div>' +
             '</div>' +
           '</div>' +
-          '<button class="pill" style="background:#2563EB;color:#fff;font-weight:800" data-act="lp-collab-sheet">+ Collab</button>' +
+          '<button class="pill" style="background:#2563EB;color:#fff;font-weight:800;flex-shrink:0" data-act="lp-collab-sheet">+ Collab</button>' +
         '</div>' +
       '</div>' +
       '<div class="tabs" style="margin:12px 0">' +
         '<button class="tab' + (tab === 'katalog' ? ' on' : '') + '" data-act="lp-tab" data-tab="katalog">🏪 Katalog Resmi (' + catalog.length + ')</button>' +
-        '<button class="tab' + (tab === 'lemari' ? ' on' : '') + '" data-act="lp-tab" data-tab="lemari">🎒 Lemari Gue (' + inv.length + ')</button>' +
+        '<button class="tab' + (tab === 'lemari' ? ' on' : '') + '" data-act="lp-tab" data-tab="lemari">🎒 Lemari Gue (' + invInfo.totalCount + ')</button>' +
       '</div>';
 
     var list = tab === 'lemari'
-      ? catalog.filter(function (it) { return inv.indexOf(it.id) !== -1; })
+      ? invInfo.order.map(function (id) {
+          var entry = invInfo.map[id];
+          return resolveCatalogItem(id, entry && entry.meta);
+        })
       : catalog.filter(function (it) { return catFilter === 'all' || it.type === catFilter; });
 
     var filterBar = tab === 'katalog'
@@ -94,17 +206,27 @@
       : '';
 
     var cards = list.map(function (it) {
-      var owned = inv.indexOf(it.id) !== -1;
+      var ownedEntry = invInfo.map[String(it.id)];
+      var ownedQty = ownedEntry ? ownedEntry.qty : 0;
+      var owned = ownedQty > 0;
       var eq = isItemEquipped(u, it);
+      var stockNum = getStockNum(it);
+      var isOut = stockNum === 0;
+
+      var stockBadge = isOut
+        ? '<span style="font-size:9px;color:#FCA5A5;font-weight:700">HABIS</span>'
+        : (stockNum > 0 ? '<span style="font-size:9px;color:#93C5FD;font-weight:700">Stok ' + stockNum + '</span>' : '');
+
       var badge = eq
-        ? '<span class="pill" style="background:#34C75933;color:#6df0a0;font-size:9px">DIPAKAI</span>'
+        ? '<span class="pill" style="background:#34C75933;color:#6df0a0;font-size:9px">DIPAKAI' + (ownedQty > 1 ? ' (' + ownedQty + 'x)' : '') + '</span>'
         : (owned
-            ? '<span class="pill" style="background:#38BDF833;color:#7DD3FC;font-size:9px">DIMILIKI</span>'
+            ? '<span class="pill" style="background:#38BDF833;color:#7DD3FC;font-size:9px">PUNYA ' + ownedQty + 'x</span>'
             : '<span style="color:#FFD633;font-weight:800;font-size:12px">' + it.price + ' PSC</span>');
 
-      return '<div class="card" data-act="lp-detail" data-id="' + C.esc(it.id) + '" style="padding:12px;text-align:center;cursor:pointer">' +
+      return '<div class="card" data-act="lp-detail" data-id="' + C.esc(it.id) + '" style="padding:12px;text-align:center;cursor:pointer;position:relative">' +
+        (stockBadge ? '<div style="position:absolute;top:8px;right:8px">' + stockBadge + '</div>' : '') +
         '<div style="display:grid;place-items:center;height:78px">' + C.renderItemVisual(it, 68, false) + '</div>' +
-        '<div style="font-weight:700;font-size:13px;margin-top:6px">' + C.esc(it.name) + '</div>' +
+        '<div style="font-weight:700;font-size:13px;margin-top:6px;line-height:1.25">' + C.esc(it.name) + '</div>' +
         '<small style="display:block;opacity:.7;font-size:10px;margin:2px 0 6px">' + C.esc((it.type || '').toUpperCase()) + ' · ' + C.esc(it.rarity || 'Rare') + '</small>' +
         badge +
       '</div>';
@@ -117,7 +239,8 @@
   }
 
   L.isItemEquipped = L.isItemEquipped || isItemEquipped;
-  L.openItemDetail = L.openItemDetail || openItemDetail;
+  L.openItemDetail = openItemDetail;
+  L.resolveCatalogItem = resolveCatalogItem;
 
   C.Views.lapak = (typeof L.renderLapak === 'function') ? L.renderLapak : defaultRenderLapak;
   if (typeof L.renderLapakWarga === 'function') {
@@ -300,12 +423,15 @@
         C.notify('Mas Raka', 'Gagal Ajukan', err.message);
       }
     } else if (act === 'lp-detail') {
-      L.openItemDetail(C.findItem(t.getAttribute('data-id')));
+      var itemId = t.getAttribute('data-id');
+      var invInfo = extractInvMap();
+      var entry = invInfo.map[String(itemId)];
+      openItemDetail(resolveCatalogItem(itemId, entry && entry.meta));
     } else if (act === 'lp-equip-toggle') {
       var eqId = t.getAttribute('data-id');
-      var eqItem = C.findItem(eqId);
+      var eqItem = resolveCatalogItem(eqId);
       if (!eqItem) return;
-      var currentlyEquipped = L.isItemEquipped(S.user, eqItem);
+      var currentlyEquipped = isItemEquipped(S.user, eqItem);
       var eqType = eqItem.type === 'gift' ? 'pin' : eqItem.type;
       var payloadItemId = eqItem.type === 'gift' ? eqItem.id : (currentlyEquipped ? null : eqItem.id);
 
@@ -325,29 +451,33 @@
       if (box) box.hidden = !box.hidden;
     } else if (act === 'lp-buy') {
       var id = t.getAttribute('data-id');
-      var it = C.findItem(id);
-      if ((S.user.psc || 0) < it.price) {
+      var it = resolveCatalogItem(id);
+      var qtyEl = document.getElementById('lp-qty-val');
+      var buyQty = qtyEl ? Math.max(1, Number(qtyEl.textContent) || 1) : 1;
+      var totalCost = (Number(it.price) || 0) * buyQty;
+
+      if ((S.user.psc || 0) < totalCost) {
         C.notify('Mas Raka', 'Saldo Kurang', 'Dompet lu lagi cosplay gurun Sahara.');
         return;
       }
       t.disabled = true;
-      t.textContent = 'Memproses...';
+      t.textContent = 'Memproses (' + buyQty + 'x)...';
       try {
-        var res = await API.post('/api/shop/buy', { itemId: id });
-        S.user = res.user;
+        var res = await API.post('/api/shop/buy', { itemId: id, qty: buyQty });
+        if (res.user) S.user = res.user;
         if (res.inv) S.inv = res.inv;
         if (res.catalog) S.catalog = res.catalog;
         C.shut();
         C.refresh();
-        C.notify('Mas Raka', 'Lapak Rongsok', it.name + ' berhasil dibeli!');
+        C.notify('Mas Raka', 'Lapak Rongsok', it.name + ' (' + buyQty + 'x) berhasil dibeli!');
       } catch (err) {
         t.disabled = false;
-        t.textContent = 'Beli Sekarang · ' + it.price + ' PSC';
+        t.textContent = 'Beli Sekarang (' + buyQty + 'x) · ' + totalCost + ' PSC';
         C.notify('Mas Raka', 'Gagal Beli', err.message);
       }
     } else if (act === 'lp-send-gift') {
       var gid = t.getAttribute('data-id');
-      var git = C.findItem(gid);
+      var git = resolveCatalogItem(gid);
       var to = (document.getElementById('lp-to').value || '').trim().replace(/^@?/, '@');
       var msg = (document.getElementById('lp-msg').value || '').trim();
       var anonEl = document.getElementById('lp-anon');
