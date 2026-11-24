@@ -31,7 +31,7 @@
 
   function renderCoopBoxHtml() {
     if (!coopState.loaded && coopState.loading) {
-      return '<div class="grp" style="margin-bottom:12px"><div class="rw"><small>Memuat status Spark Co-op...</small></div></div>';
+      return '<div class="grp lg-coop" style="margin-bottom:12px"><div class="rw"><small>Memuat status Spark Co-op...</small></div></div>';
     }
     if (!coopState.hasCoop || !coopState.partners.length) {
       return '';
@@ -47,11 +47,11 @@
       : '<button class="pill" data-act="ar-shield-open" data-partner="' + C.esc(firstPartner.partnerUsername) + '">🛡️ Aktifkan Shield</button>';
 
     return (
-      '<div class="grp" style="margin-bottom:12px;background:linear-gradient(135deg,#f9731622,#0f172a 70%);border:1px solid rgba(251,146,60,.35)">' +
+      '<div class="grp lg-coop" style="margin-bottom:12px">' +
         '<div class="rw">' +
-          '<div>' +
-            '<b>🔥 SPARK DUO: @' + C.esc(firstPartner.partnerUsername) + ' (' + (firstPartner.streak || 0) + ' Hari)</b>' +
-            '<small>Co-op Squad aktif · Bonus sinergi +' + (firstPartner.coopBonusPct || 15) + '% XP</small>' +
+          '<div style="min-width:0;flex:1">' +
+            '<b style="display:block;line-height:1.3">🔥 SPARK DUO: @' + C.esc(firstPartner.partnerUsername) + ' (' + (firstPartner.streak || 0) + ' Hari)</b>' +
+            '<small style="display:block;line-height:1.35;margin-top:2px">Co-op Squad aktif · Bonus sinergi +' + (firstPartner.coopBonusPct || 15) + '% XP</small>' +
           '</div>' +
           shieldBtn +
         '</div>' +
