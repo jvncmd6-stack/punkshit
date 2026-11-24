@@ -87,6 +87,7 @@ window.PunkCore = (function () {
     }
 
     S.curApp = id;
+    document.documentElement.classList.toggle('lg', id === 'arena');
     var av = $('av');
     if (el) {
       var a = el.getBoundingClientRect(), p = $('ph').getBoundingClientRect();
@@ -187,7 +188,12 @@ window.PunkCore = (function () {
     var act = t.getAttribute('data-act');
 
     if (act === 'app') openApp(t.getAttribute('data-id'), t);
-    else if (act === 'close') { $('av').classList.remove('open'); $('home').classList.remove('bk'); S.curApp = ''; }
+    else if (act === 'close') {
+      $('av').classList.remove('open');
+      $('home').classList.remove('bk');
+      document.documentElement.classList.remove('lg');
+      S.curApp = '';
+    }
     else if (act === 'shut') shut();
     else if (act === 'search') openApp('warga');
     else if (act === 'core-reg') {
