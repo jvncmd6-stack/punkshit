@@ -1,3 +1,7 @@
+/* ==========================================================
+   ARENA GABUT · LIQUID GLASS THEME (PROPORTIONAL SCALE)
+   Di-scope ke `.lg` (aktif otomatis saat membuka Arena Gabut).
+   ========================================================== */
 
 .lg {
   --lg-cyan: #5CE1FF;
@@ -5,16 +9,17 @@
   --lg-mint: #6DF0A0;
   --lg-sun: #FFD633;
   --yel: #FFD633;
-  --mut: rgba(226, 232, 240, .62);
-  --lg-fill: linear-gradient(150deg, rgba(255,255,255,.16), rgba(255,255,255,.05) 45%, rgba(255,255,255,.09));
+  --mut: rgba(226, 232, 240, .66);
+  --lg-fill: linear-gradient(150deg, rgba(255,255,255,.15), rgba(255,255,255,.05) 45%, rgba(255,255,255,.09));
   --lg-edge: rgba(255,255,255,.2);
-  --lg-blur: blur(22px) saturate(180%);
-  --lg-lift: 0 14px 34px -10px rgba(2,6,23,.55), 0 2px 6px rgba(2,6,23,.25);
-  --lg-rim: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -1px 0 rgba(255,255,255,.06), inset 0 0 24px rgba(255,255,255,.05);
+  --lg-blur: blur(20px) saturate(180%);
+  --lg-lift: 0 10px 24px -8px rgba(2,6,23,.55), 0 2px 5px rgba(2,6,23,.25);
+  --lg-rim: inset 0 1px 0 rgba(255,255,255,.38), inset 0 -1px 0 rgba(255,255,255,.06), inset 0 0 18px rgba(255,255,255,.04);
   --lg-spring: cubic-bezier(.34, 1.56, .64, 1);
 }
 
-.lg, .lg button, .lg select, .lg input {
+.lg .av, .lg .av button, .lg .av select, .lg .av input,
+.lg .sh, .lg .sh button, .lg .sh select, .lg .sh input {
   font-family: 'Fredoka', 'Baloo 2', ui-rounded, 'SF Pro Rounded', -apple-system, 'Segoe UI', sans-serif;
 }
 .lg b { font-weight: 600; }
@@ -57,26 +62,30 @@
 }
 @keyframes lg-twinkle { from { opacity: .25; } to { opacity: .95; } }
 
-/* Pertahankan scroll & navbar persis seperti layout WebApp */
+/* Kembalikan struktur scroll bawaan WebApp (.nav di atas, .sc flex di bawahnya) */
+.lg .av .nav {
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+}
 .lg .av .sc {
-  position: absolute !important;
-  inset: 0 !important;
+  position: relative;
   z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 54px) !important;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 36px) !important;
-}
-.lg .av .nav {
-  z-index: 5;
+  padding-top: 2px !important;
+  padding-bottom: 36px !important;
 }
 .lg .av .lt {
-  margin-top: 4px !important;
-  margin-bottom: 12px !important;
+  font-size: 26px !important;
+  margin: 0 0 10px !important;
+  line-height: 1.15;
 }
 
-/* Permukaan kaca */
+/* Permukaan kaca (ukuran proporsional) */
 .lg .grp,
 .lg .card,
 .lg .game-card {
@@ -85,12 +94,12 @@
   -webkit-backdrop-filter: var(--lg-blur);
   backdrop-filter: var(--lg-blur);
   border: 1px solid var(--lg-edge) !important;
-  border-radius: 28px;
+  border-radius: 20px;
   box-shadow: var(--lg-rim), var(--lg-lift);
   color: #F8FAFC;
   overflow: hidden;
 }
-.lg .card { padding: 14px; }
+.lg .card { padding: 11px 12px; }
 
 /* Kilau mengikuti jari / kursor */
 .lg .grp::before,
@@ -101,7 +110,7 @@
   position: absolute; inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(180px circle at var(--mx, 25%) var(--my, -10%), rgba(255,255,255,.26), transparent 62%);
+  background: radial-gradient(150px circle at var(--mx, 25%) var(--my, -10%), rgba(255,255,255,.24), transparent 62%);
   opacity: .8;
   transition: opacity .3s;
 }
@@ -109,46 +118,47 @@
 
 .lg .rw {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; padding: 12px 15px;
+  gap: 8px; padding: 10px 12px;
 }
-.lg .rw b { font-size: 13.5px; }
+.lg .rw b { font-size: 12.5px; }
+.lg .rw small { font-size: 11px; }
 .lg .grp > .rw + .rw { border-top: 1px solid rgba(255,255,255,.09); }
-.lg .sub { color: var(--mut); line-height: 1.45; }
+.lg .sub { color: var(--mut); font-size: 12px; line-height: 1.4; }
 
-/* Judul seksi stiker miring */
+/* Judul seksi stiker miring (compact) */
 .lg .gh {
-  display: flex; align-items: center; gap: 8px;
-  width: fit-content; margin: 20px 2px 12px; padding: 6px 14px 6px 11px;
-  border-radius: 99px; transform: rotate(-1.5deg);
+  display: flex; align-items: center; gap: 6px;
+  width: fit-content; margin: 14px 2px 9px; padding: 5px 11px 5px 9px;
+  border-radius: 99px; transform: rotate(-1.2deg);
   background: linear-gradient(135deg, rgba(255,92,170,.35), rgba(124,92,255,.35));
   border: 1px solid rgba(255,255,255,.3);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 6px 14px -8px rgba(255,92,170,.8);
-  color: #fff; font-size: 12px; font-weight: 800; letter-spacing: .06em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 4px 10px -6px rgba(255,92,170,.8);
+  color: #fff; font-size: 10.5px; font-weight: 800; letter-spacing: .05em;
   text-shadow: 0 1px 2px rgba(0,0,0,.3);
 }
 .lg .gh::before {
-  content: ""; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  content: ""; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
   background: radial-gradient(circle at 30% 30%, #fff, #FFD633 60%, #FF8A00);
-  box-shadow: 0 0 10px #FFD633;
+  box-shadow: 0 0 8px #FFD633;
 }
 
-/* Grid & Kartu Game */
+/* Grid & Kartu Game (pas 2 kolom tanpa kepotong) */
 .lg .game-grid {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px;
 }
 .lg .game-grid > .game-card:last-child:nth-child(odd) {
-  grid-column: 1 / -1; min-height: 104px !important;
+  grid-column: 1 / -1; min-height: 88px !important;
 }
 .lg .game-card {
   --acrgb: 92,225,255;
-  min-height: 128px !important; padding: 14px !important;
+  min-height: 112px !important; padding: 11px !important;
   cursor: pointer; text-align: left;
   background:
-    radial-gradient(90% 75% at 0% 100%, rgba(var(--acrgb), .5), transparent 70%),
-    radial-gradient(60% 50% at 100% 0%, rgba(var(--acrgb), .22), transparent 70%),
+    radial-gradient(90% 75% at 0% 100%, rgba(var(--acrgb), .48), transparent 70%),
+    radial-gradient(60% 50% at 100% 0%, rgba(var(--acrgb), .2), transparent 70%),
     var(--lg-fill) !important;
-  border-color: rgba(var(--acrgb), .5) !important;
-  box-shadow: var(--lg-rim), 0 14px 30px -12px rgba(var(--acrgb), .7);
+  border-color: rgba(var(--acrgb), .48) !important;
+  box-shadow: var(--lg-rim), 0 10px 22px -10px rgba(var(--acrgb), .65);
   transition: transform .45s var(--lg-spring), box-shadow .3s, border-color .3s;
   -webkit-tap-highlight-color: transparent;
 }
@@ -162,9 +172,9 @@
 
 .lg .game-card:active { transform: scale(.94) rotate(-1deg); }
 .lg .game-card em {
-  display: inline-block; font-size: 32px !important;
+  display: inline-block; font-size: 25px !important;
   transition: transform .45s var(--lg-spring);
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,.35));
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.35));
   animation: lg-bob 3.4s ease-in-out infinite;
   transform-origin: 50% 80%;
 }
@@ -172,10 +182,11 @@
 .lg .game-card:nth-child(3n) em { animation-duration: 3.1s; animation-delay: -.7s; }
 @keyframes lg-bob {
   0%, 100% { transform: translateY(0) rotate(-4deg); }
-  50%      { transform: translateY(-5px) rotate(5deg) scale(1.06); }
+  50%      { transform: translateY(-4px) rotate(5deg) scale(1.05); }
 }
-.lg .game-card b { font-size: 13.5px !important; letter-spacing: -.005em; }
-.lg .game-card:active em { transform: scale(1.3) rotate(-10deg); }
+.lg .game-card b { font-size: 12.5px !important; letter-spacing: -.005em; }
+.lg .game-card small { font-size: 10.5px !important; line-height: 1.32 !important; }
+.lg .game-card:active em { transform: scale(1.25) rotate(-10deg); }
 
 .lg .game-card::after {
   content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%;
@@ -183,21 +194,17 @@
   transform: skewX(-18deg); pointer-events: none; opacity: 0;
 }
 .lg .game-card:active::after { opacity: 1; left: 130%; transition: left .55s ease-out; }
-@media (hover: hover) {
-  .lg .game-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,.34) !important; }
-  .lg .game-card:hover em { transform: scale(1.12) rotate(-6deg); }
-}
 
 /* Tombol */
 .lg .btn {
   position: relative; overflow: hidden;
   border: 1px solid rgba(255,255,255,.38);
-  border-radius: 22px; padding: 14px; font-size: 14.5px;
+  border-radius: 16px; padding: 11px 13px; font-size: 13px;
   font-weight: 800; letter-spacing: .01em; color: #fff;
   background:
     linear-gradient(180deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.08) 46%, rgba(255,255,255,0) 50%),
     linear-gradient(135deg, #22C1F2, #3B82F6 70%, #7C5CFF);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -8px 16px rgba(2,6,23,.25), 0 10px 22px -8px rgba(59,130,246,.65);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -6px 12px rgba(2,6,23,.25), 0 8px 18px -6px rgba(59,130,246,.65);
   text-shadow: 0 1px 2px rgba(2,6,23,.45);
   transition: transform .4s var(--lg-spring), box-shadow .25s, filter .2s;
   -webkit-tap-highlight-color: transparent;
@@ -205,21 +212,20 @@
 .lg .btn:active:not(:disabled) { transform: scale(.95); filter: brightness(1.1); }
 .lg .btn:disabled { opacity: .45; filter: saturate(.5); }
 .lg .btn.b2 {
-  border-radius: 20px;
+  border-radius: 16px;
   background: var(--lg-fill);
   -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%);
   border: 1px solid var(--lg-edge);
-  box-shadow: var(--lg-rim), 0 6px 16px -8px rgba(2,6,23,.6);
+  box-shadow: var(--lg-rim), 0 4px 12px -6px rgba(2,6,23,.6);
   text-shadow: none;
 }
-.lg .btn.b2:active:not(:disabled) { background: linear-gradient(150deg, rgba(255,255,255,.26), rgba(255,255,255,.1)); }
 
 /* Pill & Tombol Klaim */
 .lg .pill {
   border: 1px solid rgba(255,255,255,.2);
-  border-radius: 99px; font-weight: 800;
+  border-radius: 99px; font-size: 11px; padding: 5px 10px; font-weight: 800;
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 12px -6px rgba(2,6,23,.6);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 4px 10px -5px rgba(2,6,23,.6);
   transition: transform .35s var(--lg-spring);
 }
 .lg .pill:active:not(:disabled) { transform: scale(.92); }
@@ -231,22 +237,22 @@
   animation: lg-ready 2.2s ease-in-out infinite;
 }
 @keyframes lg-ready {
-  0%, 100% { box-shadow: inset 0 1px 0 #fff, 0 8px 16px -6px rgba(255,138,0,.8), 0 0 0 0 rgba(255,214,51,0); }
-  50%      { box-shadow: inset 0 1px 0 #fff, 0 8px 16px -6px rgba(255,138,0,.8), 0 0 0 5px rgba(255,214,51,.28); }
+  0%, 100% { box-shadow: inset 0 1px 0 #fff, 0 6px 12px -5px rgba(255,138,0,.8), 0 0 0 0 rgba(255,214,51,0); }
+  50%      { box-shadow: inset 0 1px 0 #fff, 0 6px 12px -5px rgba(255,138,0,.8), 0 0 0 4px rgba(255,214,51,.28); }
 }
 
-/* Tab Kapsul */
+/* Tab Kapsul (compact, 4 tab sejajar tanpa kepotong) */
 .lg .tabs {
-  display: flex; overflow: visible; gap: 2px; padding: 4px;
+  display: flex; overflow: visible; gap: 2px; padding: 3px;
   border-radius: 99px;
   background: rgba(255,255,255,.07);
   -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
   border: 1px solid rgba(255,255,255,.14);
-  box-shadow: inset 0 1px 3px rgba(2,6,23,.35), 0 8px 22px -12px rgba(2,6,23,.7);
+  box-shadow: inset 0 1px 3px rgba(2,6,23,.35), 0 6px 16px -10px rgba(2,6,23,.7);
 }
 .lg .tab {
   flex: 1 1 0; min-width: 0; position: relative; border: 0; border-radius: 99px;
-  padding: 10px 2px; font-size: 12px; text-align: center;
+  padding: 7px 2px; font-size: 11px; text-align: center;
   background: transparent; color: var(--mut);
   font-weight: 700; white-space: nowrap;
   transition: color .2s, background .3s, transform .35s var(--lg-spring);
@@ -255,16 +261,16 @@
 .lg .tab.on {
   color: #fff;
   background: linear-gradient(180deg, rgba(255,255,255,.55) 0, rgba(255,255,255,.1) 45%, rgba(255,255,255,0) 50%), linear-gradient(135deg, #FF5CAA, #7C5CFF);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -6px 12px rgba(40,10,90,.3), 0 8px 18px -6px rgba(255,92,170,.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -4px 10px rgba(40,10,90,.3), 0 6px 14px -5px rgba(255,92,170,.8);
   text-shadow: 0 1px 2px rgba(60,0,60,.5);
-  animation: lg-pop .5s var(--lg-spring);
+  animation: lg-pop .45s var(--lg-spring);
   overflow: hidden;
 }
-@keyframes lg-pop { from { transform: scale(.85); } }
+@keyframes lg-pop { from { transform: scale(.88); } }
 
-/* Hero Card */
+/* Hero Card (ringkas sesuai layar HP) */
 .lg .lg-hero {
-  min-height: 120px;
+  min-height: 0;
   background:
     radial-gradient(120% 90% at 0% 0%, rgba(92,225,255,.38), transparent 60%),
     radial-gradient(90% 90% at 100% 100%, rgba(255,214,51,.26), transparent 62%),
@@ -273,31 +279,31 @@
 }
 .lg .lg-hero > * { position: relative; z-index: 1; }
 .lg .lg-hero::after {
-  content: "🕹️"; position: absolute; right: 10px; top: 46px; font-size: 54px; line-height: 1;
+  content: "🕹️"; position: absolute; right: 10px; top: 38px; font-size: 42px; line-height: 1;
   opacity: .14; transform: rotate(14deg); pointer-events: none; z-index: 0;
   animation: lg-bob 4.6s ease-in-out infinite;
 }
 .lg .lg-hero small[style*="letter-spacing"] {
-  color: #FFE9A8 !important; font-size: 11px; letter-spacing: .04em !important;
+  color: #FFE9A8 !important; font-size: 10px; letter-spacing: .04em !important;
   text-shadow: 0 1px 6px rgba(0,0,0,.4);
 }
 .lg .lg-hero div[style*="font-size:18px"] {
-  font-size: 26px !important; font-weight: 700 !important; letter-spacing: -.01em;
-  text-shadow: 0 2px 14px rgba(92,225,255,.6);
+  font-size: 20px !important; font-weight: 700 !important; letter-spacing: -.01em;
+  text-shadow: 0 2px 12px rgba(92,225,255,.55);
 }
 .lg .lg-hero .pill {
-  font-size: 13px; padding: 7px 13px; white-space: nowrap;
+  font-size: 11.5px; padding: 5px 10px; white-space: nowrap;
   background: linear-gradient(180deg, rgba(255,230,128,.55), rgba(255,176,32,.35)) !important;
   color: #FFF3C4 !important;
 }
 .lg .lg-xp {
-  height: 12px; border-radius: 99px; overflow: hidden;
+  height: 9px; border-radius: 99px; overflow: hidden;
   background: rgba(2,6,23,.4); box-shadow: inset 0 1px 3px rgba(0,0,0,.5);
 }
 .lg .lg-xp > i {
   display: block; height: 100%; border-radius: inherit;
   background: linear-gradient(90deg, #22C1F2, #6DF0A0 55%, #FFD633);
-  box-shadow: 0 0 14px rgba(109,240,160,.8), inset 0 1px 0 rgba(255,255,255,.7);
+  box-shadow: 0 0 12px rgba(109,240,160,.8), inset 0 1px 0 rgba(255,255,255,.7);
   transition: width .9s var(--lg-spring);
   position: relative; overflow: hidden;
 }
@@ -316,34 +322,34 @@
   background: radial-gradient(110% 120% at 0% 0%, rgba(251,146,60,.38), transparent 62%), var(--lg-fill) !important;
   border-color: rgba(251,146,60,.45) !important;
 }
-.lg .lg-coop b { font-size: 13px; }
+.lg .lg-coop b { font-size: 12px; }
 .lg .lg-coop .pill { flex-shrink: 0; }
 
 /* Fishdex grid */
-.lg .card div[style*="repeat(3"] { gap: 8px !important; }
+.lg .card div[style*="repeat(3"] { gap: 6px !important; }
 .lg .card div[style*="repeat(3"] > div {
-  border-radius: 18px !important; padding: 10px !important;
+  border-radius: 14px !important; padding: 8px !important;
   background: linear-gradient(150deg, rgba(255,255,255,.12), rgba(255,255,255,.04)) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
 }
 
 /* Bottom sheet saat di Arena (bisa di-scroll & pas layar WebApp) */
 .lg .sh {
-  max-height: 86dvh !important;
+  max-height: 82dvh !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
-  background: linear-gradient(160deg, rgba(30,41,75,.82), rgba(10,15,35,.88)) !important;
-  -webkit-backdrop-filter: blur(34px) saturate(190%); backdrop-filter: blur(34px) saturate(190%);
+  background: linear-gradient(160deg, rgba(30,41,75,.84), rgba(10,15,35,.9)) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%);
   border: 1px solid rgba(255,255,255,.2) !important;
   border-bottom: 0 !important;
-  border-radius: 34px 34px 0 0 !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 -20px 60px rgba(2,6,23,.6) !important;
+  border-radius: 26px 26px 0 0 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 -16px 48px rgba(2,6,23,.6) !important;
   color: #F8FAFC;
 }
-.lg .sh h2 { font-size: 22px; letter-spacing: -.01em; }
+.lg .sh h2 { font-size: 18px; letter-spacing: -.01em; }
 .lg select, .lg input {
   background: rgba(255,255,255,.08); color: #fff;
-  border: 1px solid rgba(255,255,255,.2); border-radius: 14px; padding: 11px 12px;
+  border: 1px solid rgba(255,255,255,.2); border-radius: 12px; padding: 9px 11px; font-size: 12.5px;
   box-shadow: inset 0 1px 3px rgba(2,6,23,.35);
 }
 
@@ -351,23 +357,23 @@
 .lg #fish-stage {
   background: linear-gradient(180deg, rgba(14,165,233,.5), rgba(7,20,50,.75)) !important;
   border: 1px solid rgba(125,211,252,.4) !important;
-  border-radius: 24px !important;
-  box-shadow: var(--lg-rim), 0 14px 34px -12px rgba(14,165,233,.5);
+  border-radius: 20px !important;
+  box-shadow: var(--lg-rim), 0 12px 28px -10px rgba(14,165,233,.5);
 }
 .lg #fish-zone { border-radius: 8px; box-shadow: 0 0 14px rgba(74,222,128,.6); }
 .lg #fish-needle { box-shadow: 0 0 14px #FFD633, 0 0 4px #fff !important; }
 .lg #scratch-wrap {
   border: 1px solid rgba(255,255,255,.4) !important;
-  box-shadow: 0 0 0 4px rgba(255,214,51,.15), 0 18px 36px -14px rgba(255,214,51,.45);
+  box-shadow: 0 0 0 4px rgba(255,214,51,.15), 0 14px 28px -12px rgba(255,214,51,.45);
 }
 .lg #scratch-prize { text-shadow: 0 0 18px rgba(255,214,51,.7); }
 .lg #rx-pad {
   transition: transform .3s var(--lg-spring), box-shadow .3s;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 16px 34px -10px currentColor;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 12px 28px -8px currentColor;
   border: 1px solid rgba(255,255,255,.35) !important;
 }
 .lg #wk-grid .btn, .lg #mem-grid .btn {
-  border-radius: 16px;
+  border-radius: 14px;
   transition: transform .3s var(--lg-spring), background .2s, box-shadow .3s;
 }
 .lg #mem-grid .btn[data-open="1"] {
@@ -378,7 +384,7 @@
 /* Partikel Confetti */
 .lg-spark {
   position: fixed; z-index: 9999; pointer-events: none;
-  font-size: 16px; line-height: 1; will-change: transform, opacity;
+  font-size: 14px; line-height: 1; will-change: transform, opacity;
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
