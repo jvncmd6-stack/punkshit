@@ -17,59 +17,47 @@ export const userRouter = Router();
 
 function getFullCatalogMap() {
   const map = new Map();
-  // Ambil dari getCatalog(true) kalau mendukung flag includeArchived, atau getCatalog()
-  let baseList = [];
-  try {
-    baseList = getCatalog(true) || getCatalog() || [];
-  } catch (_) {
-    baseList = getCatalog() || [];
-  }
+  const baseList = getCatalog() || [];
   for (const it of baseList) {
     if (it && it.id) map.set(String(it.id), it);
   }
 
-  // Pastikan item yang di-archive di tabel database tetap masuk map agar tidak hilang dari profil
-  const candidateTables = ['shop_items', 'items', 'catalog_items'];
-  for (const tbl of candidateTables) {
-    try {
-      const rows = db.prepare(`SELECT * FROM ${tbl}`).all();
-      for (const r of rows) {
-        const id = String(r.id || r.item_id || '');
-        if (!id || map.has(id)) continue;
-        let colors = null;
-        try { if (r.colors_json) colors = JSON.parse(r.colors_json); } catch (_) {}
-        try { if (!colors && r.colors) colors = typeof r.colors === 'string' ? JSON.parse(r.colors) : r.colors; } catch (_) {}
-        map.set(id, {
-          id,
-          type: r.type || 'gift',
-          name: r.name || id,
-          rarity: r.rarity || 'Limited',
-          price: Number(r.price || 0),
-          stock: Number(r.stock ?? 0),
-          imageUrl: r.image_url || r.imageUrl || '',
-          svgPath: r.svg_path || r.svgPath || '',
-          colors: Array.isArray(colors) ? colors : ['#ffd633', '#f59e0b'],
-          skinClass: r.skin_class || r.skinClass || '',
-          isLimited: Boolean(r.is_limited || r.is_archived || String(r.rarity || '').toLowerCase().includes('limited')),
-          isArchived: Boolean(r.is_archived)
-        });
-      }
-    } catch (_) {}
-  }
+  // Pulihkan metadata item dari inventory.item_snapshot jika item sudah tidak ada di tabel items
+  try {
+    const snapRows = db.prepare(
+      "SELECT item_id, item_snapshot FROM inventory WHERE item_snapshot IS NOT NULL AND item_snapshot != ''"
+    ).all();
+    for (const r of snapRows) {
+      const id = String(r.item_id || '');
+      if (!id || map.has(id)) continue;
+      try {
+        const parsed = JSON.parse(r.item_snapshot);
+        if (parsed && typeof parsed === 'object') {
+          map.set(id, {
+            ...parsed,
+            id,
+            isLimited: true,
+            isArchived: true
+          });
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+
   return map;
 }
 
-function attachExtraUserFields(row) {
+function attachExtraUserFields(row, catalogMap = null) {
   const formatted = formatUser(row);
   if (formatted && row) {
     formatted.streakShield = Number(row.streak_shield || 0);
-    const catalogMap = getFullCatalogMap();
+    const map = catalogMap || getFullCatalogMap();
     const pinnedIds = Array.isArray(formatted.pinnedGifts)
       ? formatted.pinnedGifts
       : parsePinnedGifts(row.pinned_gift_id);
     formatted.pinnedGifts = pinnedIds;
     formatted.pinnedGiftItems = pinnedIds
-      .map(gid => catalogMap.get(String(gid)))
+      .map((gid) => map.get(String(gid)))
       .filter(Boolean);
   }
   return formatted;
@@ -87,27 +75,44 @@ userRouter.get('/me', async (req, res) => {
 
   const catalogMap = getFullCatalogMap();
 
-  const rawInv = user
-    ? db.prepare('SELECT id, item_id AS itemId, acquired_at AS acquiredAt FROM inventory WHERE user_id = ? ORDER BY id DESC').all(uid)
-    : [];
-
-  // Sertakan metadata item di inv + pastikan item yang dimiliki user tetap ada di catalog
-  const activeCatalog = getCatalog() || [];
-  const activeIds = new Set(activeCatalog.map(x => String(x.id)));
-  const mergedCatalog = [...activeCatalog];
-
-  const inv = rawInv.map(entry => {
-    const meta = catalogMap.get(String(entry.itemId));
-    if (meta && !activeIds.has(String(meta.id))) {
-      activeIds.add(String(meta.id));
-      mergedCatalog.push({ ...meta, isArchived: true, isLimited: true });
+  let rawInv = [];
+  if (user) {
+    try {
+      rawInv = db.prepare(
+        'SELECT id, item_id AS itemId, acquired_at AS acquiredAt, item_snapshot AS itemSnapshot FROM inventory WHERE user_id = ? ORDER BY id DESC'
+      ).all(uid);
+    } catch (_) {
+      rawInv = db.prepare(
+        'SELECT id, item_id AS itemId, acquired_at AS acquiredAt FROM inventory WHERE user_id = ? ORDER BY id DESC'
+      ).all(uid);
     }
-    return meta ? { ...meta, ...entry } : entry;
+  }
+
+  const mergedCatalog = Array.from(catalogMap.values());
+  const catalogIds = new Set(mergedCatalog.map((x) => String(x.id)));
+
+  const inv = rawInv.map((entry) => {
+    let snapMeta = null;
+    if (entry.itemSnapshot) {
+      try { snapMeta = JSON.parse(entry.itemSnapshot); } catch (_) {}
+    }
+    const meta = catalogMap.get(String(entry.itemId)) || snapMeta;
+    if (meta && !catalogIds.has(String(entry.itemId))) {
+      const fullMeta = { ...meta, id: String(entry.itemId), isLimited: true, isArchived: true };
+      catalogIds.add(String(entry.itemId));
+      mergedCatalog.push(fullMeta);
+    }
+    const cleanEntry = {
+      id: entry.id,
+      itemId: entry.itemId,
+      acquiredAt: entry.acquiredAt
+    };
+    return meta ? { ...meta, ...cleanEntry } : cleanEntry;
   });
 
   const feed = db.prepare('SELECT id, text, created_at AS createdAt FROM feed ORDER BY id DESC LIMIT 12').all();
 
-  const events = db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT 15').all().map(ev => {
+  const events = db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT 15').all().map((ev) => {
     const rsvpCount = db.prepare('SELECT COUNT(*) AS c FROM event_rsvps WHERE event_id = ?').get(ev.id).c;
     const joined = user
       ? Boolean(db.prepare('SELECT 1 FROM event_rsvps WHERE event_id = ? AND user_id = ?').get(ev.id, uid))
@@ -124,7 +129,7 @@ userRouter.get('/me', async (req, res) => {
     };
   });
 
-  const wanted = db.prepare('SELECT * FROM wanted ORDER BY created_at DESC LIMIT 15').all().map(w => {
+  const wanted = db.prepare('SELECT * FROM wanted ORDER BY created_at DESC LIMIT 15').all().map((w) => {
     const joined = db.prepare('SELECT COUNT(*) AS c FROM wanted_joins WHERE wanted_id = ?').get(w.id).c;
     return {
       id: w.id,
@@ -137,7 +142,7 @@ userRouter.get('/me', async (req, res) => {
     };
   });
 
-  const polls = db.prepare('SELECT * FROM polls ORDER BY created_at DESC LIMIT 10').all().map(p => {
+  const polls = db.prepare('SELECT * FROM polls ORDER BY created_at DESC LIMIT 10').all().map((p) => {
     const opts = JSON.parse(p.options_json || '[]');
     const totalVotes = opts.reduce((acc, o) => acc + (o.votes || 0), 0);
     return { id: p.id, question: p.question, options: opts, totalVotes };
@@ -149,7 +154,7 @@ userRouter.get('/me', async (req, res) => {
       channelUrl: (process.env.CHANNEL_URL || '').trim(),
       miniappLink: ENV.MINIAPP_LINK
     },
-    user: attachExtraUserFields(user),
+    user: attachExtraUserFields(user, catalogMap),
     inv,
     catalog: mergedCatalog,
     onlineUsers: getOnlineUsers(),
@@ -277,7 +282,7 @@ userRouter.post('/profile/equip', requireUser, (req, res) => {
       const targetId = String(itemId).trim();
       let nextList;
       if (curList.includes(targetId)) {
-        nextList = curList.filter(x => x !== targetId);
+        nextList = curList.filter((x) => x !== targetId);
       } else {
         if (curList.length >= 6) {
           return res.status(400).json({ error: 'Maksimal 6 gift bisa dipasang sekaligus di kartu profil ya.' });
