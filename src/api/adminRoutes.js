@@ -204,17 +204,55 @@ adminRouter.post('/admin/items', requireUser, uploadMem.single('asset'), async (
   }
 });
 
-// DELETE /api/admin/items/:id -> Arsipkan jadi Limited jika sudah dibeli/collab, hapus permanen hanya jika belum ada pemilik
+// DELETE /api/admin/items/:id -> Mode default: Arsipkan jadi Limited | Mode ?force=1: Hapus Permanen Total
 adminRouter.delete('/admin/items/:id', requireUser, (req, res) => {
   if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
 
   const itemId = String(req.params.id || '');
+  const isForce = req.query?.force === '1' || req.query?.force === 'true' || Boolean(req.body?.force);
   const item = db.prepare('SELECT * FROM items WHERE id = ?').get(itemId);
   if (!item) return res.status(404).json({ error: 'Item tidak ditemukan.' });
 
+  // MODE 1: HAPUS PERMANEN PAKSA (untuk item rusak / bug)
+  if (isForce) {
+    db.transaction(() => {
+      db.prepare('DELETE FROM inventory WHERE item_id = ?').run(itemId);
+      db.prepare("UPDATE users SET equipped_border_id = '' WHERE equipped_border_id = ?").run(itemId);
+      db.prepare("UPDATE users SET equipped_skin_id = '' WHERE equipped_skin_id = ?").run(itemId);
+      db.prepare("UPDATE users SET pinned_gift_id = '' WHERE pinned_gift_id = ?").run(itemId);
+
+      // Bersihkan juga jika item tersimpan di array JSON pinned_gifts
+      try {
+        const pinnedUsers = db.prepare("SELECT id, pinned_gifts FROM users WHERE pinned_gifts LIKE ?").all(`%${itemId}%`);
+        const updPin = db.prepare('UPDATE users SET pinned_gifts = ? WHERE id = ?');
+        for (const u of pinnedUsers) {
+          const arr = JSON.parse(u.pinned_gifts || '[]').filter((gid) => String(gid) !== itemId);
+          updPin.run(JSON.stringify(arr), u.id);
+        }
+      } catch (_) {}
+
+      db.prepare('DELETE FROM items WHERE id = ?').run(itemId);
+    })();
+
+    logAudit(req.dbUser.id, 'HAPUS PERMANEN', `${item.name} (${itemId}) dihapus paksa dari sistem & gudang`);
+    return res.json({
+      ok: true,
+      archived: false,
+      forced: true,
+      message: `Item "${item.name}" berhasil dihapus permanen dari katalog & gudang warga.`,
+      catalog: getCatalog()
+    });
+  }
+
+  // MODE 2: ARSIP LIMITED (default: tarik dari toko, koleksi warga tetap aman)
   const ownerRow = db.prepare('SELECT COUNT(*) AS cnt FROM inventory WHERE item_id = ?').get(itemId);
   const ownedCount = Number(ownerRow?.cnt || 0);
-  const isCollabOrLimited = Boolean(item.is_collab || item.is_limited || String(item.rarity || '').toLowerCase().includes('collab'));
+  const isCollabOrLimited = Boolean(
+    item.is_collab ||
+    item.is_limited ||
+    String(item.rarity || '').toLowerCase().includes('collab') ||
+    String(item.rarity || '').toLowerCase().includes('limited')
+  );
 
   if (ownedCount > 0 || isCollabOrLimited) {
     const snapshot = JSON.stringify({
@@ -222,10 +260,12 @@ adminRouter.delete('/admin/items/:id', requireUser, (req, res) => {
       type: item.type,
       name: item.name,
       price: item.price,
-      rarity: 'Limited',
+      rarity: String(item.rarity || '').toLowerCase().includes('collab') ? 'Collab · Limited' : 'Limited',
       colors: item.colors ? JSON.parse(item.colors) : ['#FFE666', '#D97706'],
       svgPath: item.svg_path || '',
       imageUrl: item.image_url || '',
+      skinClass: item.skin_class || '',
+      creatorName: item.creator_name || '',
       isLimited: true,
       isArchived: true
     });
@@ -251,14 +291,14 @@ adminRouter.delete('/admin/items/:id', requireUser, (req, res) => {
     return res.json({
       ok: true,
       archived: true,
-      message: `Item "${item.name}" ditarik dari Lapak & otomatis berubah menjadi LIMITED (${ownedCount} koleksi warga tetap aman).`,
+      message: `Item "${item.name}" ditarik dari Lapak & berubah menjadi LIMITED (${ownedCount} koleksi warga tetap aman).`,
       catalog: getCatalog()
     });
   }
 
   db.prepare('DELETE FROM items WHERE id = ?').run(itemId);
   logAudit(req.dbUser.id, 'HAPUS ITEM', `${item.name} (0 pemilik)`);
-  res.json({ ok: true, archived: false, catalog: getCatalog() });
+  res.json({ ok: true, archived: false, message: `Item "${item.name}" dihapus.`, catalog: getCatalog() });
 });
 
 // POST /api/admin/broadcast -> Pengumuman resmi ke Grup & Channel
