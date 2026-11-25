@@ -164,7 +164,11 @@ export function getCatalog() {
     imageUrl: it.image_url,
     colors: it.colors ? JSON.parse(it.colors) : null,
     svgPath: it.svg_path,
-    skinClass: it.skin_class
+    skinClass: it.skin_class,
+    creatorName: it.creator_name || '',
+    isCollab: Boolean(it.is_collab),
+    isLimited: Boolean(it.is_limited),
+    isArchived: Boolean(it.is_archived)
   }));
 }
 
