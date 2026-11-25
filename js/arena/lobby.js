@@ -31,7 +31,7 @@
     var st = A.state;
     var fq = st.fishQuota || { left: 6, max: 6 };
     var dailyEarned = Number(st.dailyPscEarned || 0);
-    var dailyCap = Number(st.dailyPscCap || 120);
+    var dailyCap = Number(st.dailyPscCap || 300);
 
     var coreGames = [
       {
@@ -164,7 +164,7 @@
   function renderCollectionTab() {
     var st = A.state;
     var dailyEarned = Number(st.dailyPscEarned || 0);
-    var dailyCap = Number(st.dailyPscCap || 120);
+    var dailyCap = Number(st.dailyPscCap || 300);
     var remCap = Math.max(0, dailyCap - dailyEarned);
 
     var activeItems = st.collections.filter(function (it) { return !it.is_sold; });
@@ -188,7 +188,7 @@
       var sellBtn = rawPrice > 0
         ? (actualSellPrice > 0
             ? '<button class="pill" style="flex-shrink:0" data-act="ar-sell-item" data-id="' + it.id + '">Jual +' + actualSellPrice + ' PSC</button>'
-            : '<button class="pill" style="opacity:.55;flex-shrink:0" disabled title="Kuota 120 PSC/hari sudah penuh">Limit 120 Penuh</button>')
+            : '<button class="pill" style="opacity:.55;flex-shrink:0" disabled title="Kuota ' + dailyCap + ' PSC/hari sudah penuh">Limit ' + dailyCap + ' Penuh</button>')
         : '<span class="pill" style="opacity:.7;flex-shrink:0">Koleksi</span>';
 
       return (
