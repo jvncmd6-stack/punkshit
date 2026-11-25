@@ -57,6 +57,15 @@ window.PunkCoreState = (function () {
         if (cid === target) return list[i];
       }
     }
+    var invList = Array.isArray(S.inv) ? S.inv : [];
+    for (var j = 0; j < invList.length; j++) {
+      var entry = invList[j];
+      if (!entry || typeof entry !== 'object') continue;
+      var eid = String(entry.itemId || entry.item_id || entry.id || '').trim().toLowerCase();
+      if (eid === target && (entry.name || entry.imageUrl || entry.image_url)) {
+        return entry;
+      }
+    }
     return null;
   }
 
@@ -81,44 +90,87 @@ window.PunkCoreState = (function () {
     return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:' + cols[1] + '99"><div class="rot">' + layers + '</div></div>';
   }
 
-  function renderBorderOverlay(u) {
-    if (!u) return '';
-    if (u.equippedBorderUrl) {
-      return '<img class="dc-border" src="' + esc(API.assetUrl(u.equippedBorderUrl)) + '" alt="">';
+  function getSavedBorderTransform(uid, borderId) {
+    if (!uid || !borderId) return '';
+    try {
+      var raw = localStorage.getItem('punk_border_adj_' + String(uid) + '_' + String(borderId));
+      if (!raw) return '';
+      var p = JSON.parse(raw);
+      var sc = Math.max(0.6, Math.min(1.6, Number(p.scale) || 1));
+      var x = Math.max(-35, Math.min(35, Number(p.x) || 0));
+      var y = Math.max(-45, Math.min(45, Number(p.y) || 0));
+      if (sc === 1 && x === 0 && y === 0) return '';
+      return 'transform:translate(' + x + 'px,' + y + 'px) scale(' + (sc * 1.24).toFixed(3) + ');animation:none';
+    } catch (e) {
+      return '';
     }
-    if (u.equippedBorderId) {
-      var bItem = findItem(u.equippedBorderId);
-      if (bItem) {
-        var cols = bItem.colors || ['#8FC7FF', '#176BFF'];
-        return '<div class="dc-border-fx ' + esc(bItem.skinClass || '') + '" style="--bc1:' + esc(cols[0]) + ';--bc2:' + esc(cols[1]) + '"></div>';
-      }
+  }
+
+  function renderBorderOverlay(u, isMini) {
+    if (!u) return '';
+    var bItem = u.equippedBorderId ? findItem(u.equippedBorderId) : null;
+    var borderUrl = u.equippedBorderUrl || (bItem && (bItem.imageUrl || bItem.image_url)) || '';
+    var customStyle = (!isMini && u.id && u.equippedBorderId)
+      ? getSavedBorderTransform(u.id, u.equippedBorderId)
+      : '';
+
+    if (borderUrl) {
+      return '<img class="dc-border" src="' + esc(API.assetUrl(borderUrl)) + '"' +
+        (customStyle ? ' style="' + customStyle + '"' : '') + ' alt="">';
+    }
+    if (bItem) {
+      var cols = bItem.colors || ['#8FC7FF', '#176BFF'];
+      return '<div class="dc-border-fx ' + esc(bItem.skinClass || '') + '" style="--bc1:' + esc(cols[0]) + ';--bc2:' + esc(cols[1]) + '"></div>';
     }
     return '';
   }
 
+  function renderOrbitGifts(u) {
+    var rawIds = Array.isArray(u.pinnedGifts)
+      ? u.pinnedGifts
+      : (u.pinnedGiftId ? [u.pinnedGiftId] : []);
+    var items = rawIds.slice(0, 6).map(function (gid) {
+      return findItem(gid);
+    }).filter(Boolean);
+
+    if (!items.length) return '';
+
+    var angles = [-28, 28, -62, 62, -96, 96];
+    var radius = 64;
+
+    return items.map(function (giftItem, idx) {
+      var deg = angles[idx] != null ? angles[idx] : (idx * 60);
+      var rad = (deg * Math.PI) / 180;
+      var dx = Math.round(Math.sin(rad) * radius);
+      var dy = Math.round(-Math.cos(rad) * radius);
+      return (
+        '<div class="av-gift-pin" title="' + esc(giftItem.name) + '" ' +
+             'style="position:absolute;left:50%;top:50%;' +
+             'transform:translate(calc(-50% + ' + dx + 'px),calc(-50% + ' + dy + 'px));' +
+             'z-index:7;background:rgba(15,23,42,.95);border:1.5px solid rgba(255,255,255,.26);' +
+             'border-radius:50%;padding:3px;box-shadow:0 4px 12px rgba(0,0,0,.6);pointer-events:none">' +
+          renderItemVisual(giftItem, 22, false) +
+        '</div>'
+      );
+    }).join('');
+  }
+
   function renderAvatar(u, mode) {
     if (!u) return '';
+    var isMini = mode === 'mini';
     var initial = esc((u.name || '?')[0].toUpperCase());
     var photoSrc = u.photoUrl || u.avatar || '';
     var photo = photoSrc
       ? '<img class="pfp" src="' + esc(API.assetUrl(photoSrc)) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'
       : '';
     var fallback = '<span style="' + (photoSrc ? 'display:none' : '') + '">' + initial + '</span>';
-    var borderHtml = renderBorderOverlay(u);
+    var borderHtml = renderBorderOverlay(u, isMini);
 
-    var pinHtml = '';
-    if (u.pinnedGiftId && mode !== 'mini') {
-      var giftItem = findItem(u.pinnedGiftId);
-      if (giftItem) {
-        pinHtml = '<div class="av-gift-pin" title="' + esc(giftItem.name) + '" style="position:absolute;right:-6px;bottom:-6px;z-index:5;background:rgba(15,23,42,.94);border:1.5px solid rgba(255,255,255,.24);border-radius:50%;padding:3px;box-shadow:0 4px 12px rgba(0,0,0,.55);pointer-events:none">' +
-          renderItemVisual(giftItem, 26, false) +
-        '</div>';
-      }
-    }
-
-    if (mode === 'mini') {
+    if (isMini) {
       return '<div class="mini-av">' + photo + fallback + borderHtml + '</div>';
     }
+
+    var pinHtml = renderOrbitGifts(u);
     var ringCls = 'r' + (Number(u.ringStyle) || 0);
     return '<div class="av-wrap" style="position:relative">' +
       '<div class="ring ' + ringCls + '">' + photo + fallback + '</div>' +
