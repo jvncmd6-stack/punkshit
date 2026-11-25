@@ -143,25 +143,26 @@ window.PunkCoreState = (function () {
 
     if (!items.length) return '';
 
-    // Posisi melayang rapi di luar avatar (ala Telegram), tanpa background oval
+    // Orbit menyebar di area banner atas & samping tanpa nabrak avatar
     var slots = [
-      { x: -78, y: -44, rot: -10 },
-      { x:  78, y: -44, rot:  10 },
-      { x: -112, y: -6, rot: -14 },
-      { x:  112, y: -6, rot:  14 },
-      { x: -86, y:  32, rot:  -8 },
-      { x:  86, y:  32, rot:   8 }
+      { x: -74,  y: -52, rot: -10, dur: '3.2s', delay: '0s' },
+      { x:  74,  y: -52, rot:  10, dur: '3.6s', delay: '-1.1s' },
+      { x: -116, y: -12, rot: -14, dur: '4.0s', delay: '-2.0s' },
+      { x:  116, y: -12, rot:  14, dur: '3.4s', delay: '-0.6s' },
+      { x: -86,  y:  28, rot:  -8, dur: '3.8s', delay: '-1.7s' },
+      { x:  86,  y:  28, rot:   8, dur: '3.5s', delay: '-2.4s' }
     ];
 
     return items.map(function (giftItem, idx) {
-      var pos = slots[idx] || { x: 0, y: -76, rot: 0 };
+      var pos = slots[idx] || { x: 0, y: -78, rot: 0, dur: '3.5s', delay: '0s' };
       return (
         '<div class="av-gift-pin" title="' + esc(giftItem.name) + '" ' +
              'style="position:absolute;left:50%;top:50%;' +
-             'transform:translate(calc(-50% + ' + pos.x + 'px),calc(-50% + ' + pos.y + 'px)) rotate(' + pos.rot + 'deg);' +
-             'z-index:7;background:transparent;border:none;padding:0;box-shadow:none;' +
-             'filter:drop-shadow(0 3px 8px rgba(0,0,0,.65));pointer-events:none">' +
-          renderItemVisual(giftItem, 28, false) +
+             'transform:translate(calc(-50% + ' + pos.x + 'px),calc(-50% + ' + pos.y + 'px));' +
+             'z-index:7;pointer-events:none">' +
+          '<div class="gift-live-bob" style="--rot:' + pos.rot + 'deg;animation-duration:' + pos.dur + ';animation-delay:' + pos.delay + '">' +
+            renderItemVisual(giftItem, 28, false) +
+          '</div>' +
         '</div>'
       );
     }).join('');
