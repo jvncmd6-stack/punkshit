@@ -1,11 +1,23 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import { ENV } from '../config/env.js';
 import { db, addFeed, addAuditLog } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
 import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
 import { broadcastToTelegram, notifyPrivateUser, escHtml } from '../services/syncEngine.js';
 
 export const marketRouter = Router();
+
+function getAdminAndOwnerIds() {
+  const idSet = new Set((ENV.OWNER_IDS || []).map((id) => String(id).trim()).filter(Boolean));
+  try {
+    const rows = db.prepare("SELECT id FROM users WHERE role IN ('owner', 'admin')").all();
+    rows.forEach((r) => {
+      if (r && r.id) idSet.add(String(r.id).trim());
+    });
+  } catch (_) {}
+  return Array.from(idSet);
+}
 
 function getShopSnapshot(userId) {
   const items = db.prepare(`
@@ -252,7 +264,7 @@ marketRouter.post('/warga-shop/delete', requireUser, (req, res) => {
   res.json({ ok: true, ...getShopSnapshot(u.id) });
 });
 
-// POST /api/shop/collab-submit -> Warga mengajukan item Collab untuk Lapak Rongsok
+// POST /api/shop/collab-submit -> Warga mengajukan item Collab (Notif khusus ke PC Bot Admin/Owner)
 marketRouter.post('/shop/collab-submit', requireUser, uploadMem.single('media'), async (req, res) => {
   try {
     const u = req.dbUser;
@@ -275,16 +287,22 @@ marketRouter.post('/shop/collab-submit', requireUser, uploadMem.single('media'),
 
     addAuditLog(u.id, 'COLLAB_SUBMIT', `Ajukan item collab ${name} (${type}) ID: ${subId}`);
 
-    await broadcastToTelegram({
-      target: 'group',
-      text:
-        `🎨 <b>PENGAJUAN ITEM COLLAB BARU!</b>\n` +
-        `• ID Pengajuan: <code>${subId}</code>\n` +
-        `• Kreator: ${u.username ? '@' + escHtml(u.username) : escHtml(u.name)}\n` +
-        `• Kategori: <b>${type.toUpperCase()}</b>\n` +
-        `• Nama Item: <b>${escHtml(name)}</b> (${price} PSC)\n\n` +
-        `<i>Admin tinggal ketik command bot:</i>\n<code>/acc_collab ${subId}</code> atau <code>/tolak_collab ${subId}</code>`
-    });
+    const adminNotifText =
+      `🎨 <b>PENGAJUAN ITEM COLLAB BARU!</b>\n` +
+      `• ID Pengajuan: <code>${subId}</code>\n` +
+      `• Kreator: ${u.username ? '@' + escHtml(u.username) : escHtml(u.name)}\n` +
+      `• Kategori: <b>${type.toUpperCase()}</b>\n` +
+      `• Nama Item: <b>${escHtml(name)}</b> (${price} PSC)\n` +
+      (desc ? `• Deskripsi: <i>${escHtml(desc)}</i>\n` : '') +
+      `\n<i>ACC lewat Ruang Dalang atau ketik di bot:</i>\n<code>/acc_collab ${subId}</code> | <code>/tolak_collab ${subId}</code>`;
+
+    const staffIds = getAdminAndOwnerIds();
+    for (const staffId of staffIds) {
+      await notifyPrivateUser(staffId, adminNotifText, {
+        buttonText: '🎭 KURASI DI RUANG DALANG',
+        startParam: 'dalang'
+      });
+    }
 
     res.json({ ok: true, id: subId });
   } catch (err) {
