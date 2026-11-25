@@ -37,33 +37,39 @@
       title: '🟢 Box Rongsok (Mudah)',
       diff: 0.35,
       items: [
-        { name: 'Kaset Pita Walkman Kusut', rarity: 'Common', icon: '📼', price: 8 },
-        { name: 'Pin Peniti Tengkorak', rarity: 'Common', icon: '🧷', price: 9 },
-        { name: 'Komik Bekas Tahun 98', rarity: 'Uncommon', icon: '📘', price: 12 },
-        { name: 'Kacamata Hitam Pixel', rarity: 'Uncommon', icon: '🕶️', price: 14 }
+        { key: 'claw_kaset', name: 'Kaset Pita Walkman Kusut', rarity: 'Common', icon: '📼', price: 8 },
+        { key: 'claw_pin', name: 'Pin Peniti Tengkorak', rarity: 'Common', icon: '🧷', price: 9 },
+        { key: 'claw_komik', name: 'Komik Bekas Tahun 98', rarity: 'Uncommon', icon: '📘', price: 12 },
+        { key: 'claw_kacamata', name: 'Kacamata Hitam Pixel', rarity: 'Uncommon', icon: '🕶️', price: 14 }
       ]
     },
     retro: {
       title: '🟡 Box Retro Y2K (Sedang)',
       diff: 0.65,
       items: [
-        { name: 'Tamagotchi Jadul Nyala', rarity: 'Rare', icon: '🥚', price: 16 },
-        { name: 'GameBoy Transparan Ungu', rarity: 'Rare', icon: '👾', price: 20 },
-        { name: 'Walkman Sony Kuning', rarity: 'Epic', icon: '🎧', price: 24 },
-        { name: 'Skateboard Mini TechDeck', rarity: 'Epic', icon: '🛹', price: 26 }
+        { key: 'claw_tamagotchi', name: 'Tamagotchi Jadul Nyala', rarity: 'Rare', icon: '🥚', price: 16 },
+        { key: 'claw_gameboy', name: 'GameBoy Transparan Ungu', rarity: 'Rare', icon: '👾', price: 20 },
+        { key: 'claw_walkman', name: 'Walkman Sony Kuning', rarity: 'Epic', icon: '🎧', price: 24 },
+        { key: 'claw_techdeck', name: 'Skateboard Mini TechDeck', rarity: 'Epic', icon: '🛹', price: 26 }
       ]
     },
     boss: {
       title: '🔴 Brankas Boss (Sulit)',
       diff: 0.92,
       items: [
-        { name: 'Jaket Kulit Studded Edisi Tour', rarity: 'Legendary', icon: '🧥', price: 32 },
-        { name: 'Gitar Listrik Mini Gibson', rarity: 'Legendary', icon: '🎸', price: 36 },
-        { name: 'Helm Retro Chrome Punk', rarity: 'Mythic', icon: '🪖', price: 42 },
-        { name: 'Kunci Brankas Mas Raka', rarity: 'Mythic', icon: '🗝️', price: 45 }
+        { key: 'claw_jaket', name: 'Jaket Kulit Studded Edisi Tour', rarity: 'Legendary', icon: '🧥', price: 32 },
+        { key: 'claw_gitar', name: 'Gitar Listrik Mini Gibson', rarity: 'Legendary', icon: '🎸', price: 36 },
+        { key: 'claw_helm', name: 'Helm Retro Chrome Punk', rarity: 'Mythic', icon: '🪖', price: 42 },
+        { key: 'claw_kunci', name: 'Kunci Brankas Mas Raka', rarity: 'Mythic', icon: '🗝️', price: 45 }
       ]
     }
   };
+
+  function getRemainingDailyCap() {
+    var earned = Number(A.state.dailyPscEarned || 0);
+    var cap = Number(A.state.dailyPscCap || 120);
+    return Math.max(0, cap - earned);
+  }
 
   function renderChoiceBtn(act, attrName, attrVal, titleText, priceText, descText, extraStyle) {
     return (
@@ -303,9 +309,15 @@
   // ==========================================
   A.openClaw2 = function () {
     A.clearGameLoops();
+    var rem = getRemainingDailyCap();
+    var capNote = rem <= 0
+      ? '<div style="padding:8px 10px;border-radius:10px;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.35);font-size:11px;color:#FDE68A;margin-bottom:8px">⚖️ Kuota 120 PSC/hari sudah penuh. Kamu tetap bisa main untuk koleksi item & XP (nilai jual PSC akan 0 hari ini).</div>'
+      : '<div style="font-size:11px;color:#7DD3FC;margin-bottom:8px">Sisa kuota harian PSC: <b>' + rem + ' / ' + (A.state.dailyPscCap || 120) + ' PSC</b></div>';
+
     C.sheet(
       '<h2>🕹️ Mesin Rongsok 2.0</h2>' +
       '<p class="sub">Pilih mesin capit! Di <b>Brankas Boss</b>, kapsul hadiah ikut bergeser jadi butuh timing ekstra presisi.</p>' +
+      capNote +
       '<div style="display:flex;flex-direction:column;gap:8px;margin:10px 0">' +
         renderChoiceBtn('claw-mode', 'data-box', 'rongsok', '🟢 Box Rongsok · Mudah', '8–14 PSC', 'Kapsul diam · Kaset Walkman, Pin Peniti, Komik Bekas') +
         renderChoiceBtn('claw-mode', 'data-box', 'retro', '🟡 Box Retro Y2K · Sedang', '16–26 PSC', 'Kapsul goyang pelan · Tamagotchi, GameBoy Ungu, Walkman') +
@@ -318,6 +330,8 @@
     A.clearGameLoops();
     var box = CLAW_BOXES[boxKey] || CLAW_BOXES.rongsok;
     var prizeItem = box.items[Math.floor(Math.random() * box.items.length)];
+    var rem = getRemainingDailyCap();
+    var effectivePrice = rem <= 0 ? 0 : Math.min(prizeItem.price, rem);
 
     C.sheet(
       '<h2>🕹️ ' + C.esc(box.title) + '</h2>' +
@@ -347,7 +361,11 @@
       var out = document.getElementById('ar-res');
 
       if (arm) arm.style.left = pos + '%';
-      if (out) out.textContent = 'Target: ' + prizeItem.name + ' [' + prizeItem.rarity + ' · ~' + prizeItem.price + ' PSC]';
+      if (out) {
+        out.textContent = effectivePrice > 0
+          ? ('Target: ' + prizeItem.name + ' [' + prizeItem.rarity + ' · ~' + effectivePrice + ' PSC]')
+          : ('Target: ' + prizeItem.name + ' [' + prizeItem.rarity + ' · Koleksi / Kuota 120 Penuh]');
+      }
 
       if (boxKey !== 'rongsok') {
         var tick = 0;
@@ -376,12 +394,26 @@
         if (arm) arm.style.height = '114px';
         out.textContent = 'Menurunkan capit...';
         var accuracy = Math.max(0, Math.round(100 - Math.abs(pos - targetPos) * 2.5));
+        var cappedItem = {
+          key: prizeItem.key,
+          name: prizeItem.name,
+          rarity: prizeItem.rarity,
+          icon: prizeItem.icon,
+          price: effectivePrice
+        };
         A.regTimeout(async function () {
           if (arm) arm.style.height = '36px';
           try {
             var res = await API.post('/api/arena/session/finish', {
               sessionId: ses.sessionId,
-              result: { dropPos: pos, targetPos: Math.round(targetPos), accuracy: accuracy, box: boxKey, suggestedItem: prizeItem }
+              result: {
+                dropPos: pos,
+                targetPos: Math.round(targetPos),
+                accuracy: accuracy,
+                box: boxKey,
+                itemPrice: effectivePrice,
+                suggestedItem: cappedItem
+              }
             });
             if (res.user) S.user = res.user;
             out.textContent = res.resultText;
