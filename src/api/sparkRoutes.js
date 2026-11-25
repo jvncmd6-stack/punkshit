@@ -45,7 +45,7 @@ export function getSparkListForUser(username) {
   const today = todayWib();
   const a1 = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, usn);
   const g1 = { gap: a1 ? (a1.gap || 0) : 0, msg: a1 ? (a1.msg || 0) : 0 };
-  const actorLitToday = (g1.gap > 0 || g1.msg > 0);
+  const actorLitToday = (g1.gap >= 5 && g1.msg >= 2) || (g1.gap > 0 && g1.msg > 0 && a1?.gap >= 5);
 
   return rows.map((pair) => {
     if (pair.status === 'pending') {
@@ -56,7 +56,7 @@ export function getSparkListForUser(username) {
     const partner = pair.user1 === usn ? pair.user2 : pair.user1;
     const a2 = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, partner);
     const g2 = { gap: a2 ? (a2.gap || 0) : 0, msg: a2 ? (a2.msg || 0) : 0 };
-    const partnerLitToday = (g2.gap > 0 || g2.msg > 0);
+    const partnerLitToday = (g2.gap >= 5 && g2.msg >= 2);
     const caseCompleted = String(pair.case_status || '').toUpperCase() === 'COMPLETED';
 
     return {
@@ -147,20 +147,21 @@ sparkRouter.post('/spark/action', async (req, res) => {
       }
 
       const existing = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, actor);
-      if (existing && (existing.gap > 0 || existing.msg > 0)) {
+      if (existing && existing.gap >= 5 && existing.msg >= 2) {
         const list = getSparkListForUser(actor);
-        return res.json({ ok: false, message: 'Kamu sudah setor hari ini! Kembali lagi besok ya.', sparkBuddies: list, sparkBuddy: list[0] || null });
+        return res.json({ ok: false, message: 'Target aktivitas kamu hari ini sudah aman (5/5 GAP)!', sparkBuddies: list, sparkBuddy: list[0] || null });
       }
 
+      // Penuhi target harian (5 GAP & 2 pesan) agar status langsung berubah dari ⏳ ke ✅
       db.prepare(`
         INSERT INTO spark_daily (date, username, gap, msg)
-        VALUES (?, ?, 1, 1)
-        ON CONFLICT(date, username) DO UPDATE SET gap = MAX(1, gap), msg = MAX(1, msg)
+        VALUES (?, ?, 5, 2)
+        ON CONFLICT(date, username) DO UPDATE SET gap = MAX(5, gap), msg = MAX(2, msg)
       `).run(today, actor);
 
       const partner = pair.user1 === actor ? pair.user2 : pair.user1;
       const partnerDaily = db.prepare('SELECT gap, msg FROM spark_daily WHERE date = ? AND username = ?').get(today, partner);
-      const partnerDone = partnerDaily && (partnerDaily.gap > 0 || partnerDaily.msg > 0);
+      const partnerDone = partnerDaily && partnerDaily.gap >= 5 && partnerDaily.msg >= 2;
       let hitWeeklyMilestone = false;
       let newStreak = pair.streak || 0;
 
@@ -186,11 +187,11 @@ sparkRouter.post('/spark/action', async (req, res) => {
 
       const list = getSparkListForUser(actor);
       const slotInfo = getUserSlotInfo(actor);
-      let msg = `Setoran tercatat! Menunggu @${partner} ikut menyalakan api hari ini.`;
+      let msg = `✅ Target kamu aman! Tinggal tunggu @${partner} ikut setor/chat 5x di grup hari ini.`;
       if (partnerDone && hitWeeklyMilestone) {
         msg = `🏁 KASUS MINGGUAN SELESAI (${newStreak} Hari)! Kamu & @${partner} dapat bonus +40 PSC & +10 Cred!`;
       } else if (partnerDone) {
-        msg = `Api Spark hari ini menyala penuh bareng @${partner}! Streak ${newStreak} hari 🔥`;
+        msg = `🔥 Api Spark menyala penuh bareng @${partner}! Streak ${newStreak} hari.`;
       }
 
       return res.json({
