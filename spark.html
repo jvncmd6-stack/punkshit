@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#07070b">
 <title>PUNKSHIT Spark Buddies</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="css/spark.css">
+<link rel="stylesheet" href="css/spark.css?v=37">
 </head><body>
 
 <div class="boot-loader" id="bootLoader">
@@ -98,63 +98,5 @@
     if (bl) { bl.classList.add('hide'); setTimeout(function () { bl.remove(); }, 250); }
   }, 1500);
 </script>
-<script type="module" src="js/spark/main.js"></script>
-<script>
-(function () {
-  var lastSparkUser = null;
-
-  function syncSetorLock() {
-    var btn = document.getElementById('ci');
-    if (!btn || !lastSparkUser) return;
-
-    var p2El = document.getElementById('p2Name');
-    var activePartner = p2El ? p2El.textContent.replace(/^@/, '').trim().toLowerCase() : '';
-    var list = Array.isArray(lastSparkUser.sparkBuddies) ? lastSparkUser.sparkBuddies : [];
-    var slot = list.find(function (b) {
-      return String(b.partnerUsername || '').toLowerCase() === activePartner;
-    }) || list[0] || lastSparkUser;
-
-    if (slot.caseCompleted) {
-      btn.disabled = true;
-      btn.textContent = '🏁 Kasus Selesai';
-      btn.style.opacity = '0.55';
-      btn.style.pointerEvents = 'none';
-    } else if (slot.hasSetorToday || slot.setorDisabled) {
-      btn.disabled = true;
-      btn.textContent = '✅ Sudah Setor Hari Ini';
-      btn.style.opacity = '0.55';
-      btn.style.pointerEvents = 'none';
-    } else {
-      btn.disabled = false;
-      btn.textContent = 'Setor Aktivitas Gue';
-      btn.style.opacity = '';
-      btn.style.pointerEvents = '';
-    }
-  }
-
-  window.addEventListener('message', function (ev) {
-    if (ev.data && ev.data.type === 'PUNK_SYNC' && ev.data.user) {
-      lastSparkUser = ev.data.user;
-      syncSetorLock();
-    }
-  });
-
-  document.addEventListener('click', function (e) {
-    if (e.target && e.target.id === 'ci') {
-      var btn = e.target;
-      if (btn.disabled) {
-        e.stopImmediatePropagation();
-        return;
-      }
-      setTimeout(function () {
-        btn.disabled = true;
-        btn.textContent = '✅ Sudah Setor Hari Ini';
-        btn.style.opacity = '0.55';
-      }, 200);
-    }
-  }, true);
-
-  setInterval(syncSetorLock, 1200);
-})();
-</script>
+<script type="module" src="./js/spark/main.js?v=37"></script>
 </body></html>
