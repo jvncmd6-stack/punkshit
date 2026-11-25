@@ -15,6 +15,7 @@
 
   function isOwner() { return S.user && S.user.role === 'owner'; }
   function isAdminOrOwner() { return S.user && (S.user.role === 'owner' || S.user.role === 'admin'); }
+  function isWebmUrl(url) { return /\.(webm|mp4)(\?.*)?$/i.test(String(url || '').trim()); }
 
   async function fetchAdminPanel() {
     adminData.loaded = true;
@@ -79,12 +80,16 @@
 
   function renderCatalogTab() {
     var colHtml = adminData.pendingCollabs.map(function (c) {
-      var imgHtml = c.image_url
-        ? '<img src="' + C.esc(API.assetUrl(c.image_url)) + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover;background:#0f172a">'
-        : '';
+      var mediaHtml = '';
+      if (c.image_url) {
+        var resolved = C.esc(API.assetUrl(c.image_url));
+        mediaHtml = isWebmUrl(c.image_url)
+          ? '<video src="' + resolved + '" autoplay loop muted playsinline style="width:52px;height:52px;border-radius:10px;object-fit:cover;background:#0f172a"></video>'
+          : '<img src="' + resolved + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover;background:#0f172a">';
+      }
       return '<div class="card" style="padding:12px;margin-bottom:8px">' +
         '<div style="display:flex;gap:10px;align-items:center">' +
-          imgHtml +
+          mediaHtml +
           '<div style="flex:1">' +
             '<span class="pill">' + C.esc((c.type || 'item').toUpperCase()) + '</span> <b>' + C.esc(c.name) + '</b>' +
             '<div style="font-size:12px;color:#FFD633">' + c.price + ' PSC · oleh ' + C.esc(c.creator_name) + '</div>' +
@@ -99,9 +104,19 @@
     }).join('') || '<div class="rw"><small>Belum ada pengajuan item collab baru.</small></div>';
 
     var catalogRows = (S.catalog || []).map(function (it) {
-      return '<div class="rw">' +
-        '<div><b>' + C.esc(it.name) + '</b><small>' + C.esc(it.type) + ' · ' + it.price + ' PSC (' + C.esc(it.rarity || 'Rare') + ')</small></div>' +
-        '<button class="pill" style="color:#FCA5A5" data-act="dl-del-item" data-id="' + C.esc(it.id) + '">Hapus</button>' +
+      var isArchived = Boolean(it.isArchived);
+      return '<div class="rw" style="gap:8px">' +
+        '<div style="min-width:0;flex:1">' +
+          '<b>' + C.esc(it.name) + '</b>' +
+          (isArchived ? ' <span class="lim-tag">ARSIP</span>' : '') +
+          '<small>' + C.esc(it.type) + ' · ' + it.price + ' PSC (' + C.esc(it.rarity || 'Rare') + ')</small>' +
+        '</div>' +
+        '<div style="display:flex;gap:5px;flex-shrink:0">' +
+          (!isArchived
+            ? '<button class="pill" style="color:#FDE047;font-size:11px" title="Tarik dari toko & jadikan Limited (koleksi warga aman)" data-act="dl-archive-item" data-id="' + C.esc(it.id) + '">📦 Limited</button>'
+            : '') +
+          '<button class="pill" style="color:#FCA5A5;background:rgba(220,38,38,.18);font-size:11px" title="Hapus permanen dari katalog & gudang" data-act="dl-force-del-ask" data-id="' + C.esc(it.id) + '" data-name="' + C.esc(it.name) + '">🗑️ Hapus</button>' +
+        '</div>' +
       '</div>';
     }).join('') || '<div class="rw"><small>Katalog kosong.</small></div>';
 
@@ -113,7 +128,7 @@
         '</div>' +
       '</div>' +
       '<div class="card" style="margin-top:12px"><h3>🎨 Kurasi Collab Warga (' + adminData.pendingCollabs.length + ')</h3>' + colHtml + '</div>' +
-      '<div class="card" style="margin-top:12px"><h3>📦 Daftar Item Aktif (' + (S.catalog || []).length + ')</h3><div class="grp">' + catalogRows + '</div></div>'
+      '<div class="card" style="margin-top:12px"><h3>📦 Daftar Item Katalog (' + (S.catalog || []).length + ')</h3><p class="sub" style="margin-bottom:8px"><b>📦 Limited</b> = tarik dari toko (koleksi warga tetap aman). <b>🗑️ Hapus</b> = hapus permanen (untuk item bug/rusak).</p><div class="grp">' + catalogRows + '</div></div>'
     );
   }
 
@@ -244,20 +259,20 @@
 
     C.sheet(
       '<h2>+ Tambah Item Lapak Resmi</h2>' +
-      '<p class="sub">Upload aset <i>PNG / GIF / WEBP</i> transparan buat dijadiin Gift, Border, atau Skin.</p>' +
+      '<p class="sub">Upload aset <i>PNG / GIF / WEBP / WEBM</i> transparan buat dijadiin Gift, Border, atau Skin.</p>' +
       '<label>TIPE ITEM</label>' +
       '<select id="ni-type">' +
         '<option value="border">🖼️ Avatar Border</option>' +
         '<option value="gift">🎁 Gift Koleksi</option>' +
         '<option value="skin">🪪 PunkID Card Skin</option>' +
       '</select>' +
-      '<label>FILE VISUAL (PNG / GIF / WEBP)</label>' +
+      '<label>FILE VISUAL (PNG / GIF / WEBP / WEBM)</label>' +
       '<div class="up-box" id="ni-drop">' +
-        '<input type="file" id="ni-file" accept="image/png,image/webp,image/gif" hidden>' +
-        '<div id="ni-file-lbl" style="font-size:13px;font-weight:600;color:var(--gblue)">📁 Pilih File Item (Maks. 3MB)</div>' +
+        '<input type="file" id="ni-file" accept="image/png,image/webp,image/gif,video/webm,.webm" hidden>' +
+        '<div id="ni-file-lbl" style="font-size:13px;font-weight:600;color:var(--gblue)">📁 Pilih File Item (Maks. 10MB)</div>' +
       '</div>' +
       '<div id="ni-preview-area" style="display:none;margin:10px 0">' +
-        '<div class="try-box">' + pfp + '<img id="ni-prev-img" class="dc-border" src="" alt=""></div>' +
+        '<div class="try-box" id="ni-try-box">' + pfp + '<div id="ni-prev-slot"></div></div>' +
       '</div>' +
       '<label>NAMA ITEM</label><input id="ni-name" maxlength="32" placeholder="mis. Crimson Aura Border">' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
@@ -273,7 +288,7 @@
     var inp = document.getElementById('ni-file');
     var lbl = document.getElementById('ni-file-lbl');
     var prevArea = document.getElementById('ni-preview-area');
-    var prevImg = document.getElementById('ni-prev-img');
+    var prevSlot = document.getElementById('ni-prev-slot');
     var typeSel = document.getElementById('ni-type');
 
     drop.onclick = function () { inp.click(); };
@@ -283,10 +298,16 @@
       pendingItemFile = file;
       lbl.innerHTML = '✅ File siap: <b>' + C.esc(file.name) + '</b>';
       lbl.style.color = '#34C759';
-      prevImg.src = URL.createObjectURL(file);
+      var objUrl = URL.createObjectURL(file);
+      var isVid = /\.webm$/i.test(file.name) || file.type === 'video/webm';
+      var isBorder = typeSel.value === 'border';
+      var clsAttr = isBorder ? ' class="dc-border"' : '';
+      var styAttr = !isBorder ? ' style="width:96px;height:96px;object-fit:contain;position:relative;z-index:8"' : '';
+
+      prevSlot.innerHTML = isVid
+        ? '<video src="' + objUrl + '" autoplay loop muted playsinline' + clsAttr + styAttr + '></video>'
+        : '<img src="' + objUrl + '"' + clsAttr + styAttr + ' alt="">';
       prevArea.style.display = 'block';
-      prevImg.className = (typeSel.value === 'border') ? 'dc-border' : '';
-      prevImg.style.cssText = (typeSel.value !== 'border') ? 'width:96px;height:96px;object-fit:contain;position:relative;z-index:8' : '';
     };
   }
 
@@ -316,7 +337,7 @@
       var name = (document.getElementById('ni-name').value || '').trim();
       var price = Number(document.getElementById('ni-price').value);
       if (name.length < 2 || !price || !pendingItemFile) {
-        return C.notify('Mas Raka', 'Cek Isian', 'Pastikan nama, harga, dan file gambar sudah diisi ya cuy.');
+        return C.notify('Mas Raka', 'Cek Isian', 'Pastikan nama, harga, dan file visual sudah diisi ya cuy.');
       }
       t.disabled = true;
       try {
@@ -340,13 +361,37 @@
         t.disabled = false;
         C.notify('Mas Raka', 'Belum Berhasil', err.message);
       }
-    } else if (act === 'dl-del-item') {
+    } else if (act === 'dl-archive-item') {
       t.disabled = true;
       try {
-        var dRes = await API.del('/api/admin/items/' + encodeURIComponent(t.getAttribute('data-id')));
-        if (dRes.catalog) S.catalog = dRes.catalog;
+        var aRes = await API.del('/api/admin/items/' + encodeURIComponent(t.getAttribute('data-id')));
+        if (aRes.catalog) S.catalog = aRes.catalog;
         C.refresh();
+        C.notify('Mas Raka', 'Arsip Limited', aRes.message || 'Item ditarik & dijadikan Limited.');
       } catch (err) { t.disabled = false; C.notify('Mas Raka', 'Info', err.message); }
+    } else if (act === 'dl-force-del-ask') {
+      var fId = t.getAttribute('data-id');
+      var fName = t.getAttribute('data-name') || 'Item ini';
+      C.sheet(
+        '<h2>🗑️ Hapus Permanen Item?</h2>' +
+        '<p class="sub">Item <b>"' + C.esc(fName) + '"</b> akan dihapus permanen dari katalog Lapak Rongsok, gudang seluruh warga, dan profil yang memakainya.</p>' +
+        '<button class="btn" style="background:#DC2626" data-act="dl-force-del-confirm" data-id="' + C.esc(fId) + '">YA, HAPUS PERMANEN</button>' +
+        '<button class="btn b2" data-act="shut">BATAL</button>'
+      );
+    } else if (act === 'dl-force-del-confirm') {
+      t.disabled = true;
+      t.textContent = 'Menghapus Permanen...';
+      try {
+        var fRes = await API.del('/api/admin/items/' + encodeURIComponent(t.getAttribute('data-id')) + '?force=1');
+        if (fRes.catalog) S.catalog = fRes.catalog;
+        C.shut();
+        C.refresh();
+        C.notify('Mas Raka', 'Hapus Permanen', fRes.message || 'Item berhasil dihapus permanen.');
+      } catch (err) {
+        t.disabled = false;
+        t.textContent = 'YA, HAPUS PERMANEN';
+        C.notify('Mas Raka', 'Info', err.message);
+      }
     } else if (act === 'dl-collab-acc' || act === 'dl-collab-rej') {
       t.disabled = true;
       try {
