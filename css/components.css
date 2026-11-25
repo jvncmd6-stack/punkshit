@@ -2,15 +2,17 @@
    1. PROFIL, AVATAR TELEGRAM & DISCORD-STYLE AVATAR BORDER
    ========================================================= */
 .pc {
-  background: #ffffff10;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(15, 23, 42, 0.72));
   border-radius: 22px;
-  overflow: hidden;
-  border: 0.5px solid #ffffff22;
+  overflow: visible;
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
 }
 
 .cv {
-  height: 156px;
+  height: 138px;
   border-radius: 22px 22px 0 0;
+  overflow: hidden;
   position: relative;
   display: flex;
   justify-content: flex-end;
@@ -26,7 +28,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(8, 11, 18, 0.1) 0%, rgba(12, 19, 34, 0.72) 100%);
+  background: linear-gradient(180deg, rgba(8, 11, 18, 0.08) 0%, rgba(12, 19, 34, 0.76) 100%);
   pointer-events: none;
 }
 .cv > * {
@@ -36,6 +38,21 @@
 
 .pb {
   padding: 0 16px 18px;
+  text-align: center;
+  position: relative;
+  overflow: visible;
+}
+
+/* Slot Avatar membelah garis bawah banner secara simetris */
+.av-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: -46px;
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 5;
+  overflow: visible;
 }
 
 /* Wrapper Avatar Utama (92px) + Lapisan Border Ala Discord */
@@ -43,10 +60,11 @@
   position: relative;
   width: 92px;
   height: 92px;
-  margin-top: -48px;
+  margin: 0 auto;
   z-index: 4;
   display: grid;
   place-items: center;
+  overflow: visible;
 }
 
 .ring {
@@ -55,7 +73,9 @@
   border-radius: 50%;
   padding: 3px;
   position: relative;
+  z-index: 3;
   background: #ffffff30;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 
 .ring span, .ring img.pfp {
@@ -83,7 +103,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  transform: scale(1.26);
+  transform: scale(1.24);
   pointer-events: none;
   z-index: 6;
   object-fit: contain;
@@ -162,7 +182,7 @@
   font-size: 16px;
 }
 .mini-av .dc-border {
-  transform: scale(1.26);
+  transform: scale(1.24);
   animation: none;
 }
 .mini-av .dc-border-fx {
@@ -175,16 +195,17 @@
 }
 
 .nm {
-  font-size: 23px;
+  font-size: 22px;
   font-weight: 700;
-  margin-top: 10px;
+  margin-top: 2px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   flex-wrap: wrap;
 }
 .role-tag {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.06em;
   padding: 3px 8px;
@@ -193,15 +214,34 @@
   color: var(--navy);
   text-transform: uppercase;
 }
+.lim-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 214, 51, 0.22), rgba(245, 158, 11, 0.28));
+  border: 1px solid rgba(255, 214, 51, 0.5);
+  color: #fde047;
+  text-transform: uppercase;
+}
 .hd {
   color: var(--mut);
-  font-size: 13.5px;
-  margin-top: 2px;
+  font-size: 13px;
+  margin-top: 3px;
+  text-align: center;
 }
 .bio {
-  margin: 10px 0;
+  margin: 10px auto 2px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 0.5px solid rgba(255, 255, 255, 0.09);
   line-height: 1.4;
-  font-size: 14.5px;
+  font-size: 13.5px;
+  color: #e2e8f0;
+  text-align: center;
 }
 .sp {
   display: inline-flex;
