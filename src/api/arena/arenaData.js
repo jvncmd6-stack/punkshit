@@ -1,7 +1,7 @@
 import { db } from '../../database/db.js';
 import { todayWib } from '../../services/syncEngine.js';
 
-export const DAILY_PSC_CAP = 120;
+export const DAILY_PSC_CAP = 300;
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS arcade_profiles (
