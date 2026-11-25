@@ -46,7 +46,7 @@
 
     return (
       '<a href="' + C.esc(url) + '" target="_blank" rel="noopener noreferrer" ' +
-         'style="display:flex;align-items:center;gap:11px;margin-top:10px;padding:8px 12px 8px 8px;' +
+         'style="display:flex;align-items:center;gap:11px;margin-top:12px;padding:8px 12px 8px 8px;' +
          'background:#232326;border:1px solid rgba(255,255,255,.08);border-radius:14px;text-decoration:none;color:#fff">' +
         '<div style="width:48px;height:48px;border-radius:9px;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,#1DB954,#14532d)">' +
           '<img id="pub-sp-cover" src="' + C.esc(cover) + '" style="width:100%;height:100%;object-fit:cover;' + (cover ? 'display:block' : 'display:none') + '">' +
@@ -66,15 +66,17 @@
     var badges = ids.map(function (gid) {
       var it = C.findItem(gid);
       if (!it) return '';
+      var isLim = it.isLimited || it.isArchived || String(it.rarity || '').toLowerCase().indexOf('limited') !== -1;
       return (
         '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 5px;' +
-                    'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:999px">' +
-          C.renderItemVisual(it, 20, false) +
+                    'background:rgba(255,255,255,.07);border:1px solid ' + (isLim ? 'rgba(255,214,51,.38)' : 'rgba(255,255,255,.12)') + ';border-radius:999px">' +
+          C.renderItemVisual(it, 18, false) +
           '<span style="font-size:11px;font-weight:600;color:#f5f5f7">' + C.esc(it.name) + '</span>' +
+          (isLim ? '<span class="lim-tag">✦ LIMITED</span>' : '') +
         '</div>'
       );
     }).filter(Boolean);
-    return badges.length ? '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin-top:8px">' + badges.join('') + '</div>' : '';
+    return badges.length ? '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin-top:10px">' + badges.join('') + '</div>' : '';
   }
 
   function renderPublicCard(u, itemCount) {
@@ -184,10 +186,12 @@
         : '';
 
       C.sheet(
-        '<div class="pc" style="margin-bottom:10px">' +
+        '<div class="pc" style="margin-bottom:12px;overflow:visible">' +
           '<div class="cv" style="' + bannerStyle + '"></div>' +
           '<div class="pb">' +
-            C.renderAvatar(u, 'full') +
+            '<div class="av-slot">' +
+              C.renderAvatar(u, 'full') +
+            '</div>' +
             '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
             '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + rk.title + '</div>' +
             (u.bio ? '<p class="bio">' + C.esc(u.bio) + '</p>' : '') +
