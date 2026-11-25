@@ -34,6 +34,9 @@ db.exec(`
 `);
 
 try { db.exec('ALTER TABLE users ADD COLUMN is_frozen INTEGER DEFAULT 0'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN is_archived INTEGER DEFAULT 0'); } catch (_) {}
+try { db.exec('ALTER TABLE items ADD COLUMN is_limited INTEGER DEFAULT 0'); } catch (_) {}
+try { db.exec("ALTER TABLE inventory ADD COLUMN item_snapshot TEXT DEFAULT ''"); } catch (_) {}
 
 function isOwnerUser(user) {
   if (!user) return false;
@@ -201,11 +204,61 @@ adminRouter.post('/admin/items', requireUser, uploadMem.single('asset'), async (
   }
 });
 
-// DELETE /api/admin/items/:id -> Hapus item dari tabel items
+// DELETE /api/admin/items/:id -> Arsipkan jadi Limited jika sudah dibeli/collab, hapus permanen hanya jika belum ada pemilik
 adminRouter.delete('/admin/items/:id', requireUser, (req, res) => {
   if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
-  db.prepare('DELETE FROM items WHERE id = ?').run(String(req.params.id));
-  res.json({ ok: true, catalog: getCatalog() });
+
+  const itemId = String(req.params.id || '');
+  const item = db.prepare('SELECT * FROM items WHERE id = ?').get(itemId);
+  if (!item) return res.status(404).json({ error: 'Item tidak ditemukan.' });
+
+  const ownerRow = db.prepare('SELECT COUNT(*) AS cnt FROM inventory WHERE item_id = ?').get(itemId);
+  const ownedCount = Number(ownerRow?.cnt || 0);
+  const isCollabOrLimited = Boolean(item.is_collab || item.is_limited || String(item.rarity || '').toLowerCase().includes('collab'));
+
+  if (ownedCount > 0 || isCollabOrLimited) {
+    const snapshot = JSON.stringify({
+      id: item.id,
+      type: item.type,
+      name: item.name,
+      price: item.price,
+      rarity: 'Limited',
+      colors: item.colors ? JSON.parse(item.colors) : ['#FFE666', '#D97706'],
+      svgPath: item.svg_path || '',
+      imageUrl: item.image_url || '',
+      isLimited: true,
+      isArchived: true
+    });
+
+    db.transaction(() => {
+      db.prepare(`
+        UPDATE items
+        SET is_archived = 1,
+            is_limited = 1,
+            stock = 0,
+            rarity = CASE
+              WHEN LOWER(rarity) LIKE '%collab%' THEN 'Collab · Limited'
+              ELSE 'Limited'
+            END
+        WHERE id = ?
+      `).run(itemId);
+
+      db.prepare("UPDATE inventory SET item_snapshot = ? WHERE item_id = ? AND (item_snapshot IS NULL OR item_snapshot = '')")
+        .run(snapshot, itemId);
+    })();
+
+    logAudit(req.dbUser.id, 'ARSIP LIMITED', `${item.name} (${ownedCount} pemilik tetap menyimpan item)`);
+    return res.json({
+      ok: true,
+      archived: true,
+      message: `Item "${item.name}" ditarik dari Lapak & otomatis berubah menjadi LIMITED (${ownedCount} koleksi warga tetap aman).`,
+      catalog: getCatalog()
+    });
+  }
+
+  db.prepare('DELETE FROM items WHERE id = ?').run(itemId);
+  logAudit(req.dbUser.id, 'HAPUS ITEM', `${item.name} (0 pemilik)`);
+  res.json({ ok: true, archived: false, catalog: getCatalog() });
 });
 
 // POST /api/admin/broadcast -> Pengumuman resmi ke Grup & Channel
