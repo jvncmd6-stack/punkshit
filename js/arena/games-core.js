@@ -67,7 +67,7 @@
 
   function getRemainingDailyCap() {
     var earned = Number(A.state.dailyPscEarned || 0);
-    var cap = Number(A.state.dailyPscCap || 120);
+    var cap = Number(A.state.dailyPscCap || 300);
     return Math.max(0, cap - earned);
   }
 
@@ -309,10 +309,11 @@
   // ==========================================
   A.openClaw2 = function () {
     A.clearGameLoops();
+    var cap = Number(A.state.dailyPscCap || 300);
     var rem = getRemainingDailyCap();
     var capNote = rem <= 0
-      ? '<div style="padding:8px 10px;border-radius:10px;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.35);font-size:11px;color:#FDE68A;margin-bottom:8px">⚖️ Kuota 120 PSC/hari sudah penuh. Kamu tetap bisa main untuk koleksi item & XP (nilai jual PSC akan 0 hari ini).</div>'
-      : '<div style="font-size:11px;color:#7DD3FC;margin-bottom:8px">Sisa kuota harian PSC: <b>' + rem + ' / ' + (A.state.dailyPscCap || 120) + ' PSC</b></div>';
+      ? '<div style="padding:8px 10px;border-radius:10px;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.35);font-size:11px;color:#FDE68A;margin-bottom:8px">⚖️ Kuota ' + cap + ' PSC/hari sudah penuh. Kamu tetap bisa main untuk koleksi item & XP (nilai jual PSC akan 0 hari ini).</div>'
+      : '<div style="font-size:11px;color:#7DD3FC;margin-bottom:8px">Sisa kuota harian PSC: <b>' + rem + ' / ' + cap + ' PSC</b></div>';
 
     C.sheet(
       '<h2>🕹️ Mesin Rongsok 2.0</h2>' +
@@ -328,6 +329,7 @@
 
   async function startClawBox(boxKey) {
     A.clearGameLoops();
+    var cap = Number(A.state.dailyPscCap || 300);
     var box = CLAW_BOXES[boxKey] || CLAW_BOXES.rongsok;
     var prizeItem = box.items[Math.floor(Math.random() * box.items.length)];
     var rem = getRemainingDailyCap();
@@ -364,7 +366,7 @@
       if (out) {
         out.textContent = effectivePrice > 0
           ? ('Target: ' + prizeItem.name + ' [' + prizeItem.rarity + ' · ~' + effectivePrice + ' PSC]')
-          : ('Target: ' + prizeItem.name + ' [' + prizeItem.rarity + ' · Koleksi / Kuota 120 Penuh]');
+          : ('Target: ' + prizeItem.name + ' [' + prizeItem.rarity + ' · Koleksi / Kuota ' + cap + ' Penuh]');
       }
 
       if (boxKey !== 'rongsok') {
