@@ -104,7 +104,7 @@
 
     return (
       '<a href="' + C.esc(cleanUrl) + '" target="_blank" rel="noopener noreferrer" ' +
-         'style="display:flex;align-items:center;gap:13px;margin-top:10px;padding:10px 14px 10px 10px;' +
+         'style="display:flex;align-items:center;gap:13px;margin-top:12px;padding:10px 14px 10px 10px;' +
          'background:#232326;border:1px solid rgba(255,255,255,.07);border-radius:16px;' +
          'text-decoration:none;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.28)">' +
         '<div style="width:62px;height:62px;border-radius:11px;overflow:hidden;flex-shrink:0;' +
@@ -319,6 +319,12 @@
     return list;
   }
 
+  function limitedTag(it) {
+    if (!it) return '';
+    var isLim = it.isLimited || it.isArchived || String(it.rarity || '').toLowerCase().indexOf('limited') !== -1;
+    return isLim ? '<span class="lim-tag">✦ LIMITED</span>' : '';
+  }
+
   function renderGue() {
     var u = S.user || {};
     var tier = getTongkronganTier(u);
@@ -339,15 +345,15 @@
     return (
       '<div class="pc" style="margin-bottom:18px;overflow:visible">' +
         '<div class="cv" style="' + bannerStyle + '"></div>' +
-        '<div class="pb" style="padding-top:26px;overflow:visible">' +
-          '<div style="display:grid;place-items:center;padding:18px 0 8px;overflow:visible">' +
+        '<div class="pb">' +
+          '<div class="av-slot">' +
             C.renderAvatar(u, 'full') +
           '</div>' +
           '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
           '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + tier.icon + ' ' + tier.title + '</div>' +
           (u.bio ? '<p class="bio">' + C.esc(u.bio) + '</p>' : '') +
           (u.spotifyUrl ? renderSpotifyCard(u.spotifyUrl) : '') +
-          '<div style="display:flex;gap:8px;margin-top:10px">' +
+          '<div style="display:flex;gap:8px;margin-top:12px">' +
             '<button class="btn b2" style="margin-top:0;flex:1" data-act="pid-edit">Edit Profil & Banner</button>' +
             '<button class="btn b2" style="margin-top:0;width:auto;padding:0 12px" data-act="pid-copy-id" title="Salin Nomor PunkID">🪪 ID</button>' +
             '<button class="btn b2" style="margin-top:0;width:auto;padding:0 12px" data-act="pid-sync-tele" title="Sinkron ulang foto & nama dari Telegram">🔄 Tele</button>' +
@@ -373,7 +379,7 @@
             skins.map(function (entry) {
               var it = entry.item;
               var active = u.equippedSkinId === it.id;
-              return '<button data-act="pid-equip-skin" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 56, false) + C.esc(it.name) + '</button>';
+              return '<button data-act="pid-equip-skin" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 56, false) + '<span>' + C.esc(it.name) + '</span>' + limitedTag(it) + '</button>';
             }).join('') +
           '</div>'
         : '<div class="grp" style="margin-bottom:14px"><div class="rw"><small>Belum punya Card Skin. Mampir ke Lapak Rongsok buat cek koleksinya!</small></div></div>') +
@@ -389,12 +395,12 @@
               var it = entry.item;
               var active = u.equippedBorderId === it.id;
               var qtyTag = entry.count > 1 ? ' (x' + entry.count + ')' : '';
-              return '<button data-act="pid-equip-border" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 56, false) + C.esc(it.name + qtyTag) + '</button>';
+              return '<button data-act="pid-equip-border" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 56, false) + '<span>' + C.esc(it.name + qtyTag) + '</span>' + limitedTag(it) + '</button>';
             }).join('') +
           '</div>'
         : '<div class="grp" style="margin-bottom:14px;margin-top:8px"><div class="rw"><small>Belum punya Avatar Border. Cek koleksi di Lapak Rongsok yuk!</small></div></div>') +
 
-      '<h3 class="gh">ORBIT GIFT DI SEBELAH PP (' + pinnedIds.length + '/6 PINNED)</h3>' +
+      '<h3 class="gh">ORBIT GIFT DI LUAR PP (' + pinnedIds.length + '/6 PINNED)</h3>' +
       (gifts.length
         ? '<div class="hs">' +
             '<button data-act="pid-pin-gift" data-id="" class="' + (!pinnedIds.length ? 'on' : '') + '"><div style="height:58px;display:grid;place-items:center;font-size:20px">🚫</div>Reset Pin</button>' +
@@ -402,7 +408,7 @@
               var it = entry.item;
               var active = pinnedIds.indexOf(it.id) !== -1;
               var qtyTag = entry.count > 1 ? ' (x' + entry.count + ')' : '';
-              return '<button data-act="pid-pin-gift" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 58, false) + C.esc(it.name + qtyTag) + '</button>';
+              return '<button data-act="pid-pin-gift" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 58, false) + '<span>' + C.esc(it.name + qtyTag) + '</span>' + limitedTag(it) + '</button>';
             }).join('') +
           '</div>'
         : '<div class="grp"><div class="rw"><small>Gudang gift masih kosong cuy. Beli di Lapak Rongsok atau tunggu kiriman warga lain!</small></div></div>')
