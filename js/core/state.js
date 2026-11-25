@@ -28,6 +28,10 @@ window.PunkCoreState = (function () {
     });
   }
 
+  function isVideoAsset(url) {
+    return /\.(webm|mp4)(\?.*)?$/i.test(String(url || '').trim());
+  }
+
   function rankInfo(streak) {
     var n = Number(streak) || 0;
     if (n >= 60) return { title: '👑 Fosil Punkshit', bonus: 15 };
@@ -75,6 +79,9 @@ window.PunkCoreState = (function () {
     var imgSrc = item.imageUrl || item.image_url || item.url || '';
     if (imgSrc) {
       var src = esc(API.assetUrl(imgSrc));
+      if (isVideoAsset(imgSrc)) {
+        return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:#8FC7FF66"><div class="rot"><video src="' + src + '" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain;pointer-events:none"></video></div></div>';
+      }
       return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:#8FC7FF66"><div class="rot"><img src="' + src + '" alt="' + esc(item.name || 'Item') + '"></div></div>';
     }
     var cols = (Array.isArray(item.colors) && item.colors.length >= 2) ? item.colors : ['#cfeaff', '#176BFF'];
@@ -115,10 +122,16 @@ window.PunkCoreState = (function () {
       : '';
 
     if (borderUrl) {
+      var resolvedUrl = esc(API.assetUrl(borderUrl));
       var miniBorderStyle = isMini
         ? 'position:absolute;inset:0;width:42px;height:42px;transform:scale(1.24);pointer-events:none;z-index:6;object-fit:contain'
         : customStyle;
-      return '<img class="dc-border" src="' + esc(API.assetUrl(borderUrl)) + '"' +
+
+      if (isVideoAsset(borderUrl)) {
+        return '<video class="dc-border" src="' + resolvedUrl + '" autoplay loop muted playsinline' +
+          (miniBorderStyle ? ' style="' + miniBorderStyle + '"' : '') + '></video>';
+      }
+      return '<img class="dc-border" src="' + resolvedUrl + '"' +
         (miniBorderStyle ? ' style="' + miniBorderStyle + '"' : '') + ' alt="">';
     }
     if (bItem) {
