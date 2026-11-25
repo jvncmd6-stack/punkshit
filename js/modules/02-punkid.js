@@ -164,24 +164,103 @@
     return u.pinnedGiftId ? [u.pinnedGiftId] : [];
   }
 
-  function renderPinnedGiftsShowcase(u) {
-    var ids = getPinnedList(u);
-    if (!ids.length) return '';
+  function getBorderAdjKey(uid, borderId) {
+    return 'punk_border_adj_' + String(uid) + '_' + String(borderId);
+  }
 
-    var badges = ids.map(function (gid) {
-      var it = C.findItem(gid);
-      if (!it) return '';
-      return (
-        '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 6px;' +
-                    'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:999px">' +
-          C.renderItemVisual(it, 24, false) +
-          '<span style="font-size:11.5px;font-weight:600;color:#f5f5f7">' + C.esc(it.name) + '</span>' +
-        '</div>'
-      );
-    }).filter(Boolean);
+  function loadBorderAdj(uid, borderId) {
+    try {
+      var raw = localStorage.getItem(getBorderAdjKey(uid, borderId));
+      if (raw) {
+        var p = JSON.parse(raw);
+        return {
+          scale: Math.max(0.6, Math.min(1.6, Number(p.scale) || 1)),
+          x: Math.max(-35, Math.min(35, Number(p.x) || 0)),
+          y: Math.max(-45, Math.min(45, Number(p.y) || 0))
+        };
+      }
+    } catch (e) {}
+    return { scale: 1, x: 0, y: 0 };
+  }
 
-    if (!badges.length) return '';
-    return '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px">' + badges.join('') + '</div>';
+  function openBorderTuneSheet(borderId) {
+    var u = S.user || {};
+    var bItem = C.findItem(borderId);
+    if (!bItem) return;
+
+    var cur = loadBorderAdj(u.id, bItem.id);
+    var photoSrc = u.photoUrl ? API.assetUrl(u.photoUrl) : '';
+    var borderSrc = (bItem.imageUrl || bItem.image_url) ? API.assetUrl(bItem.imageUrl || bItem.image_url) : '';
+
+    C.sheet(
+      '<h2>🎯 Atur Posisi & Ukuran Border</h2>' +
+      '<p class="sub">Pasin posisi & besar kecil <b>' + C.esc(bItem.name) + '</b> (misal topi/tanduk) terhadap lingkaran avatar lo.</p>' +
+
+      '<div style="display:grid;place-items:center;padding:24px 0;background:radial-gradient(circle,rgba(56,189,248,.14),rgba(15,23,42,.92));border:1px solid rgba(255,255,255,.12);border-radius:16px;margin:10px 0">' +
+        '<div style="position:relative;width:104px;height:104px">' +
+          '<div style="width:104px;height:104px;border-radius:50%;overflow:hidden;border:2.5px dashed rgba(92,225,255,.75);background:#1e293b;display:grid;place-items:center">' +
+            (photoSrc ? '<img src="' + C.esc(photoSrc) + '" style="width:100%;height:100%;object-fit:cover">' : '<b style="font-size:28px">' + C.esc((u.name || '?')[0].toUpperCase()) + '</b>') +
+          '</div>' +
+          (borderSrc
+            ? '<img id="bt-prev-img" src="' + C.esc(borderSrc) + '" style="position:absolute;inset:-14px;width:132px;height:132px;object-fit:contain;pointer-events:none;transform:translate(' + cur.x + 'px,' + cur.y + 'px) scale(' + cur.scale + ')">'
+            : '<div id="bt-prev-img" style="position:absolute;inset:-10px;border-radius:50%;border:3px solid #38bdf8;pointer-events:none;transform:translate(' + cur.x + 'px,' + cur.y + 'px) scale(' + cur.scale + ')"></div>') +
+        '</div>' +
+      '</div>' +
+
+      '<label>UKURAN / SKALA (<span id="bt-val-s">' + Math.round(cur.scale * 100) + '%</span>)</label>' +
+      '<input id="bt-scale" type="range" min="60" max="160" value="' + Math.round(cur.scale * 100) + '">' +
+
+      '<label>GESER KIRI / KANAN (<span id="bt-val-x">' + cur.x + 'px</span>)</label>' +
+      '<input id="bt-x" type="range" min="-35" max="35" value="' + cur.x + '">' +
+
+      '<label>GESER ATAS / BAWAH (<span id="bt-val-y">' + cur.y + 'px</span>)</label>' +
+      '<input id="bt-y" type="range" min="-45" max="45" value="' + cur.y + '">' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
+        '<button type="button" class="btn b2" id="bt-reset">↺ Reset Tengah</button>' +
+        '<button type="button" class="btn" id="bt-save">💾 Simpan Posisi</button>' +
+      '</div>'
+    );
+
+    var elS = document.getElementById('bt-scale');
+    var elX = document.getElementById('bt-x');
+    var elY = document.getElementById('bt-y');
+    var prev = document.getElementById('bt-prev-img');
+
+    function syncPreview() {
+      var sc = (Number(elS.value) || 100) / 100;
+      var px = Number(elX.value) || 0;
+      var py = Number(elY.value) || 0;
+      document.getElementById('bt-val-s').textContent = Math.round(sc * 100) + '%';
+      document.getElementById('bt-val-x').textContent = px + 'px';
+      document.getElementById('bt-val-y').textContent = py + 'px';
+      if (prev) prev.style.transform = 'translate(' + px + 'px,' + py + 'px) scale(' + sc + ')';
+    }
+
+    elS.oninput = syncPreview;
+    elX.oninput = syncPreview;
+    elY.oninput = syncPreview;
+
+    document.getElementById('bt-reset').onclick = function () {
+      elS.value = '100';
+      elX.value = '0';
+      elY.value = '0';
+      syncPreview();
+    };
+
+    document.getElementById('bt-save').onclick = function () {
+      var payload = {
+        scale: (Number(elS.value) || 100) / 100,
+        x: Number(elX.value) || 0,
+        y: Number(elY.value) || 0
+      };
+      try {
+        localStorage.setItem(getBorderAdjKey(u.id, bItem.id), JSON.stringify(payload));
+      } catch (e) {}
+      C.shut();
+      C.refresh();
+      C.notify('Mas Raka', 'Posisi Border Tersimpan 🎯', 'Ukuran & posisi ' + bItem.name + ' udah dipasin ke avatar lo!');
+    };
   }
 
   function renderPunkCard(u) {
@@ -258,14 +337,15 @@
       : '';
 
     return (
-      '<div class="pc" style="margin-bottom:18px">' +
+      '<div class="pc" style="margin-bottom:18px;overflow:visible">' +
         '<div class="cv" style="' + bannerStyle + '"></div>' +
-        '<div class="pb">' +
-          C.renderAvatar(u, 'full') +
+        '<div class="pb" style="padding-top:26px;overflow:visible">' +
+          '<div style="display:grid;place-items:center;padding:18px 0 8px;overflow:visible">' +
+            C.renderAvatar(u, 'full') +
+          '</div>' +
           '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
           '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + tier.icon + ' ' + tier.title + '</div>' +
           (u.bio ? '<p class="bio">' + C.esc(u.bio) + '</p>' : '') +
-          renderPinnedGiftsShowcase(u) +
           (u.spotifyUrl ? renderSpotifyCard(u.spotifyUrl) : '') +
           '<div style="display:flex;gap:8px;margin-top:10px">' +
             '<button class="btn b2" style="margin-top:0;flex:1" data-act="pid-edit">Edit Profil & Banner</button>' +
@@ -298,9 +378,12 @@
           '</div>'
         : '<div class="grp" style="margin-bottom:14px"><div class="rw"><small>Belum punya Card Skin. Mampir ke Lapak Rongsok buat cek koleksinya!</small></div></div>') +
 
-      '<h3 class="gh">AVATAR BORDER · TAP PASANG / LEPAS</h3>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">' +
+        '<h3 class="gh" style="margin:0">AVATAR BORDER · TAP PASANG</h3>' +
+        (u.equippedBorderId ? '<button class="pill" style="font-size:11px" data-act="pid-tune-border" data-id="' + C.esc(u.equippedBorderId) + '">🎯 Atur Posisi</button>' : '') +
+      '</div>' +
       (borders.length
-        ? '<div class="hs" style="margin-bottom:14px">' +
+        ? '<div class="hs" style="margin-bottom:14px;margin-top:8px">' +
             '<button data-act="pid-equip-border" data-id="" class="' + (!u.equippedBorderId ? 'on' : '') + '"><div style="height:56px;display:grid;place-items:center;font-size:20px">🚫</div>Lepas</button>' +
             borders.map(function (entry) {
               var it = entry.item;
@@ -309,12 +392,12 @@
               return '<button data-act="pid-equip-border" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 56, false) + C.esc(it.name + qtyTag) + '</button>';
             }).join('') +
           '</div>'
-        : '<div class="grp" style="margin-bottom:14px"><div class="rw"><small>Belum punya Avatar Border. Cek koleksi di Lapak Rongsok yuk!</small></div></div>') +
+        : '<div class="grp" style="margin-bottom:14px;margin-top:8px"><div class="rw"><small>Belum punya Avatar Border. Cek koleksi di Lapak Rongsok yuk!</small></div></div>') +
 
-      '<h3 class="gh">KOLEKSI GIFT PROFIL · PASANG HINGGA 6 (' + pinnedIds.length + '/6)</h3>' +
+      '<h3 class="gh">ORBIT GIFT DI SEBELAH PP (' + pinnedIds.length + '/6 PINNED)</h3>' +
       (gifts.length
         ? '<div class="hs">' +
-            '<button data-act="pid-pin-gift" data-id="" class="' + (!pinnedIds.length ? 'on' : '') + '"><div style="height:58px;display:grid;place-items:center;font-size:20px">🚫</div>Lepas Semua</button>' +
+            '<button data-act="pid-pin-gift" data-id="" class="' + (!pinnedIds.length ? 'on' : '') + '"><div style="height:58px;display:grid;place-items:center;font-size:20px">🚫</div>Reset Pin</button>' +
             gifts.map(function (entry) {
               var it = entry.item;
               var active = pinnedIds.indexOf(it.id) !== -1;
@@ -426,6 +509,8 @@
       C.notify('Mas Raka', 'PunkID Disalin 🪪', 'Nomor kartu ' + (u.memberNo || 'PSK-0001') + ' udah disalin ke clipboard!');
     } else if (act === 'pid-edit') {
       openEditProfileSheet();
+    } else if (act === 'pid-tune-border') {
+      openBorderTuneSheet(t.getAttribute('data-id'));
     } else if (act === 'pid-pick-ring') {
       document.querySelectorAll('#ed-rings .chip').forEach(function (c) { c.classList.remove('on'); });
       t.classList.add('on');
@@ -506,7 +591,7 @@
         var res = await API.post('/api/profile/equip', { type: 'border', itemId: nextBorder });
         if (res.user) S.user = res.user;
         C.refresh();
-        C.notify('Mas Raka', 'Avatar Border', nextBorder ? 'Border terpasang di foto profil lo!' : 'Border dilepas.');
+        C.notify('Mas Raka', 'Avatar Border', nextBorder ? 'Border terpasang! Tap "🎯 Atur Posisi" kalau mau geser/zoom.' : 'Border dilepas.');
       } catch (err) {
         C.notify('Mas Raka', 'Info', err.message);
       }
@@ -519,9 +604,9 @@
         if (res.user) S.user = res.user;
         C.refresh();
         var msg = !rawGiftId
-          ? 'Semua gift dilepas dari kartu profil.'
-          : (wasPinned ? 'Gift dilepas dari profil.' : 'Gift dipasang ke profil! (' + getPinnedList(S.user).length + '/6)');
-        C.notify('Mas Raka', 'Gift Profil', msg);
+          ? 'Pin gift di-reset.'
+          : (wasPinned ? 'Gift dilepas dari pin utama.' : 'Gift dipasang ke orbit profil! (' + getPinnedList(S.user).length + '/6)');
+        C.notify('Mas Raka', 'Orbit Gift Profil', msg);
       } catch (err) {
         C.notify('Mas Raka', 'Info', err.message);
       }
