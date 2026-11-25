@@ -116,3 +116,444 @@
   border: 3px solid #0f1626;
   object-fit: cover;
 }
+
+/* Ring Warna Dasar */
+.r0 { background: #ffffff40; }
+.r1 { background: conic-gradient(#ffd633, #ff9500, #fff3a0, #ffd633); }
+.r2 { background: #4d9bff; box-shadow: 0 0 20px #176BFF; }
+.r3 { background: conic-gradient(#f33, #fd3, #3f6, #3df, #53f, #f3d, #f33); animation: hue 4s linear infinite; }
+
+/* Discord-Style Animated/Custom Border Overlay (PNG/GIF/WEBP Transparan) */
+.dc-border {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scale(1.24);
+  pointer-events: none;
+  z-index: 6;
+  object-fit: contain;
+  animation: borderFloat 4s ease-in-out infinite;
+}
+
+/* Efek Avatar Border Bawaan Lapak Rongsok (CSS Glow Ring) */
+.dc-border-fx {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 6;
+  border: 3px solid var(--bc1, #8FC7FF);
+  box-shadow:
+    0 0 12px var(--bc2, #176BFF),
+    inset 0 0 8px var(--bc1, #8FC7FF);
+  animation: borderPulse 2.8s ease-in-out infinite;
+}
+
+.dc-border-fx::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--bc1, #8FC7FF);
+  opacity: 0.75;
+  animation: borderSpin 10s linear infinite;
+}
+
+.dc-border-fx.border-gold {
+  border-width: 3.5px;
+  box-shadow: 0 0 16px #eab308, 0 0 28px rgba(255, 214, 51, 0.55), inset 0 0 10px #fff3a0;
+}
+
+.dc-border-fx.border-crimson {
+  box-shadow: 0 0 16px #dc2626, 0 0 26px rgba(220, 38, 38, 0.55), inset 0 0 8px #ff9e9e;
+}
+
+.dc-border-fx.border-violet {
+  box-shadow: 0 0 16px #7c3aed, 0 0 26px rgba(124, 58, 237, 0.55), inset 0 0 8px #e5b8ff;
+}
+
+.dc-border-fx.border-toxic {
+  box-shadow: 0 0 15px #16a34a, 0 0 24px rgba(34, 197, 94, 0.5), inset 0 0 8px #9effa9;
+}
+
+@keyframes borderPulse {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(1.03); opacity: 1; }
+}
+
+@keyframes borderSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Mini Avatar di List Warga, Leaderboard & Kartu PunkID */
+.mini-av {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.mini-av img.pfp, .mini-av span {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #176BFF, #0b2a6e);
+  font-weight: 700;
+  font-size: 16px;
+}
+.mini-av .dc-border {
+  transform: scale(1.24);
+  animation: none;
+}
+.mini-av .dc-border-fx {
+  inset: -2px;
+  border-width: 2px;
+  animation: none;
+}
+.mini-av .dc-border-fx::before {
+  display: none;
+}
+
+.nm {
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.role-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--yel);
+  color: var(--navy);
+  text-transform: uppercase;
+}
+.lim-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 214, 51, 0.22), rgba(245, 158, 11, 0.28));
+  border: 1px solid rgba(255, 214, 51, 0.5);
+  color: #fde047;
+  text-transform: uppercase;
+}
+.hd {
+  color: var(--mut);
+  font-size: 13px;
+  margin-top: 3px;
+  text-align: center;
+}
+.bio {
+  margin: 10px auto 2px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 0.5px solid rgba(255, 255, 255, 0.09);
+  line-height: 1.4;
+  font-size: 13.5px;
+  color: #e2e8f0;
+  text-align: center;
+}
+.sp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1DB95433;
+  color: #6df0a0;
+  border: 0.5px solid #1DB95488;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 4px;
+}
+
+/* Upload Banner Box (Edit Profil & Ruang Dalang) */
+.up-box {
+  border: 1.5px dashed var(--gb);
+  border-radius: 16px;
+  padding: 14px;
+  background: #ffffff0a;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.up-box:active {
+  border-color: var(--yel);
+  background: #ffffff14;
+}
+.up-prev {
+  width: 100%;
+  height: 110px;
+  border-radius: 12px;
+  object-fit: cover;
+  margin-top: 8px;
+  display: block;
+  border: 0.5px solid #ffffff33;
+}
+.up-prev.icon-mode {
+  width: 96px;
+  height: 96px;
+  margin: 8px auto 0;
+  object-fit: contain;
+  background: #080b12;
+  padding: 8px;
+}
+
+/* =========================================================
+   2. KARTU PUNKID (DEPAN & BELAKANG + 5 CARD SKIN)
+   ========================================================= */
+.cr { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.br { color: var(--yel); letter-spacing: 0.12em; font-size: 13px; }
+.chp {
+  width: 44px;
+  height: 33px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #ffe879, #c98f00);
+  box-shadow: inset 0 0 0 0.5px #0004;
+}
+.cn {
+  font: 600 18px/1.2 ui-monospace, Menlo, monospace;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.mag { height: 42px; background: #000; margin-top: 18px; }
+.sig {
+  margin: 0 18px;
+  height: 34px;
+  background: repeating-linear-gradient(90deg, #f5f7fc 0 6px, #dfe5f1 6px 12px);
+  color: var(--navy);
+  font: italic 600 15px/34px Georgia, serif;
+  padding: 0 10px;
+}
+.stt {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0 14px;
+  text-align: center;
+  font-size: 11px;
+  color: #c9d6f0;
+}
+.stt b { display: block; font-size: 19px; color: #fff; }
+.tn { text-align: center; font-size: 11px; color: var(--mut); }
+
+/* Varian Tema 5 Card Skin di Kartu PunkID */
+.fc.skin-obsidian {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(148, 163, 184, 0.22), transparent 55%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 4px, transparent 4px 8px),
+    linear-gradient(135deg, #0f172a 0%, #020617 100%) !important;
+  border: 1px solid rgba(148, 163, 184, 0.4) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65) !important;
+}
+
+.fc.skin-chrome {
+  background:
+    linear-gradient(135deg, #f8fafc 0%, #94a3b8 32%, #475569 68%, #e2e8f0 100%) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 10px 28px rgba(148, 163, 184, 0.35) !important;
+}
+.fc.skin-chrome .br { color: #0f172a !important; }
+
+.fc.skin-neon {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.45), transparent 55%),
+    radial-gradient(circle at 85% 80%, rgba(168, 85, 247, 0.45), transparent 55%),
+    linear-gradient(135deg, #090d16 0%, #1e1b4b 50%, #3b0764 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.65) !important;
+  box-shadow: 0 10px 30px rgba(56, 189, 248, 0.28) !important;
+}
+
+.fc.skin-crimson {
+  background:
+    radial-gradient(circle at 80% 20%, rgba(248, 113, 113, 0.35), transparent 55%),
+    linear-gradient(135deg, #450a0a 0%, #7f1d1d 52%, #180404 100%) !important;
+  border: 1px solid rgba(248, 113, 113, 0.55) !important;
+  box-shadow: 0 10px 30px rgba(185, 28, 28, 0.35) !important;
+}
+
+.fc.skin-gold {
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.55), transparent 45%),
+    linear-gradient(135deg, #fef08a 0%, #eab308 42%, #854d0e 85%, #fde047 100%) !important;
+  color: #1c1917 !important;
+  border: 1px solid #fef9c3 !important;
+  box-shadow: 0 12px 32px rgba(234, 179, 8, 0.4) !important;
+}
+.fc.skin-gold .br { color: #1c1917 !important; }
+
+/* =========================================================
+   3. LAPAK RONGSOK, INVENTORY & TABS
+   ========================================================= */
+.tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: none;
+  padding: 7px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #ffffff12;
+  color: var(--mut);
+  border: 0.5px solid transparent;
+}
+.tab.on {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--gblue);
+}
+
+.bal { font-size: 14.5px; color: var(--mut); margin: -6px 0 14px; }
+.bal b { color: var(--yel); }
+
+.gg { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.gc {
+  border-radius: 20px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff10;
+  border: 0.5px solid #ffffff22;
+  position: relative;
+  text-align: center;
+}
+.gc b { font-size: 14.5px; }
+.gc small { color: var(--mut); font-size: 11.5px; }
+.gc .stk {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #FF453A33;
+  color: #ff857d;
+  padding: 2px 7px;
+  border-radius: 8px;
+}
+.pr {
+  margin-top: 6px;
+  background: #ffffff1c;
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--yel);
+}
+
+/* Preview Try-On Discord Border di Sheet Lapak */
+.try-box {
+  position: relative;
+  width: 116px;
+  height: 116px;
+  margin: 10px auto 14px;
+  display: grid;
+  place-items: center;
+}
+.try-box img.pfp, .try-box span {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #176BFF, #0b2a6e);
+  font-size: 36px;
+  font-weight: 700;
+}
+.try-box .dc-border {
+  transform: scale(1.15);
+}
+.try-box .dc-border-fx {
+  inset: 6px;
+}
+
+.hs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.hs button {
+  flex: none;
+  min-width: 86px;
+  border-radius: 16px;
+  padding: 8px 10px;
+  background: #ffffff10;
+  border: 0.5px solid #ffffff22;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--mut);
+}
+.hs .on { border-color: var(--yel); color: var(--yel); background: #ffd63314; }
+
+/* =========================================================
+   4. CHIPS, ARENA GABUT & PHOTOBOOTH
+   ========================================================= */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background: #ffffff12;
+  border: 0.5px solid var(--gb);
+  font-size: 13.5px;
+}
+.chip.on { background: var(--blue); border-color: var(--gblue); font-weight: 600; }
+
+.game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.game-card {
+  background: linear-gradient(160deg, #ffffff16, #ffffff08);
+  border: 0.5px solid #ffffff22;
+  border-radius: 20px;
+  padding: 16px 14px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.game-card em { font-style: normal; font-size: 28px; }
+.game-card b { font-size: 15px; }
+.game-card small { font-size: 12px; color: var(--mut); line-height: 1.3; }
+
+.pb-canvas {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 18px;
+  margin: 10px auto;
+  display: block;
+  border: 1px solid var(--gb);
+  background: #080b12;
+}
+
+.emp {
+  text-align: center;
+  color: var(--mut);
+  margin: 44px 0;
+  line-height: 1.5;
+  font-size: 14px;
+}
