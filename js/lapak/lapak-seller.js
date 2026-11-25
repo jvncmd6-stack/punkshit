@@ -6,8 +6,9 @@
   window.PunkLapak = window.PunkLapak || {};
   window.PunkLapak.pendingShopFile = null;
   window.PunkLapak.pendingCollabFile = null;
+  window.PunkLapak.pendingCollabUrl = '';
 
-  function bindMediaPicker(dropId, fileId, labelId, prevId, stateKey) {
+  function bindMediaPicker(dropId, fileId, labelId, prevId, stateKey, onLoaded) {
     var drop = document.getElementById(dropId);
     var inp = document.getElementById(fileId);
     var lbl = document.getElementById(labelId);
@@ -23,11 +24,21 @@
       lbl.style.color = '#34C759';
 
       var url = URL.createObjectURL(file);
-      prevBox.style.display = 'block';
-      if (/\.webm$/i.test(file.name) || file.type === 'video/webm') {
-        prevBox.innerHTML = '<video src="' + url + '" autoplay loop muted playsinline style="max-height:130px;border-radius:10px"></video>';
-      } else {
-        prevBox.innerHTML = '<img src="' + url + '" style="max-height:130px;border-radius:10px">';
+      if (stateKey === 'pendingCollabFile') {
+        window.PunkLapak.pendingCollabUrl = url;
+      }
+
+      if (prevBox) {
+        prevBox.style.display = 'block';
+        if (/\.webm$/i.test(file.name) || file.type === 'video/webm') {
+          prevBox.innerHTML = '<video src="' + url + '" autoplay loop muted playsinline style="max-height:130px;border-radius:10px"></video>';
+        } else {
+          prevBox.innerHTML = '<img src="' + url + '" style="max-height:130px;border-radius:10px">';
+        }
+      }
+
+      if (typeof onLoaded === 'function') {
+        onLoaded(file, url);
       }
     };
   }
@@ -141,9 +152,19 @@
 
   function openCollabSubmitSheet() {
     window.PunkLapak.pendingCollabFile = null;
+    window.PunkLapak.pendingCollabUrl = '';
+    var u = S.user || {};
+    var photoSrc = u.photoUrl ? API.assetUrl(u.photoUrl) : '';
+    var initial = C.esc((u.name || '?')[0].toUpperCase());
+
     C.sheet(
       '<h2>🎨 Ajukan Item Collab</h2>' +
-      '<p class="sub">Kirim desain Avatar Border, Card Skin, atau Gift. Kalau di-ACC admin, bakal rilis di Lapak Rongsok & lo dapat <b>royalti 20% PSC</b> tiap laku!</p>' +
+      '<p class="sub">Kirim desain Avatar Border, Card Skin, atau Gift. Kalau di-ACC admin, otomatis masuk gudang lo gratis & dapat <b>royalti 20% PSC</b> tiap laku!</p>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div><label>TIPE ITEM PROFIL</label><select id="col-type"><option value="border">🖼️ Avatar Border</option><option value="skin">🪪 Card Skin</option><option value="gift">🎁 Gift Pin</option></select></div>' +
+        '<div><label>AJUAN HARGA (PSC)</label><input id="col-price" type="number" min="50" max="5000" value="150"></div>' +
+      '</div>' +
 
       '<label>FILE DESAIN (PNG TRANSPARAN / GIF / WEBM)</label>' +
       '<div class="up-box" id="col-drop">' +
@@ -151,15 +172,52 @@
         '<div id="col-file-label" style="font-size:13px;font-weight:600;color:var(--gblue)">📁 Tap Upload Desain Karya Lo</div>' +
         '<small style="color:var(--mut);font-size:11px">Disarankan PNG transparan / WebM rasio 1:1</small>' +
       '</div>' +
-      '<div id="col-prev-box" style="display:none;margin:8px 0;text-align:center"></div>' +
 
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
-        '<div><label>TIPE ITEM PROFIL</label><select id="col-type"><option value="border">🖼️ Avatar Border</option><option value="skin">🪪 Card Skin</option><option value="gift">🎁 Gift Pin</option></select></div>' +
-        '<div><label>AJUAN HARGA (PSC)</label><input id="col-price" type="number" min="50" max="5000" value="150"></div>' +
+      '<div id="col-stage-wrap" style="margin:10px 0;padding:14px 12px;border-radius:16px;background:radial-gradient(circle,rgba(56,189,248,.14),rgba(15,23,42,.95));border:1px solid rgba(255,255,255,.12)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+          '<b style="font-size:11.5px;color:#7DD3FC" id="col-stage-title">🎯 PRATINJAU LINGKARAN ACUAN AVATAR</b>' +
+          '<button type="button" class="pill" id="col-adj-reset" style="font-size:10px;padding:3px 8px">↺ Reset</button>' +
+        '</div>' +
+
+        '<div id="col-stage-canvas" style="display:grid;place-items:center;min-height:148px;position:relative;overflow:hidden">' +
+          /* Mode Avatar Guide (untuk Border & Gift) */
+          '<div id="col-avatar-guide" style="position:relative;width:104px;height:104px">' +
+            '<div style="width:104px;height:104px;border-radius:50%;overflow:hidden;border:2.5px dashed rgba(92,225,255,.85);box-shadow:0 0 0 4px rgba(92,225,255,.12);background:#1e293b;display:grid;place-items:center">' +
+              (photoSrc
+                ? '<img src="' + C.esc(photoSrc) + '" style="width:100%;height:100%;object-fit:cover;opacity:.88">'
+                : '<b style="font-size:28px;color:#94a3b8">' + initial + '</b>') +
+            '</div>' +
+            '<div id="col-media-layer" style="position:absolute;inset:-14px;width:132px;height:132px;display:grid;place-items:center;pointer-events:none;transform:translate(0px,0px) scale(1)"></div>' +
+          '</div>' +
+
+          /* Mode Card Skin Guide */
+          '<div id="col-card-guide" style="display:none;position:relative;width:248px;height:146px;border-radius:16px;overflow:hidden;border:2px dashed rgba(92,225,255,.85);background:#0f172a">' +
+            '<div id="col-card-media-layer" style="position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;transform:translate(0px,0px) scale(1)"></div>' +
+            '<div style="position:relative;z-index:2;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;height:100%;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.55))">' +
+              '<div style="display:flex;justify-content:space-between;font-size:9px;font-weight:800;color:#fff"><span>PUNKSHIT.OS</span><span>PREVIEW</span></div>' +
+              '<div style="display:flex;align-items:center;gap:8px">' +
+                '<div style="width:28px;height:28px;border-radius:50%;border:1.5px solid #fff;background:#1e293b;overflow:hidden;display:grid;place-items:center;font-size:11px;font-weight:800">' +
+                  (photoSrc ? '<img src="' + C.esc(photoSrc) + '" style="width:100%;height:100%;object-fit:cover">' : initial) +
+                '</div>' +
+                '<div style="text-align:left"><div style="font-size:11px;font-weight:700;color:#fff">' + C.esc(u.name || 'Warga') + '</div><div style="font-size:9px;color:#cbd5e1">' + C.esc(u.memberNo || 'PSK-0001') + '</div></div>' +
+              '</div>' +
+              '<div style="font-size:10px;font-weight:700;color:#FFD633;text-align:left">PSK •••• ••••</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div id="col-sliders-box" style="margin-top:8px">' +
+          '<label style="margin-top:4px">BESAR / KECIL (<span id="col-val-s">100%</span>)</label>' +
+          '<input id="col-adj-scale" type="range" min="60" max="160" value="100">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+            '<div><label>POSISI X (<span id="col-val-x">0px</span>)</label><input id="col-adj-x" type="range" min="-40" max="40" value="0"></div>' +
+            '<div><label>POSISI Y (<span id="col-val-y">0px</span>)</label><input id="col-adj-y" type="range" min="-45" max="45" value="0"></div>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
 
       '<label>NAMA ITEM COLLAB</label>' +
-      '<input id="col-name" maxlength="40" placeholder="mis. Cyber Katana Aura">' +
+      '<input id="col-name" maxlength="40" placeholder="mis. Topi Beanie / Cyber Katana">' +
 
       '<label>DESKRIPSI SINGKAT</label>' +
       '<textarea id="col-desc" rows="2" maxlength="140" placeholder="Ceritain dikit konsep desain item lo..."></textarea>' +
@@ -167,7 +225,76 @@
       '<button class="btn" data-act="lp-collab-send">🚀 KIRIM PENGAJUAN KE ADMIN</button>'
     );
 
-    bindMediaPicker('col-drop', 'col-file', 'col-file-label', 'col-prev-box', 'pendingCollabFile');
+    var typeEl = document.getElementById('col-type');
+    var scaleEl = document.getElementById('col-adj-scale');
+    var xEl = document.getElementById('col-adj-x');
+    var yEl = document.getElementById('col-adj-y');
+    var avatarGuide = document.getElementById('col-avatar-guide');
+    var cardGuide = document.getElementById('col-card-guide');
+    var stageTitle = document.getElementById('col-stage-title');
+    var mediaLayer = document.getElementById('col-media-layer');
+    var cardMediaLayer = document.getElementById('col-card-media-layer');
+
+    function renderCollabMediaElements(file, url) {
+      if (!file || !url) return;
+      var isWebm = /\.webm$/i.test(file.name) || file.type === 'video/webm';
+      var tagAvatar = isWebm
+        ? '<video src="' + url + '" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:contain"></video>'
+        : '<img src="' + url + '" style="width:100%;height:100%;object-fit:contain">';
+      var tagCard = isWebm
+        ? '<video src="' + url + '" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover"></video>'
+        : '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover">';
+      if (mediaLayer) mediaLayer.innerHTML = tagAvatar;
+      if (cardMediaLayer) cardMediaLayer.innerHTML = tagCard;
+    }
+
+    function updateCollabStage() {
+      var kind = typeEl ? typeEl.value : 'border';
+      var sc = (Number(scaleEl.value) || 100) / 100;
+      var px = Number(xEl.value) || 0;
+      var py = Number(yEl.value) || 0;
+
+      document.getElementById('col-val-s').textContent = Math.round(sc * 100) + '%';
+      document.getElementById('col-val-x').textContent = px + 'px';
+      document.getElementById('col-val-y').textContent = py + 'px';
+
+      if (kind === 'skin') {
+        avatarGuide.style.display = 'none';
+        cardGuide.style.display = 'block';
+        stageTitle.textContent = '🪪 PRATINJAU KARTU PUNKID';
+        cardMediaLayer.style.transform = 'translate(' + px + 'px,' + py + 'px) scale(' + sc + ')';
+      } else if (kind === 'gift') {
+        avatarGuide.style.display = 'block';
+        cardGuide.style.display = 'none';
+        stageTitle.textContent = '🎁 PRATINJAU ORBIT GIFT DI LUAR AVATAR';
+        // Posisi default gift berada di orbit luar lingkaran avatar (+56px kanan-atas)
+        mediaLayer.style.transform = 'translate(' + (px + 48) + 'px,' + (py - 32) + 'px) scale(' + (sc * 0.34) + ')';
+      } else {
+        avatarGuide.style.display = 'block';
+        cardGuide.style.display = 'none';
+        stageTitle.textContent = '🎯 PRATINJAU LINGKARAN ACUAN AVATAR';
+        mediaLayer.style.transform = 'translate(' + px + 'px,' + py + 'px) scale(' + sc + ')';
+      }
+    }
+
+    typeEl.onchange = updateCollabStage;
+    scaleEl.oninput = updateCollabStage;
+    xEl.oninput = updateCollabStage;
+    yEl.oninput = updateCollabStage;
+
+    document.getElementById('col-adj-reset').onclick = function () {
+      scaleEl.value = '100';
+      xEl.value = '0';
+      yEl.value = '0';
+      updateCollabStage();
+    };
+
+    updateCollabStage();
+
+    bindMediaPicker('col-drop', 'col-file', 'col-file-label', null, 'pendingCollabFile', function (file, url) {
+      renderCollabMediaElements(file, url);
+      updateCollabStage();
+    });
   }
 
   window.PunkLapak.openNewShopItemSheet = openNewShopItemSheet;
