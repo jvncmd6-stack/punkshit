@@ -163,20 +163,32 @@
 
   function renderCollectionTab() {
     var st = A.state;
+    var dailyEarned = Number(st.dailyPscEarned || 0);
+    var dailyCap = Number(st.dailyPscCap || 120);
+    var remCap = Math.max(0, dailyCap - dailyEarned);
+
     var activeItems = st.collections.filter(function (it) { return !it.is_sold; });
     var uniqueFishKeys = {};
+    var uniqueClawKeys = {};
     st.collections.forEach(function (it) {
       if (it.category === 'fish') uniqueFishKeys[it.item_key] = true;
+      if (it.category === 'claw') uniqueClawKeys[it.item_key || it.name] = true;
     });
     var discoveredCount = Object.keys(uniqueFishKeys).length;
+    var clawCount = Object.keys(uniqueClawKeys).length;
     var totalSpecies = Math.max(st.fishdexTotal || 15, FISH_SPECIES_PREVIEW.length);
 
     var itemsHtml = activeItems.map(function (it) {
       var col = A.rarityColor(it.rarity);
       var icon = it.category === 'fish' ? '🐟' : it.category === 'claw' ? '🧸' : '🏆';
-      var subText = it.weight > 0 ? (it.weight + ' kg · ') : '';
-      var sellBtn = it.sell_price > 0
-        ? '<button class="pill" style="flex-shrink:0" data-act="ar-sell-item" data-id="' + it.id + '">Jual +' + it.sell_price + ' PSC</button>'
+      var subText = it.weight > 0 ? (it.weight + ' kg · ') : (it.category === 'claw' ? 'Capit · ' : '');
+      var rawPrice = Number(it.sell_price || 0);
+      var actualSellPrice = remCap <= 0 ? 0 : Math.min(rawPrice, remCap);
+
+      var sellBtn = rawPrice > 0
+        ? (actualSellPrice > 0
+            ? '<button class="pill" style="flex-shrink:0" data-act="ar-sell-item" data-id="' + it.id + '">Jual +' + actualSellPrice + ' PSC</button>'
+            : '<button class="pill" style="opacity:.55;flex-shrink:0" disabled title="Kuota 120 PSC/hari sudah penuh">Limit 120 Penuh</button>')
         : '<span class="pill" style="opacity:.7;flex-shrink:0">Koleksi</span>';
 
       return (
@@ -208,7 +220,7 @@
     return (
       '<div class="card" style="margin-bottom:12px">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px">' +
-          '<div style="min-width:0"><b>📖 Ensiklopedia Fishdex</b><small style="display:block;line-height:1.3">Koleksi seluruh spesies ikan Nusantara & mistis</small></div>' +
+          '<div style="min-width:0"><b>📖 Ensiklopedia Fishdex & Koleksi</b><small style="display:block;line-height:1.3">Ikan: ' + discoveredCount + '/' + totalSpecies + ' · Item Capit: ' + clawCount + '/12 · Kuota Jual Hari Ini: ' + dailyEarned + '/' + dailyCap + ' PSC</small></div>' +
           '<b style="color:#5CE1FF;white-space:nowrap;flex-shrink:0">' + discoveredCount + ' / ' + totalSpecies + '</b>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">' + fishdexGrid + '</div>' +
