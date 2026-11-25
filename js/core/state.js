@@ -129,27 +129,39 @@ window.PunkCoreState = (function () {
     var rawIds = Array.isArray(u.pinnedGifts)
       ? u.pinnedGifts
       : (u.pinnedGiftId ? [u.pinnedGiftId] : []);
+
     var items = rawIds.slice(0, 6).map(function (gid) {
-      return findItem(gid);
+      var found = findItem(gid);
+      if (found) return found;
+      if (Array.isArray(u.pinnedGiftItems)) {
+        for (var k = 0; k < u.pinnedGiftItems.length; k++) {
+          if (String(u.pinnedGiftItems[k].id) === String(gid)) return u.pinnedGiftItems[k];
+        }
+      }
+      return null;
     }).filter(Boolean);
 
     if (!items.length) return '';
 
-    var angles = [-28, 28, -62, 62, -96, 96];
-    var radius = 64;
+    // Posisi melayang rapi di luar avatar (ala Telegram), tanpa background oval
+    var slots = [
+      { x: -78, y: -44, rot: -10 },
+      { x:  78, y: -44, rot:  10 },
+      { x: -112, y: -6, rot: -14 },
+      { x:  112, y: -6, rot:  14 },
+      { x: -86, y:  32, rot:  -8 },
+      { x:  86, y:  32, rot:   8 }
+    ];
 
     return items.map(function (giftItem, idx) {
-      var deg = angles[idx] != null ? angles[idx] : (idx * 60);
-      var rad = (deg * Math.PI) / 180;
-      var dx = Math.round(Math.sin(rad) * radius);
-      var dy = Math.round(-Math.cos(rad) * radius);
+      var pos = slots[idx] || { x: 0, y: -76, rot: 0 };
       return (
         '<div class="av-gift-pin" title="' + esc(giftItem.name) + '" ' +
              'style="position:absolute;left:50%;top:50%;' +
-             'transform:translate(calc(-50% + ' + dx + 'px),calc(-50% + ' + dy + 'px));' +
-             'z-index:7;background:rgba(15,23,42,.95);border:1.5px solid rgba(255,255,255,.26);' +
-             'border-radius:50%;padding:3px;box-shadow:0 4px 12px rgba(0,0,0,.6);pointer-events:none">' +
-          renderItemVisual(giftItem, 22, false) +
+             'transform:translate(calc(-50% + ' + pos.x + 'px),calc(-50% + ' + pos.y + 'px)) rotate(' + pos.rot + 'deg);' +
+             'z-index:7;background:transparent;border:none;padding:0;box-shadow:none;' +
+             'filter:drop-shadow(0 3px 8px rgba(0,0,0,.65));pointer-events:none">' +
+          renderItemVisual(giftItem, 28, false) +
         '</div>'
       );
     }).join('');
