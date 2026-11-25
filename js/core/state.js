@@ -115,8 +115,11 @@ window.PunkCoreState = (function () {
       : '';
 
     if (borderUrl) {
+      var miniBorderStyle = isMini
+        ? 'position:absolute;inset:0;width:42px;height:42px;transform:scale(1.24);pointer-events:none;z-index:6;object-fit:contain'
+        : customStyle;
       return '<img class="dc-border" src="' + esc(API.assetUrl(borderUrl)) + '"' +
-        (customStyle ? ' style="' + customStyle + '"' : '') + ' alt="">';
+        (miniBorderStyle ? ' style="' + miniBorderStyle + '"' : '') + ' alt="">';
     }
     if (bItem) {
       var cols = bItem.colors || ['#8FC7FF', '#176BFF'];
@@ -143,7 +146,6 @@ window.PunkCoreState = (function () {
 
     if (!items.length) return '';
 
-    // Orbit menyebar di area banner atas & samping tanpa nabrak avatar
     var slots = [
       { x: -74,  y: -52, rot: -10, dur: '3.2s', delay: '0s' },
       { x:  74,  y: -52, rot:  10, dur: '3.6s', delay: '-1.1s' },
@@ -173,20 +175,27 @@ window.PunkCoreState = (function () {
     var isMini = mode === 'mini';
     var initial = esc((u.name || '?')[0].toUpperCase());
     var photoSrc = u.photoUrl || u.avatar || '';
-    var photo = photoSrc
-      ? '<img class="pfp" src="' + esc(API.assetUrl(photoSrc)) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'
-      : '';
-    var fallback = '<span style="' + (photoSrc ? 'display:none' : '') + '">' + initial + '</span>';
-    var borderHtml = renderBorderOverlay(u, isMini);
 
     if (isMini) {
-      return '<div class="mini-av">' + photo + fallback + borderHtml + '</div>';
+      var miniPhoto = photoSrc
+        ? '<img class="pfp" src="' + esc(API.assetUrl(photoSrc)) + '" alt="" style="width:42px;height:42px;max-width:42px;max-height:42px;border-radius:50%;object-fit:cover;display:block" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'
+        : '';
+      var miniFallback = '<span style="width:42px;height:42px;border-radius:50%;place-items:center;background:linear-gradient(135deg,#176BFF,#0b2a6e);font-weight:700;font-size:16px;' + (photoSrc ? 'display:none' : 'display:grid') + '">' + initial + '</span>';
+      return '<div class="mini-av" style="position:relative;width:42px;height:42px;min-width:42px;flex:none;display:grid;place-items:center">' +
+        miniPhoto + miniFallback + renderBorderOverlay(u, true) +
+      '</div>';
     }
 
+    var photo = photoSrc
+      ? '<img class="pfp" src="' + esc(API.assetUrl(photoSrc)) + '" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'">'
+      : '';
+    var fallback = '<span style="' + (photoSrc ? 'display:none' : '') + '">' + initial + '</span>';
+    var borderHtml = renderBorderOverlay(u, false);
     var pinHtml = renderOrbitGifts(u);
     var ringCls = 'r' + (Number(u.ringStyle) || 0);
-    return '<div class="av-wrap" style="position:relative">' +
-      '<div class="ring ' + ringCls + '">' + photo + fallback + '</div>' +
+
+    return '<div class="av-wrap" style="position:relative;width:92px;height:92px;margin:0 auto;z-index:4;display:grid;place-items:center;overflow:visible">' +
+      '<div class="ring ' + ringCls + '" style="width:92px;height:92px;border-radius:50%">' + photo + fallback + '</div>' +
       borderHtml +
       pinHtml +
     '</div>';
