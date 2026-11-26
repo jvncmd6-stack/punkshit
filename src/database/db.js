@@ -290,3 +290,4 @@ export function addAuditLog(actorId, action, detail) {
   db.prepare('INSERT INTO audit_logs (actor_id, action, detail, created_at) VALUES (?, ?, ?, ?)')
     .run(String(actorId), action, detail, Date.now());
 }
+});
