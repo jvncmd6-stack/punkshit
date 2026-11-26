@@ -54,8 +54,22 @@
     if (!themeId && u.id) {
       try { themeId = localStorage.getItem('punk_os_theme_' + String(u.id)) || ''; } catch (e) {}
     }
+    if (!themeId && !u.id) {
+      try { themeId = localStorage.getItem('punk_os_theme_active') || ''; } catch (e) {}
+    }
+
+    try {
+      if (themeId) {
+        localStorage.setItem('punk_os_theme_active', themeId);
+        if (u.id) localStorage.setItem('punk_os_theme_' + String(u.id), themeId);
+      } else if (u.id) {
+        localStorage.removeItem('punk_os_theme_active');
+        localStorage.removeItem('punk_os_theme_' + String(u.id));
+      }
+    } catch (e) {}
+
     var ph = document.getElementById('ph');
-    var wall = ph ? ph.querySelector('.wall') : null;
+    var wall = document.getElementById('ph-wall') || (ph ? ph.querySelector('.wall') : null);
     if (!ph) return;
 
     ph.classList.remove('theme-sakura', 'theme-carbon', 'theme-mint');
@@ -300,6 +314,7 @@
   L.isItemEquipped = isItemEquipped;
   L.openItemDetail = openItemDetail;
 
+  applyActiveOsTheme();
   setInterval(applyActiveOsTheme, 3000);
   setTimeout(applyActiveOsTheme, 600);
 })();
