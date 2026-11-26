@@ -22,7 +22,6 @@ function getFullCatalogMap() {
     if (it && it.id) map.set(String(it.id), it);
   }
 
-  // Pulihkan metadata item dari inventory.item_snapshot jika item sudah tidak ada di tabel items
   try {
     const snapRows = db.prepare(
       "SELECT item_id, item_snapshot FROM inventory WHERE item_snapshot IS NOT NULL AND item_snapshot != ''"
@@ -78,7 +77,6 @@ function attachExtraUserFields(row, catalogMap = null) {
   return formatted;
 }
 
-// GET /api/me -> Sinkronisasi state awal + konfigurasi URL Grup/Channel
 userRouter.get('/me', async (req, res) => {
   const uid = String(req.tgUser.id);
   let user = req.dbUser;
@@ -180,7 +178,6 @@ userRouter.get('/me', async (req, res) => {
   });
 });
 
-// POST /api/register -> Aktivasi PunkID pertama kali
 userRouter.post('/register', async (req, res) => {
   if (req.dbUser) {
     return res.json({ user: attachExtraUserFields(req.dbUser), inv: [] });
@@ -218,7 +215,6 @@ userRouter.post('/register', async (req, res) => {
   res.json({ user: attachExtraUserFields(freshUser), inv: [] });
 });
 
-// POST /api/profile/banner -> Upload gambar/GIF latar belakang profil
 userRouter.post('/profile/banner', requireUser, uploadMem.single('banner'), async (req, res) => {
   try {
     if (!req.file) {
@@ -233,7 +229,6 @@ userRouter.post('/profile/banner', requireUser, uploadMem.single('banner'), asyn
   }
 });
 
-// POST /api/profile -> Update nama, bio, link Spotify, & ring avatar
 userRouter.post('/profile', requireUser, (req, res) => {
   const name = String(req.body?.name || req.dbUser.name).trim().slice(0, 24);
   const bio = String(req.body?.bio || '').trim().slice(0, 90);
@@ -250,7 +245,6 @@ userRouter.post('/profile', requireUser, (req, res) => {
   res.json({ user: attachExtraUserFields(updated) });
 });
 
-// POST /api/profile/tuner -> Simpan posisi & ukuran Border Avatar / Orbit Gift ke database
 userRouter.post('/profile/tuner', requireUser, (req, res) => {
   const uid = req.dbUser.id;
   const { borderAdj, giftAdj } = req.body || {};
@@ -268,7 +262,6 @@ userRouter.post('/profile/tuner', requireUser, (req, res) => {
   res.json({ user: attachExtraUserFields(updated) });
 });
 
-// POST /api/profile/sync-telegram -> Tarik ulang foto profil & username terbaru dari Telegram
 userRouter.post('/profile/sync-telegram', requireUser, async (req, res) => {
   const firstName = req.tgUser.first_name || '';
   const lastName = req.tgUser.last_name || '';
@@ -282,7 +275,6 @@ userRouter.post('/profile/sync-telegram', requireUser, async (req, res) => {
   res.json({ user: attachExtraUserFields(updated) });
 });
 
-// POST /api/profile/equip -> Pasang / lepas Border Avatar, Tema OS, Multi-Gift Profil (>1), atau Card Skin
 userRouter.post('/profile/equip', requireUser, (req, res) => {
   const { type, itemId, itemIds } = req.body || {};
   const uid = req.dbUser.id;
@@ -335,7 +327,6 @@ userRouter.post('/profile/equip', requireUser, (req, res) => {
   res.json({ user: attachExtraUserFields(updated) });
 });
 
-// POST /api/profile/birthday -> Simpan tanggal ulang tahun
 userRouter.post('/profile/birthday', requireUser, (req, res) => {
   const bday = String(req.body?.birthday || '').trim();
   if (!/^\d{2}-\d{2}$/.test(bday)) {
@@ -346,7 +337,6 @@ userRouter.post('/profile/birthday', requireUser, (req, res) => {
   res.json({ user: attachExtraUserFields(updated) });
 });
 
-// POST /api/presence & /api/profile/presence -> Update status nongkrong warga
 function handlePresenceUpdate(req, res) {
   const raw = req.body?.presence || req.body?.status || req.body?.text || '';
   const cleaned = String(raw).replace(/undefined/gi, '').trim().slice(0, 32);
@@ -362,7 +352,6 @@ function handlePresenceUpdate(req, res) {
 userRouter.post('/presence', requireUser, handlePresenceUpdate);
 userRouter.post('/profile/presence', requireUser, handlePresenceUpdate);
 
-// GET /api/users/profile/:target -> Lihat profil publik warga lain (by ID atau @username)
 userRouter.get('/users/profile/:target', (req, res) => {
   const raw = String(req.params.target || '').trim().replace(/^@+/, '');
   if (!raw) return res.status(400).json({ error: 'Target warga tidak valid.' });
