@@ -243,37 +243,38 @@
     } else if (act === 'ms-export') {
       var cv = document.getElementById('pb-cv');
       if (!cv) return;
-      
-      cv.toBlob(function (blob) {
-        var file = new File([blob], 'punkshit-cover-' + Date.now() + '.png', { type: 'image/png' });
-        
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          navigator.share({
-            files: [file],
-            title: 'Punkshit Cover',
-            text: 'Cover Photobooth PUNKSHIT.OS'
-          }).catch(function () {});
-        } else {
-          var dataUrl = cv.toDataURL('image/png');
-          var w = window.open('');
-          if (w) {
-            w.document.write(
-              '<html><head><title>Simpan Cover Photobooth</title></head>' +
-              '<body style="background:#0b0d11;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;color:#fff;font-family:sans-serif;padding:16px;text-align:center">' +
-              '<p style="font-size:14px;margin-bottom:12px;color:#38bdf8;font-weight:600">Tekan dan tahan (Long Press) gambar di bawah, lalu pilih <b>Simpan ke Foto</b> atau <b>Download Image</b></p>' +
-              '<img src="' + dataUrl + '" style="max-width:100%;max-height:75vh;border-radius:14px;box-shadow:0 12px 35px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.15)">' +
-              '</body></html>'
-            );
-          } else {
-            var link = document.createElement('a');
-            link.download = 'punkshit-cover-' + Date.now() + '.png';
-            link.href = dataUrl;
-            link.click();
-          }
-        }
-      }, 'image/png');
+      var dataUrl = cv.toDataURL('image/png');
+      var fileName = 'punkshit-cover-' + Date.now() + '.png';
 
-      C.notify('Mas Raka', 'Photobooth 📸', 'Cover siap disimpan! Pilih Simpan ke Foto di menu HP lo.');
+      try {
+        var link = document.createElement('a');
+        link.download = fileName;
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {}
+
+      var sheetHtml =
+        '<div style="padding:16px;text-align:center">' +
+          '<h3 style="margin:0 0 6px;font-size:16px;color:#fff">📸 Simpan Cover Photobooth</h3>' +
+          '<p style="margin:0 0 12px;font-size:12.5px;color:#94a3b8;line-height:1.45">' +
+            'WebView Telegram tidak mengizinkan unduh otomatis. <b>Tekan & tahan gambar di bawah</b> selama 2 detik, lalu pilih <b>Simpan ke Foto / Download Image</b>.' +
+          '</p>' +
+          '<img src="' + dataUrl + '" alt="Photobooth Cover" style="width:100%;max-width:290px;border-radius:14px;border:1px solid rgba(255,255,255,.15);box-shadow:0 12px 28px rgba(0,0,0,.5);-webkit-touch-callout:default;user-select:auto">' +
+          '<button type="button" class="btn b2" style="margin-top:14px" data-act="shut">Tutup</button>' +
+        '</div>';
+
+      if (C.openSheet) {
+        C.openSheet(sheetHtml);
+      } else {
+        var sh = document.getElementById('sh');
+        var scr = document.getElementById('scr');
+        if (sh && scr) {
+          sh.innerHTML = sheetHtml;
+          sh.classList.add('on');
+          scr.classList.add('on');
+        }
+      }
+      C.notify('Mas Raka', 'Photobooth 📸', 'Tekan lama pada gambar untuk menyimpan ke galeri HP lo!');
     } else if (act === 'ms-post-board') {
       if (!M.pbState.img) {
         C.notify('Mas Raka', 'Pilih Foto Dulu', 'Pilih foto dulu sebelum kirim hasil Photobooth ke Board!');
