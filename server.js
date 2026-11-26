@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
+import { InputFile } from 'grammy';
 import { ENV } from './src/config/env.js';
 import { db, initDb } from './src/database/db.js';
 import { authTma } from './src/middlewares/authTma.js';
@@ -16,13 +18,28 @@ import { sparkArenaRouter } from './src/api/sparkArenaRoutes.js';
 import { sparkRouter } from './src/api/sparkRoutes.js';
 import * as botMod from './src/bot/index.js';
 
+// ============================================================
+// TAMENG ANTI-CRASH GLOBAL (Mencegah server mati mendadak)
+// ============================================================
+process.on('uncaughtException', (err) => {
+  console.error('[Anti-Crash UncaughtException]:', err?.stack || err?.message || err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Anti-Crash UnhandledRejection]:', reason);
+});
+
 fs.mkdirSync(ENV.DATA_DIR, { recursive: true });
 fs.mkdirSync(ENV.UPLOAD_DIR, { recursive: true });
 
 initDb();
 
-// Tabel Spark Buddies & Keamanan Akun di database SQLite utama
+// Tabel Spark Buddies, Keamanan Akun & Pengaturan Bot
 db.exec(`
+  CREATE TABLE IF NOT EXISTS bot_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS spark_pairs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user1 TEXT NOT NULL,
@@ -47,6 +64,46 @@ db.exec(`
 try { db.exec("ALTER TABLE spark_pairs ADD COLUMN case_status TEXT DEFAULT 'OPEN'"); } catch (_) {}
 try { db.exec('ALTER TABLE users ADD COLUMN is_frozen INTEGER DEFAULT 0'); } catch (_) {}
 
+// Auto-Backup Mingguan ke PC Owner setiap Minggu dini hari (WIB)
+async function runWeeklyAutoBackup(nowWib) {
+  try {
+    const ownerIds = (ENV.OWNER_IDS || []).map(String).filter(Boolean);
+    const bot = typeof botMod.getBotInstance === 'function' ? botMod.getBotInstance() : null;
+    if (!ownerIds.length || !bot) return;
+
+    // Hari Minggu (0) antara jam 02:00 - 04:59 WIB
+    if (nowWib.getUTCDay() !== 0) return;
+    const hourWib = nowWib.getUTCHours();
+    if (hourWib < 2 || hourWib > 4) return;
+
+    const todayStr = nowWib.toISOString().slice(0, 10);
+    const key = `auto_backup_${todayStr}`;
+    const done = db.prepare('SELECT value FROM bot_settings WHERE key = ?').get(key);
+    if (done) return;
+
+    db.prepare('INSERT OR REPLACE INTO bot_settings (key, value) VALUES (?, ?)').run(key, '1');
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (_) {}
+
+    const tmpFile = `/tmp/punkshit_autobackup_${todayStr}.tar.gz`;
+    execSync(`tar -czf "${tmpFile}" -C "${ENV.DATA_DIR}" .`);
+
+    const caption =
+      `🛡️ <b>AUTO-BACKUP MINGGUAN PUNKSHIT.OS</b>\n` +
+      `Tanggal: <code>${todayStr}</code>\n` +
+      `Simpan file ini baik-baik sebagai cadangan penuh database & aset upload.`;
+
+    await bot.api.sendDocument(ownerIds[0], new InputFile(tmpFile, `punkshit_backup_${todayStr}.tar.gz`), {
+      caption,
+      parse_mode: 'HTML'
+    });
+
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+    console.log(`[Auto-Backup] Backup mingguan ${todayStr} berhasil dikirim ke Owner.`);
+  } catch (err) {
+    console.error('[Auto-Backup Error]:', err.message);
+  }
+}
+
 // Auto-Cleanup data kadaluarsa + Reset Kasus Mingguan Spark tiap Senin WIB
 function cleanupAndMaintenance() {
   try {
@@ -59,11 +116,12 @@ function cleanupAndMaintenance() {
     db.prepare('DELETE FROM menfess_replies WHERE menfess_id IN (SELECT id FROM menfess WHERE created_at < ?)').run(sevenDaysAgo);
     db.prepare("DELETE FROM menfess WHERE status = 'approved' AND created_at < ?").run(sevenDaysAgo);
 
-    // Buka kembali kasus mingguan Spark yang sudah selesai saat masuk hari Senin (WIB)
     const nowWib = new Date(Date.now() + 7 * 3600 * 1000);
     if (nowWib.getUTCDay() === 1) {
       db.prepare("UPDATE spark_pairs SET case_status = 'OPEN' WHERE case_status = 'COMPLETED'").run();
     }
+
+    runWeeklyAutoBackup(nowWib);
   } catch (err) {
     console.error('[Maintenance Error]:', err.message);
   }
