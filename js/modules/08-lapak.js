@@ -4,205 +4,22 @@
   var S = C.S;
   var L = window.PunkLapak = window.PunkLapak || {};
 
-  function isLimitedItem(it) {
-    if (!it) return false;
-    var r = String(it.rarity || '').toLowerCase();
-    return Boolean(it.isLimited || it.isArchived || r.indexOf('limited') !== -1);
-  }
-
-  function extractInvMap() {
-    var rawInv = Array.isArray(S.inv) ? S.inv : [];
-    var map = {};
-    var order = [];
-
-    rawInv.forEach(function (entry) {
-      if (!entry) return;
-      var id = '';
-      var qty = 1;
-      var meta = null;
-
-      if (typeof entry === 'string' || typeof entry === 'number') {
-        id = String(entry).trim();
-      } else if (typeof entry === 'object') {
-        id = String(entry.itemId || entry.item_id || entry.id || entry.key || '').trim();
-        qty = Math.max(1, Number(entry.qty || entry.count || entry.amount || 1));
-        meta = entry;
-      }
-
-      if (!id) return;
-      if (!map[id]) {
-        map[id] = { id: id, qty: 0, meta: meta };
-        order.push(id);
-      }
-      map[id].qty += qty;
-      if (meta && !map[id].meta) map[id].meta = meta;
-    });
-
-    return { map: map, order: order, totalCount: order.length };
-  }
-
-  function resolveCatalogItem(id, fallbackMeta) {
-    var cleanId = String(id || '').trim();
-    var catalog = Array.isArray(S.catalog) ? S.catalog : [];
-    var found = catalog.find(function (c) {
-      return String(c.id || c.itemId || '').trim() === cleanId;
-    });
-    if (found) return found;
-
-    if (typeof C.findItem === 'function') {
-      var viaCore = C.findItem(cleanId);
-      if (viaCore) return viaCore;
-    }
-
-    var m = fallbackMeta || {};
-    var snap = {};
-    if (m.item_snapshot || m.snapshot) {
-      try {
-        var rawSnap = m.item_snapshot || m.snapshot;
-        snap = typeof rawSnap === 'string' ? JSON.parse(rawSnap) : rawSnap;
-      } catch (e) {}
-    }
-
-    return {
-      id: cleanId,
-      name: snap.name || m.name || m.title || cleanId.replace(/[_-]+/g, ' ').toUpperCase(),
-      type: snap.type || m.type || (cleanId.indexOf('skin') !== -1 ? 'skin' : cleanId.indexOf('gift') !== -1 ? 'gift' : 'border'),
-      rarity: snap.rarity || m.rarity || 'Limited',
-      price: Number(snap.price != null ? snap.price : m.price) || 0,
-      stock: 0,
-      imageUrl: snap.imageUrl || m.imageUrl || m.image_url || m.url || '',
-      colors: snap.colors || m.colors || null,
-      svgPath: snap.svgPath || m.svgPath || '',
-      skinClass: snap.skinClass || m.skinClass || m.cssClass || '',
-      isLimited: true,
-      isArchived: true,
-      desc: snap.desc || m.desc || 'Item edisi terbatas (Collab / Limited) PUNKSHIT.OS'
-    };
-  }
-
-  function isItemEquipped(u, it) {
-    if (!u || !it) return false;
-    var id = String(it.id);
-    if (it.type === 'border') return String(u.equippedBorderId || u.equipped_border_id || '') === id;
-    if (it.type === 'skin') return String(u.equippedSkinId || u.equipped_skin_id || '') === id;
-    if (it.type === 'gift') {
-      var pins = Array.isArray(u.pinnedGifts) ? u.pinnedGifts.map(String) : [];
-      if (pins.length) return pins.indexOf(id) !== -1;
-      return String(u.pinnedGiftId || u.pinned_gift_id || '') === id;
-    }
-    return false;
-  }
-
-  function getStockNum(it) {
-    if (!it || it.stock === null || it.stock === undefined || it.stock === '') return -1;
-    var n = Number(it.stock);
-    return Number.isNaN(n) ? -1 : n;
-  }
-
-  function openItemDetail(it) {
-    if (!it) return;
-    var u = S.user || {};
-    var invInfo = extractInvMap();
-    var ownedEntry = invInfo.map[String(it.id)];
-    var ownedQty = ownedEntry ? ownedEntry.qty : 0;
-    var owned = ownedQty > 0;
-    var equipped = isItemEquipped(u, it);
-    var myPsc = Number(u.psc) || 0;
-    var price = Number(it.price) || 0;
-    var archived = Boolean(it.isArchived);
-    var limited = isLimitedItem(it);
-    var stockNum = archived ? 0 : getStockNum(it);
-    var isOutOfStock = archived || stockNum === 0;
-    var maxBuyable = stockNum < 0
-      ? Math.max(1, Math.min(99, Math.floor(myPsc / Math.max(1, price))))
-      : Math.min(stockNum, Math.max(1, Math.floor(myPsc / Math.max(1, price))));
-    var stockInfo = archived
-      ? 'Edisi Terbatas · Sudah Ditarik dari Toko'
-      : (stockNum < 0 ? 'Stok: Unlimited' : (isOutOfStock ? 'STOK HABIS' : ('Sisa Stok: ' + stockNum)));
-
-    var qtySelectorHtml = (!isOutOfStock && price > 0)
-      ? '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 6px">' +
-          '<button type="button" class="pill" id="lp-qty-minus" style="font-size:15px;padding:4px 12px;font-weight:900">−</button>' +
-          '<span style="font-size:13px;font-weight:800">Jumlah: <b id="lp-qty-val" data-max="' + Math.max(1, maxBuyable) + '" data-price="' + price + '">1</b>x</span>' +
-          '<button type="button" class="pill" id="lp-qty-plus" style="font-size:15px;padding:4px 12px;font-weight:900">+</button>' +
-        '</div>'
-      : '';
-
-    var buyBtnHtml = isOutOfStock
-      ? '<button class="btn b2" disabled>' + (archived ? '✦ Edisi Limited (Penjualan Ditutup)' : '🚫 Stok Habis') + '</button>'
-      : '<button class="btn" id="lp-buy-btn" data-act="lp-buy" data-id="' + C.esc(it.id) + '"' + (myPsc < price ? ' disabled' : '') + '>' +
-          (owned ? '➕ Beli Lagi (1x) · ' : '🛒 Beli Sekarang (1x) · ') + price + ' PSC' +
-        '</button>';
-
-    var actionBtn = '';
-    if (it.type === 'gift') {
-      actionBtn =
-        (!archived
-          ? '<button class="btn" data-act="lp-toggle-send">🎁 KIRIM GIFT KE WARGA (' + price + ' PSC)</button>' +
-            '<div id="lp-send-box" hidden style="background:rgba(255,255,255,.05);padding:10px;border-radius:12px;margin-top:8px">' +
-              '<label>TARGET PENERIMA (@username)</label>' +
-              '<input id="lp-to" placeholder="@username">' +
-              '<label>PESAN UCAPAN</label>' +
-              '<input id="lp-msg" maxlength="100" placeholder="Tulis pesan manis atau nyindir...">' +
-              '<label style="display:flex;align-items:center;gap:6px;margin:8px 0"><input id="lp-anon" type="checkbox"> Kirim sebagai Anonim</label>' +
-              '<button class="btn" data-act="lp-send-gift" data-id="' + C.esc(it.id) + '">Kirim Gift · ' + price + ' PSC</button>' +
-            '</div>'
-          : '') +
-        qtySelectorHtml +
-        buyBtnHtml +
-        (owned
-          ? '<button class="btn b2" data-act="lp-equip-toggle" data-id="' + C.esc(it.id) + '">' + (equipped ? '📌 Lepas dari Orbit Profil' : '📌 Pasang di Orbit Profil') + '</button>'
-          : '');
-    } else if (owned) {
-      actionBtn =
-        '<button class="btn" data-act="lp-equip-toggle" data-id="' + C.esc(it.id) + '">' + (equipped ? '✅ Terpasang (Tap Lepas)' : '✨ Pasang ke Profil') + '</button>' +
-        qtySelectorHtml +
-        buyBtnHtml;
-    } else {
-      actionBtn = qtySelectorHtml + buyBtnHtml;
-    }
-
-    C.sheet(
-      '<div style="display:grid;place-items:center;padding:12px 0">' + C.renderItemVisual(it, 110, true) + '</div>' +
-      '<div style="text-align:center">' +
-        '<span class="pill">' + C.esc((it.type || 'item').toUpperCase()) + ' · ' + C.esc(it.rarity || 'Rare') + '</span>' +
-        (limited ? ' <span class="lim-tag">✦ LIMITED</span>' : '') +
-        (owned ? ' <span class="pill" style="background:#38BDF833;color:#7DD3FC">Dimiliki: ' + ownedQty + 'x</span>' : '') +
-        '<h2 style="margin-top:6px">' + C.esc(it.name) + '</h2>' +
-        '<div style="color:#FFD633;font-size:16px;font-weight:800;margin:4px 0">' + (price > 0 ? price + ' PSC ' : '') + '<small style="color:' + (isOutOfStock ? '#FCA5A5' : 'var(--mut)') + ';font-weight:600">(' + stockInfo + ')</small></div>' +
-        '<p class="sub">' + C.esc(it.desc || 'Item koleksi eksklusif PUNKSHIT.OS') + '</p>' +
-      '</div>' +
-      actionBtn +
-      '<button class="btn b2" data-act="shut">TUTUP</button>'
-    );
-
-    var minusBtn = document.getElementById('lp-qty-minus');
-    var plusBtn = document.getElementById('lp-qty-plus');
-    var qtyEl = document.getElementById('lp-qty-val');
-    var buyBtn = document.getElementById('lp-buy-btn');
-    if (minusBtn && plusBtn && qtyEl && buyBtn) {
-      var updateQtyUi = function (nextQty) {
-        var maxQ = Number(qtyEl.getAttribute('data-max')) || 1;
-        var unitPrice = Number(qtyEl.getAttribute('data-price')) || price;
-        var q = Math.max(1, Math.min(maxQ, nextQty));
-        qtyEl.textContent = String(q);
-        var total = q * unitPrice;
-        buyBtn.disabled = myPsc < total;
-        buyBtn.textContent = (owned ? '➕ Beli Lagi (' : '🛒 Beli Sekarang (') + q + 'x) · ' + total + ' PSC';
-      };
-      minusBtn.onclick = function () { updateQtyUi((Number(qtyEl.textContent) || 1) - 1); };
-      plusBtn.onclick = function () { updateQtyUi((Number(qtyEl.textContent) || 1) + 1); };
-    }
-  }
-
   function defaultRenderLapak() {
+    if (typeof L.applyActiveOsTheme === 'function') L.applyActiveOsTheme();
+
     var u = S.user || {};
     var tab = S.curTab.lapak || 'katalog';
     var catFilter = S.curTab.lpType || 'all';
-    var activeCatalog = (Array.isArray(S.catalog) ? S.catalog : []).filter(function (it) {
+    var allItems = typeof L.getMergedCatalogWithThemes === 'function'
+      ? L.getMergedCatalogWithThemes()
+      : (Array.isArray(S.catalog) ? S.catalog : []);
+
+    var activeCatalog = allItems.filter(function (it) {
       return !it.isArchived;
     });
-    var invInfo = extractInvMap();
+    var invInfo = typeof L.extractInvMap === 'function'
+      ? L.extractInvMap()
+      : { map: {}, order: [], totalCount: 0 };
 
     var header =
       '<div class="card" style="background:linear-gradient(135deg,rgba(23,107,255,.22),rgba(15,23,42,.92));border:1px solid rgba(143,199,255,.28)">' +
@@ -225,13 +42,14 @@
     var list = tab === 'lemari'
       ? invInfo.order.map(function (id) {
           var entry = invInfo.map[id];
-          return resolveCatalogItem(id, entry && entry.meta);
+          return L.resolveCatalogItem(id, entry && entry.meta);
         })
       : activeCatalog.filter(function (it) { return catFilter === 'all' || it.type === catFilter; });
 
     var filterBar = tab === 'katalog'
       ? '<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px">' +
           '<button class="pill" style="' + (catFilter === 'all' ? 'background:#2563EB;color:#fff' : '') + '" data-act="lp-type" data-type="all">Semua</button>' +
+          '<button class="pill" style="' + (catFilter === 'theme' ? 'background:#2563EB;color:#fff' : '') + '" data-act="lp-type" data-type="theme">🎨 Tema OS</button>' +
           '<button class="pill" style="' + (catFilter === 'border' ? 'background:#2563EB;color:#fff' : '') + '" data-act="lp-type" data-type="border">🖼️ Border</button>' +
           '<button class="pill" style="' + (catFilter === 'skin' ? 'background:#2563EB;color:#fff' : '') + '" data-act="lp-type" data-type="skin">🪪 Skin</button>' +
           '<button class="pill" style="' + (catFilter === 'gift' ? 'background:#2563EB;color:#fff' : '') + '" data-act="lp-type" data-type="gift">🎁 Gift</button>' +
@@ -242,9 +60,9 @@
       var ownedEntry = invInfo.map[String(it.id)];
       var ownedQty = ownedEntry ? ownedEntry.qty : 0;
       var owned = ownedQty > 0;
-      var eq = isItemEquipped(u, it);
-      var limited = isLimitedItem(it);
-      var stockNum = it.isArchived ? 0 : getStockNum(it);
+      var eq = L.isItemEquipped(u, it);
+      var limited = L.isLimitedItem(it);
+      var stockNum = it.isArchived ? 0 : L.getStockNum(it);
       var isOut = stockNum === 0;
 
       var topBadge = limited
@@ -259,11 +77,13 @@
             ? '<span class="pill" style="background:#38BDF833;color:#7DD3FC;font-size:9px">PUNYA ' + ownedQty + 'x</span>'
             : '<span style="color:#FFD633;font-weight:800;font-size:12px">' + it.price + ' PSC</span>');
 
+      var typeText = it.type === 'theme' ? 'TEMA OS' : (it.type || '').toUpperCase();
+
       return '<div class="card" data-act="lp-detail" data-id="' + C.esc(it.id) + '" style="padding:12px;text-align:center;cursor:pointer;position:relative">' +
         (topBadge ? '<div style="position:absolute;top:8px;right:8px">' + topBadge + '</div>' : '') +
         '<div style="display:grid;place-items:center;height:78px">' + C.renderItemVisual(it, 68, false) + '</div>' +
         '<div style="font-weight:700;font-size:13px;margin-top:6px;line-height:1.25">' + C.esc(it.name) + '</div>' +
-        '<small style="display:block;opacity:.7;font-size:10px;margin:2px 0 6px">' + C.esc((it.type || '').toUpperCase()) + ' · ' + C.esc(it.rarity || 'Rare') + '</small>' +
+        '<small style="display:block;opacity:.7;font-size:10px;margin:2px 0 6px">' + C.esc(typeText) + ' · ' + C.esc(it.rarity || 'Rare') + '</small>' +
         badge +
       '</div>';
     }).join('');
@@ -273,10 +93,6 @@
         (cards || '<div class="card" style="grid-column:1/-1"><p class="sub">' + (tab === 'lemari' ? 'Lemari lu masih kosong. Belanja dulu di Katalog!' : 'Belum ada item di kategori ini.') + '</p></div>') +
       '</div>';
   }
-
-  L.isItemEquipped = L.isItemEquipped || isItemEquipped;
-  L.openItemDetail = openItemDetail;
-  L.resolveCatalogItem = resolveCatalogItem;
 
   C.Views.lapak = (typeof L.renderLapak === 'function') ? L.renderLapak : defaultRenderLapak;
   if (typeof L.renderLapakWarga === 'function') {
@@ -474,19 +290,40 @@
       }
     } else if (act === 'lp-detail') {
       var itemId = t.getAttribute('data-id');
-      var invInfo = extractInvMap();
+      var invInfo = L.extractInvMap();
       var entry = invInfo.map[String(itemId)];
-      openItemDetail(resolveCatalogItem(itemId, entry && entry.meta));
+      L.openItemDetail(L.resolveCatalogItem(itemId, entry && entry.meta));
     } else if (act === 'lp-equip-toggle') {
       var eqId = t.getAttribute('data-id');
-      var eqItem = resolveCatalogItem(eqId);
+      var eqItem = L.resolveCatalogItem(eqId);
       if (!eqItem) return;
-      var currentlyEquipped = isItemEquipped(S.user, eqItem);
+      var currentlyEquipped = L.isItemEquipped(S.user, eqItem);
       var eqType = eqItem.type === 'gift' ? 'pin' : eqItem.type;
       var payloadItemId = eqItem.type === 'gift' ? eqItem.id : (currentlyEquipped ? null : eqItem.id);
 
       t.disabled = true;
       try {
+        if (eqItem.type === 'theme') {
+          var nextThemeId = currentlyEquipped ? '' : eqItem.id;
+          try {
+            if (S.user && S.user.id) {
+              if (nextThemeId) localStorage.setItem('punk_os_theme_' + String(S.user.id), nextThemeId);
+              else localStorage.removeItem('punk_os_theme_' + String(S.user.id));
+            }
+          } catch (e) {}
+          try {
+            var thRes = await API.post('/api/profile/equip', { type: 'theme', itemId: nextThemeId || null });
+            if (thRes && thRes.user) S.user = thRes.user;
+          } catch (_) {
+            if (S.user) S.user.equippedThemeId = nextThemeId;
+          }
+          L.applyActiveOsTheme();
+          C.shut();
+          C.refresh();
+          C.notify('Mas Raka', 'Tema OS', nextThemeId ? (eqItem.name + ' diterapkan ke layar!') : 'Tema dikembalikan ke default.');
+          return;
+        }
+
         var eqRes = await API.post('/api/profile/equip', { type: eqType, itemId: payloadItemId });
         if (eqRes.user) S.user = eqRes.user;
         C.shut();
@@ -501,7 +338,7 @@
       if (box) box.hidden = !box.hidden;
     } else if (act === 'lp-buy') {
       var id = t.getAttribute('data-id');
-      var it = resolveCatalogItem(id);
+      var it = L.resolveCatalogItem(id);
       var qtyEl = document.getElementById('lp-qty-val');
       var buyQty = qtyEl ? Math.max(1, Number(qtyEl.textContent) || 1) : 1;
       var totalCost = (Number(it.price) || 0) * buyQty;
@@ -527,7 +364,7 @@
       }
     } else if (act === 'lp-send-gift') {
       var gid = t.getAttribute('data-id');
-      var git = resolveCatalogItem(gid);
+      var git = L.resolveCatalogItem(gid);
       var to = (document.getElementById('lp-to').value || '').trim().replace(/^@?/, '@');
       var msg = (document.getElementById('lp-msg').value || '').trim();
       var anonEl = document.getElementById('lp-anon');
