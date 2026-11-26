@@ -25,6 +25,11 @@
     { id: 'cool', name: 'Midnight Cool', css: 'contrast(112%) saturate(120%) hue-rotate(-10deg)' }
   ];
 
+  function getTomorrowStr() {
+    var d = new Date(Date.now() + 24 * 3600 * 1000);
+    return d.toISOString().slice(0, 10);
+  }
+
   function renderMuseum() {
     var tab = S.curTab.museum || 'booth';
 
@@ -39,7 +44,7 @@
       return (
         tabsHtml +
         '<div class="grp" style="margin-bottom:14px">' +
-          '<div class="rw"><div><b>📸 Photobooth Punkshit</b><small>Abadikan momen tongkrongan dengan frame & tone khas markas. Ekspor PNG siap share!</small></div></div>' +
+          '<div class="rw"><div><b>📸 Photobooth Punkshit</b><small>Abadikan momen tongkrongan dengan frame & tone khas markas. Simpan PNG atau langsung pajang ke Board!</small></div></div>' +
         '</div>' +
 
         '<input type="file" id="pb-file" accept="image/png,image/jpeg,image/webp" hidden>' +
@@ -66,28 +71,48 @@
         '<input id="pb-cap" maxlength="36" placeholder="mis. Nongki Malam Minggu" value="' + C.esc(pbState.caption || (S.user && S.user.name) || '') + '">' +
 
         '<canvas id="pb-cv" class="pb-canvas" width="600" height="750"></canvas>' +
-        '<button class="btn" data-act="ms-export">💾 SIMPAN / UNDUH PNG</button>'
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
+          '<button class="btn b2" style="margin-top:0" data-act="ms-export">💾 Unduh PNG</button>' +
+          '<button class="btn" style="margin-top:0" data-act="ms-post-board">🚀 Kirim ke Board</button>' +
+        '</div>'
       );
     }
 
     if (tab === 'capsule') {
-      var capBody = typeof C.renderCapsuleForm === 'function'
-        ? C.renderCapsuleForm('ms')
-        : '<div class="grp"><div class="rw"><small>Memuat formulir Kapsul Waktu...</small></div></div>';
-      return tabsHtml + capBody;
+      return (
+        tabsHtml +
+        '<div class="grp" style="margin-bottom:14px">' +
+          '<div class="rw"><div><b>📦 Kapsul Waktu Markas</b><small>Tulis pesan buat diri lo sendiri atau anak-anak tongkrongan di masa depan. Pesan terkunci rapat sampai tanggal yang lo tentuin!</small></div></div>' +
+        '</div>' +
+        '<label for="cap-date">TANGGAL BUKA SEGEL</label>' +
+        '<input id="cap-date" type="date" min="' + getTomorrowStr() + '" value="' + getTomorrowStr() + '">' +
+        '<label for="cap-msg">ISI PESAN KAPSUL</label>' +
+        '<textarea id="cap-msg" rows="4" maxlength="280" placeholder="Tulis harapan, prediksi, atau pesan rahasia buat masa depan..."></textarea>' +
+        '<button class="btn" data-act="core-capsule">🔒 SEGEL KAPSUL WAKTU</button>'
+      );
     }
+
+    var feedItems = (S.feed || []).slice(0, 8);
+    var feedHtml = feedItems.length
+      ? feedItems.map(function (f) {
+          var tStr = f.createdAt ? new Date(f.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : 'Arsip';
+          return '<div class="rw"><div><b>📌 ' + C.esc(f.text) + '</b><small>Tercatat di log markas · ' + C.esc(tStr) + '</small></div></div>';
+        }).join('')
+      : '<div class="rw"><small>Belum ada catatan arsip terbaru di markas.</small></div>';
 
     return (
       tabsHtml +
       '<div class="grp" style="margin-bottom:12px">' +
         '<div class="rw"><div><b>🏛️ Some moments deserve to stay.</b><small>Arsip kenangan, quote ikonik, dan dokumentasi event pilihan pengurus tayang di Channel resmi Punkshit.</small></div></div>' +
       '</div>' +
-      '<div class="grp">' +
+      '<div class="grp" style="margin-bottom:14px">' +
         '<div class="rw">' +
           '<div><b>🖼️ Kirim Momen ke Meme & Galeri Board</b><small>Punya foto atau meme seru bareng warga? Unggah biar masuk arsip!</small></div>' +
           '<button class="pill" data-act="app" data-id="meme">Buka Board</button>' +
         '</div>' +
-      '</div>'
+      '</div>' +
+      '<h3 class="gh">JEJAK ARSIP MARKAS TERBARU</h3>' +
+      '<div class="grp">' + feedHtml + '</div>'
     );
   }
 
@@ -276,6 +301,29 @@
       link.href = cv.toDataURL('image/png');
       link.click();
       C.notify('Mas Raka', 'Photobooth 📸', 'Sip, foto PNG berhasil disimpan ke perangkat lo!');
+    } else if (act === 'ms-post-board') {
+      if (!pbState.img) {
+        C.notify('Mas Raka', 'Pilih Foto Dulu', 'Pilih foto dulu sebelum kirim hasil Photobooth ke Board!');
+        return;
+      }
+      var cvBoard = document.getElementById('pb-cv');
+      if (!cvBoard) return;
+      t.disabled = true;
+      t.textContent = 'Mengirim...';
+      try {
+        var blob = await new Promise(function (resolve) { cvBoard.toBlob(resolve, 'image/png'); });
+        var fd = new FormData();
+        fd.append('meme', blob, 'photobooth-' + Date.now() + '.png');
+        var capVal = (document.getElementById('pb-cap').value || '').trim();
+        fd.append('caption', '📸 Photobooth: ' + (capVal || (S.user && S.user.name) || 'Warga Markas'));
+        await API.upload('/api/meme', fd);
+        C.notify('Mas Raka', '→ Grup Punkshit 📸', 'Mantap! Hasil Photobooth lo udah dikirim ke Meme & Galeri Board!');
+      } catch (err) {
+        C.notify('Mas Raka', 'Belum Berhasil', err.message);
+      } finally {
+        t.disabled = false;
+        t.textContent = '🚀 Kirim ke Board';
+      }
     } else if (act === 'mm-pick') {
       var mf = document.getElementById('mm-file');
       if (mf) mf.click();
