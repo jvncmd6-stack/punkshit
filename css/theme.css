@@ -9,6 +9,17 @@
   --stage: #05070c;
   --gb: rgba(255, 255, 255, 0.24);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Variabel Dinamis Tema OS (Default) */
+  --os-app-bg: #0c1322;
+  --os-nav-bg: rgba(12, 19, 34, 0.82);
+  --os-sheet-bg: #121b30;
+  --os-ban-bg: rgba(24, 34, 58, 0.9);
+  --os-accent: #176BFF;
+  --os-accent-txt: #4d9bff;
+  --os-glass-bg: rgba(255, 255, 255, 0.14);
+  --os-card-tint: rgba(255, 255, 255, 0.06);
+
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -63,6 +74,51 @@ button {
   background: var(--deep);
 }
 
+/* ============================================================
+   TEMA OS LENGKAP (HOME + SEMUA APP VIEW + SHEET + BANNER)
+   ============================================================ */
+.phone.theme-sakura {
+  --blue: #db2777;
+  --gblue: #f9a8d4;
+  --gb: rgba(244, 114, 182, 0.34);
+  --os-app-bg: linear-gradient(180deg, #1d0e24 0%, #120919 100%);
+  --os-nav-bg: rgba(29, 14, 36, 0.84);
+  --os-sheet-bg: #23112b;
+  --os-ban-bg: rgba(45, 19, 54, 0.92);
+  --os-accent: #db2777;
+  --os-accent-txt: #f472b6;
+  --os-glass-bg: rgba(244, 114, 182, 0.14);
+  --os-card-tint: rgba(244, 114, 182, 0.08);
+}
+
+.phone.theme-carbon {
+  --blue: #0284c7;
+  --gblue: #7dd3fc;
+  --gb: rgba(148, 163, 184, 0.26);
+  --os-app-bg: linear-gradient(180deg, #090d16 0%, #05070c 100%);
+  --os-nav-bg: rgba(9, 13, 22, 0.86);
+  --os-sheet-bg: #0f1522;
+  --os-ban-bg: rgba(17, 24, 39, 0.94);
+  --os-accent: #0284c7;
+  --os-accent-txt: #38bdf8;
+  --os-glass-bg: rgba(148, 163, 184, 0.11);
+  --os-card-tint: rgba(148, 163, 184, 0.06);
+}
+
+.phone.theme-mint {
+  --blue: #059669;
+  --gblue: #6ee7b7;
+  --gb: rgba(52, 211, 153, 0.32);
+  --os-app-bg: linear-gradient(180deg, #071b1a 0%, #051015 100%);
+  --os-nav-bg: rgba(7, 27, 26, 0.84);
+  --os-sheet-bg: #0b2422;
+  --os-ban-bg: rgba(11, 38, 35, 0.92);
+  --os-accent: #059669;
+  --os-accent-txt: #34d399;
+  --os-glass-bg: rgba(52, 211, 153, 0.13);
+  --os-card-tint: rgba(52, 211, 153, 0.07);
+}
+
 @media (min-width: 500px) {
   .phone {
     border-radius: 55px;
@@ -90,7 +146,7 @@ button {
 
 /* Frutiger Aero Glass Surface */
 .glass {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--os-glass-bg);
   backdrop-filter: blur(24px) saturate(1.7);
   -webkit-backdrop-filter: blur(24px) saturate(1.7);
   border: 0.5px solid var(--gb);
@@ -337,17 +393,17 @@ button {
   z-index: 95;
 }
 
-/* App View Container & Navigation */
+/* App View Container & Navigation (Ikut Tema OS Aktif) */
 .av {
   position: absolute;
   inset: 0;
   z-index: 60;
-  background: #0c1322;
+  background: var(--os-app-bg);
   transform: scale(0.2);
   opacity: 0;
   pointer-events: none;
   border-radius: 50px;
-  transition: transform 0.42s var(--ease), opacity 0.25s, border-radius 0.42s;
+  transition: transform 0.42s var(--ease), opacity 0.25s, border-radius 0.42s, background 0.35s;
 }
 .av.open {
   transform: none;
@@ -371,14 +427,14 @@ button {
   transition: background 0.2s, border-color 0.2s;
 }
 .nav.s {
-  background: rgba(12, 19, 34, 0.78);
+  background: var(--os-nav-bg);
   backdrop-filter: blur(22px) saturate(1.6);
   -webkit-backdrop-filter: blur(22px) saturate(1.6);
-  border-bottom-color: #ffffff1f;
+  border-bottom-color: var(--gb);
 }
 
 .bk {
-  color: #4d9bff;
+  color: var(--os-accent-txt);
   font-size: 16.5px;
   height: 40px;
   padding: 0 6px;
@@ -386,6 +442,9 @@ button {
   align-items: center;
   gap: 3px;
   z-index: 2;
+}
+.bk svg {
+  stroke: currentColor;
 }
 .nt {
   position: absolute;
@@ -419,10 +478,10 @@ button {
 
 /* Grouped Lists & Form Controls */
 .grp {
-  background: #ffffff10;
+  background: var(--os-card-tint);
   border-radius: 16px;
   overflow: hidden;
-  border: 0.5px solid #ffffff14;
+  border: 0.5px solid var(--gb);
 }
 .rw {
   display: flex;
@@ -433,7 +492,7 @@ button {
   min-height: 52px;
 }
 .rw + .rw {
-  border-top: 0.5px solid #ffffff1a;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.12);
 }
 .rw small {
   display: block;
@@ -451,7 +510,7 @@ button {
 }
 
 .pill {
-  background: var(--blue);
+  background: var(--os-accent);
   color: #fff;
   font-weight: 600;
   font-size: 13.5px;
@@ -479,7 +538,7 @@ input, textarea, select {
   min-height: 46px;
   border-radius: 14px;
   border: 0.5px solid var(--gb);
-  background: #ffffff12;
+  background: var(--os-card-tint);
   color: var(--ink);
   font: inherit;
   font-size: 15.5px;
@@ -496,8 +555,8 @@ select option {
   color: var(--ink);
 }
 input:focus, textarea:focus, select:focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 3px #176BFF55;
+  border-color: var(--os-accent);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14);
 }
 
 .btn {
@@ -520,7 +579,8 @@ input:focus, textarea:focus, select:focus {
   pointer-events: none;
 }
 .b2 {
-  background: #ffffff18;
+  background: var(--os-card-tint);
+  border: 0.5px solid var(--gb);
   color: var(--ink);
   box-shadow: none;
 }
@@ -531,7 +591,7 @@ input:focus, textarea:focus, select:focus {
   box-shadow: none;
 }
 
-/* Modal Bottom Sheet & Banner */
+/* Modal Bottom Sheet & Banner (Ikut Tema OS Aktif) */
 .scrim {
   position: absolute;
   inset: 0;
@@ -552,11 +612,11 @@ input:focus, textarea:focus, select:focus {
   right: 0;
   bottom: 0;
   z-index: 110;
-  background: #121b30;
+  background: var(--os-sheet-bg);
   border-radius: 30px 30px 0 0;
   padding: 8px 20px calc(30px + env(safe-area-inset-bottom, 0px));
   transform: translateY(105%);
-  transition: transform 0.42s var(--ease);
+  transition: transform 0.42s var(--ease), background 0.35s;
   max-height: 90%;
   overflow-y: auto;
   border-top: 0.5px solid var(--gb);
@@ -603,8 +663,8 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   gap: 11px;
   transform: translateY(-145%);
-  transition: transform 0.45s var(--ease);
-  background: rgba(24, 34, 58, 0.88);
+  transition: transform 0.45s var(--ease), background 0.35s;
+  background: var(--os-ban-bg);
   text-align: left;
 }
 .ban.on {
