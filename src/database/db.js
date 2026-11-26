@@ -240,7 +240,6 @@ export function initDb() {
     );
   `);
 
-  // Migrasi aman untuk database lama agar kolom baru otomatis tersedia
   safeAddColumn('users', 'is_frozen INTEGER DEFAULT 0');
   safeAddColumn('users', 'extra_spark_slots INTEGER DEFAULT 0');
   safeAddColumn('users', "border_adj TEXT DEFAULT ''");
@@ -290,4 +289,3 @@ export function addAuditLog(actorId, action, detail) {
   db.prepare('INSERT INTO audit_logs (actor_id, action, detail, created_at) VALUES (?, ?, ?, ?)')
     .run(String(actorId), action, detail, Date.now());
 }
-});
