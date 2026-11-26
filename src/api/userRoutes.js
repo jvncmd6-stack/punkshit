@@ -382,6 +382,3 @@ userRouter.get('/users/profile/:target', (req, res) => {
     itemCount
   });
 });
-```[cite: 14]
-
-Seluruh jalur tema OS (`Sakura Velvet OS`, `Carbon Stealth OS`, dan `Cyber Mint OS`) dari database, backend API, sampai layar aplikasi sudah terhubung penuh. Kalau lo mau lanjut ke fitur berikutnya—misalnya ngecek route pembelian di `shopRoutes.js` atau bikin tampilan **Profil Warga** ikut nampilin tema OS yang lagi dipake warga lain—kirim filenya ke sini!
