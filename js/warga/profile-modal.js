@@ -60,11 +60,56 @@
     );
   }
 
+  function resolveGiftAdjForUser(u, giftId, slotIdx) {
+    var defaultSlots = [
+      { x: -74,  y: -52 },
+      { x:  74,  y: -52 },
+      { x: -116, y: -12 },
+      { x:  116, y: -12 },
+      { x: -86,  y:  28 },
+      { x:  86,  y:  28 }
+    ];
+    var fallback = defaultSlots[slotIdx] || { x: 0, y: -78 };
+    if (u && u.giftAdj && typeof u.giftAdj === 'object' && u.giftAdj[giftId]) {
+      var srv = u.giftAdj[giftId];
+      return {
+        scale: Math.max(0.5, Math.min(2.2, Number(srv.scale) || 1)),
+        x: Math.max(-145, Math.min(145, Number(srv.x) || 0)),
+        y: Math.max(-110, Math.min(65, Number(srv.y) || 0))
+      };
+    }
+    return { scale: 1, x: fallback.x, y: fallback.y };
+  }
+
+  function renderPublicOrbitPins(u) {
+    var ids = Array.isArray(u.pinnedGifts) ? u.pinnedGifts : (u.pinnedGiftId ? [u.pinnedGiftId] : []);
+    if (!ids.length) return '';
+    return ids.slice(0, 6).map(function (gid, idx) {
+      var it = C.findItem(gid);
+      if (!it && Array.isArray(u.pinnedGiftItems)) {
+        it = u.pinnedGiftItems.find(function (x) { return String(x.id) === String(gid); });
+      }
+      if (!it) return '';
+      var adj = resolveGiftAdjForUser(u, it.id, idx);
+      var sz = Math.round(28 * adj.scale);
+      return (
+        '<div style="position:absolute;left:50%;top:50%;' +
+             'transform:translate(calc(-50% + ' + adj.x + 'px),calc(-50% + ' + adj.y + 'px));' +
+             'z-index:7;pointer-events:none">' +
+          C.renderItemVisual(it, sz, false) +
+        '</div>'
+      );
+    }).join('');
+  }
+
   function renderPublicGifts(u) {
     var ids = Array.isArray(u.pinnedGifts) ? u.pinnedGifts : (u.pinnedGiftId ? [u.pinnedGiftId] : []);
     if (!ids.length) return '';
     var badges = ids.map(function (gid) {
       var it = C.findItem(gid);
+      if (!it && Array.isArray(u.pinnedGiftItems)) {
+        it = u.pinnedGiftItems.find(function (x) { return String(x.id) === String(gid); });
+      }
       if (!it) return '';
       var isLim = it.isLimited || it.isArchived || String(it.rarity || '').toLowerCase().indexOf('limited') !== -1;
       return (
@@ -189,8 +234,9 @@
         '<div class="pc" style="margin-bottom:12px;overflow:visible">' +
           '<div class="cv" style="' + bannerStyle + '"></div>' +
           '<div class="pb">' +
-            '<div class="av-slot">' +
+            '<div class="av-slot" style="position:relative">' +
               C.renderAvatar(u, 'full') +
+              renderPublicOrbitPins(u) +
             '</div>' +
             '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
             '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + rk.title + '</div>' +
