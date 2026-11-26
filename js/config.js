@@ -50,7 +50,7 @@
 
     ICONS: {
       markas:     ['Markas',        '#8FC7FF', '#176BFF', 'M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3l9-8z'],
-      absen:      ['Absen',   '#FFE666', '#D97706', 'M12 2c1 4-2 6-2 9a4 4 0 008 0c0-2-1-4-1-6 3 2 5 5 5 9a10 10 0 11-20 0c0-5 4-9 10-12z'],
+      absen:      ['Absen',         '#FFE666', '#D97706', 'M12 2c1 4-2 6-2 9a4 4 0 008 0c0-2-1-4-1-6 3 2 5 5 5 9a10 10 0 11-20 0c0-5 4-9 10-12z'],
       spark:      ['Spark Buddies', '#FFD24A', '#EA580C', 'M13 2L4 14h7l-1 8 9-12h-7l1-8z'],
       kas:        ['Kas Rusuh',     '#93C5FD', '#1D4ED8', 'M3 7a3 3 0 013-3h12a3 3 0 013 3v10a3 3 0 01-3 3H6a3 3 0 01-3-3V7zm13 5a2 2 0 100 .01V12z'],
       lapak:      ['Lapak Rongsok', '#67E8F9', '#0E7490', 'M4 9l1.5-5h13L20 9v2a3 3 0 01-2 2.8V20H6v-6.2A3 3 0 014 11V9zm6 6v3h4v-3h-4z'],
@@ -64,6 +64,7 @@
       radio:      ['Radio Gang',    '#5EEAD4', '#0F766E', 'M4 13a8 8 0 0116 0v6a2 2 0 01-2 2h-2v-7h2v-1a6 6 0 00-12 0v1h2v7H6a2 2 0 01-2-2v-6z'],
       event:      ['Event & Rusuh', '#FCA5A5', '#B91C1C', 'M7 2h2v2h6V2h2v2h3a2 2 0 012 2v14a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h3V2zm13 8H4v10h16V10z'],
       meme:       ['Meme Board',    '#7DD3FC', '#0369A1', 'M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zm4.5 4a1.8 1.8 0 100 3.6 1.8 1.8 0 000-3.6zM4 17h16l-5-6.5-4 5-2.5-3L4 17z'],
+      museum:     ['Museum Markas', '#FCD34D', '#B45309', 'M12 2L2 7v2h20V7L12 2zm-7 9v7H3v2h18v-2h-2v-7h-2v7h-3v-7h-2v7H9v-7H7v7H5v-7H5z'],
       misi:       ['Misi Jalanan',  '#BEF264', '#4D7C0F', 'M9 2h6v2h4a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h4V2zm1.5 13.6l6.2-6.2-1.4-1.4-4.8 4.8-2.3-2.3-1.4 1.4 3.7 3.7z'],
       kapsul:     ['Time Capsule',  '#CBD5E1', '#334155', 'M6 2h12v3l-4 5 4 5v7H6v-7l4-5-4-5V2zm3 15v3h6v-3l-3-3.8L9 17z'],
       rules:      ['Pasal & Help',  '#94A3B8', '#1E293B', 'M12 2l8 3.5v6.2c0 5.1-3.4 9.7-8 11.3-4.6-1.6-8-6.2-8-11.3V5.5L12 2zm-1 6v6h2V8h-2zm0 8v2h2v-2h-2z'],
@@ -77,8 +78,8 @@
       'absen', 'spark', 'kas', 'lapak',
       'lapakwarga', 'arena', 'warga', 'fame',
       'kotak', 'sidang', 'wanted', 'radio',
-      'event', 'meme', 'misi', 'kapsul',
-      'rules'
+      'event', 'meme', 'museum', 'misi',
+      'kapsul', 'rules'
     ],
 
     DOCK: ['markas', 'gue', 'group', 'channel'],
