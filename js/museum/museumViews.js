@@ -243,38 +243,54 @@
     } else if (act === 'ms-export') {
       var cv = document.getElementById('pb-cv');
       if (!cv) return;
-      var dataUrl = cv.toDataURL('image/png');
       var fileName = 'punkshit-cover-' + Date.now() + '.png';
 
-      try {
-        var link = document.createElement('a');
-        link.download = fileName;
-        link.href = dataUrl;
-        link.click();
-      } catch (err) {}
-
-      var sheetHtml =
-        '<div style="padding:16px;text-align:center">' +
-          '<h3 style="margin:0 0 6px;font-size:16px;color:#fff">📸 Simpan Cover Photobooth</h3>' +
-          '<p style="margin:0 0 12px;font-size:12.5px;color:#94a3b8;line-height:1.45">' +
-            'WebView Telegram tidak mengizinkan unduh otomatis. <b>Tekan & tahan gambar di bawah</b> selama 2 detik, lalu pilih <b>Simpan ke Foto / Download Image</b>.' +
-          '</p>' +
-          '<img src="' + dataUrl + '" alt="Photobooth Cover" style="width:100%;max-width:290px;border-radius:14px;border:1px solid rgba(255,255,255,.15);box-shadow:0 12px 28px rgba(0,0,0,.5);-webkit-touch-callout:default;user-select:auto">' +
-          '<button type="button" class="btn b2" style="margin-top:14px" data-act="shut">Tutup</button>' +
-        '</div>';
-
-      if (C.openSheet) {
-        C.openSheet(sheetHtml);
-      } else {
-        var sh = document.getElementById('sh');
-        var scr = document.getElementById('scr');
-        if (sh && scr) {
-          sh.innerHTML = sheetHtml;
-          sh.classList.add('on');
-          scr.classList.add('on');
+      cv.toBlob(function (blob) {
+        if (!blob) return;
+        if (window.__pbBlobUrl) {
+          try { URL.revokeObjectURL(window.__pbBlobUrl); } catch (e) {}
         }
-      }
-      C.notify('Mas Raka', 'Photobooth 📸', 'Tekan lama pada gambar untuk menyimpan ke galeri HP lo!');
+        var blobUrl = URL.createObjectURL(blob);
+        window.__pbBlobUrl = blobUrl;
+
+        // Trigger auto-download via Blob URL (lebih kompatibel di Desktop/PC dibanding data: URL)
+        try {
+          var link = document.createElement('a');
+          link.download = fileName;
+          link.href = blobUrl;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (err) {}
+
+        var sheetHtml =
+          '<div style="padding:16px;text-align:center">' +
+            '<h3 style="margin:0 0 6px;font-size:16px;color:#fff">📸 Simpan Cover Photobooth</h3>' +
+            '<p style="margin:0 0 12px;font-size:12.5px;color:#94a3b8;line-height:1.45">' +
+              '<b>HP:</b> Tekan & tahan gambar lalu pilih <b>Simpan ke Foto</b>.<br>' +
+              '<b>PC:</b> Klik kanan gambar → <b>Save image as...</b> atau klik tombol Unduh di bawah.' +
+            '</p>' +
+            '<img src="' + blobUrl + '" alt="Photobooth Cover" style="width:100%;max-width:270px;border-radius:14px;border:1px solid rgba(255,255,255,.15);box-shadow:0 12px 28px rgba(0,0,0,.5);-webkit-touch-callout:default;user-select:auto">' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">' +
+              '<a href="' + blobUrl + '" download="' + fileName + '" class="btn" style="margin-top:0;text-decoration:none;display:flex;align-items:center;justify-content:center">💾 Unduh PNG</a>' +
+              '<button type="button" class="btn b2" style="margin-top:0" data-act="shut">Tutup</button>' +
+            '</div>' +
+          '</div>';
+
+        if (C.openSheet) {
+          C.openSheet(sheetHtml);
+        } else {
+          var sh = document.getElementById('sh');
+          var scr = document.getElementById('scr');
+          if (sh && scr) {
+            sh.innerHTML = sheetHtml;
+            sh.classList.add('on');
+            scr.classList.add('on');
+          }
+        }
+        C.notify('Mas Raka', 'Photobooth 📸', 'Cover siap disimpan! Klik kanan (PC) atau tekan lama (HP).');
+      }, 'image/png');
     } else if (act === 'ms-post-board') {
       if (!M.pbState.img) {
         C.notify('Mas Raka', 'Pilih Foto Dulu', 'Pilih foto dulu sebelum kirim hasil Photobooth ke Board!');
