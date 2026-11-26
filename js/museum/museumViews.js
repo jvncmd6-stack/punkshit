@@ -64,7 +64,7 @@
         '</div>' +
 
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">' +
-          '<button class="btn b2" style="margin-top:0" data-act="ms-export">💾 Unduh PNG</button>' +
+          '<button class="btn b2" style="margin-top:0" data-act="ms-export">💾 Simpan Gambar</button>' +
           '<button class="btn" style="margin-top:0" data-act="ms-post-board">🚀 Kirim ke Board & CH</button>' +
         '</div>'
       );
@@ -243,11 +243,37 @@
     } else if (act === 'ms-export') {
       var cv = document.getElementById('pb-cv');
       if (!cv) return;
-      var link = document.createElement('a');
-      link.download = 'punkshit-cover-' + Date.now() + '.png';
-      link.href = cv.toDataURL('image/png');
-      link.click();
-      C.notify('Mas Raka', 'Photobooth 📸', 'Sip, cover PNG berhasil disimpan ke perangkat lo!');
+      
+      cv.toBlob(function (blob) {
+        var file = new File([blob], 'punkshit-cover-' + Date.now() + '.png', { type: 'image/png' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({
+            files: [file],
+            title: 'Punkshit Cover',
+            text: 'Cover Photobooth PUNKSHIT.OS'
+          }).catch(function () {});
+        } else {
+          var dataUrl = cv.toDataURL('image/png');
+          var w = window.open('');
+          if (w) {
+            w.document.write(
+              '<html><head><title>Simpan Cover Photobooth</title></head>' +
+              '<body style="background:#0b0d11;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;color:#fff;font-family:sans-serif;padding:16px;text-align:center">' +
+              '<p style="font-size:14px;margin-bottom:12px;color:#38bdf8;font-weight:600">Tekan dan tahan (Long Press) gambar di bawah, lalu pilih <b>Simpan ke Foto</b> atau <b>Download Image</b></p>' +
+              '<img src="' + dataUrl + '" style="max-width:100%;max-height:75vh;border-radius:14px;box-shadow:0 12px 35px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.15)">' +
+              '</body></html>'
+            );
+          } else {
+            var link = document.createElement('a');
+            link.download = 'punkshit-cover-' + Date.now() + '.png';
+            link.href = dataUrl;
+            link.click();
+          }
+        }
+      }, 'image/png');
+
+      C.notify('Mas Raka', 'Photobooth 📸', 'Cover siap disimpan! Pilih Simpan ke Foto di menu HP lo.');
     } else if (act === 'ms-post-board') {
       if (!M.pbState.img) {
         C.notify('Mas Raka', 'Pilih Foto Dulu', 'Pilih foto dulu sebelum kirim hasil Photobooth ke Board!');
