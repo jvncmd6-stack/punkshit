@@ -15,15 +15,28 @@ import {
 
 export const actionRouter = Router();
 
-// Pastikan kolom streak_shield tersedia di tabel users
 try {
   db.exec('ALTER TABLE users ADD COLUMN streak_shield INTEGER DEFAULT 0');
 } catch (_) {}
+
+function parseJsonObject(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try {
+    const parsed = JSON.parse(String(raw));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
 
 function attachExtraFields(row) {
   const formatted = formatUser(row);
   if (formatted && row) {
     formatted.streakShield = Number(row.streak_shield || 0);
+    formatted.equippedThemeId = row.equipped_theme_id || '';
+    formatted.borderAdj = parseJsonObject(row.border_adj);
+    formatted.giftAdj = parseJsonObject(row.gift_adj);
   }
   return formatted;
 }
@@ -31,8 +44,8 @@ function attachExtraFields(row) {
 function getTierAbsenBonus(u) {
   const cred = Number(u.cred) || 0;
   const best = Math.max(Number(u.best) || 0, Number(u.streak) || 0);
-  if (cred >= 300 && best >= 14) return 5; // Sepuh / Fosil
-  if (cred >= 25 && best >= 3) return 2;   // Anak Nongkrong+
+  if (cred >= 300 && best >= 14) return 5;
+  if (cred >= 25 && best >= 3) return 2;
   return 0;
 }
 
@@ -42,7 +55,6 @@ function calcAbsenBonus(streak, u) {
   return base + tierBonus + (streak % 7 === 0 ? 25 : 0);
 }
 
-// POST /api/absen -> Absen Harian + Auto Tameng Streak + Bonus Pangkat
 actionRouter.post('/absen', requireUser, async (req, res) => {
   const u = req.dbUser;
   const today = todayWib();
@@ -89,7 +101,6 @@ actionRouter.post('/absen', requireUser, async (req, res) => {
   res.json({ user: attachExtraFields(updated), earned, shieldUsed, message: feedMsg, feed });
 });
 
-// POST /api/wallet/buy-shield -> Beli Tameng Streak (60 PSC)
 actionRouter.post('/wallet/buy-shield', requireUser, (req, res) => {
   const u = req.dbUser;
   const price = 60;
@@ -112,7 +123,6 @@ actionRouter.post('/wallet/buy-shield', requireUser, (req, res) => {
   res.json({ user: attachExtraFields(updated) });
 });
 
-// POST /api/sawer -> Bagi Rezeki (Kunci saldo & lempar tombol klaim ke Grup Telegram)
 actionRouter.post('/sawer', requireUser, async (req, res) => {
   const u = req.dbUser;
   const amount = Math.floor(Number(req.body?.amount));
@@ -166,7 +176,6 @@ actionRouter.post('/sawer', requireUser, async (req, res) => {
   res.json({ user: attachExtraFields(updated) });
 });
 
-// POST /api/shop/buy -> Beli item dari Lapak Rongsok (Mendukung qty & pengurangan stok) + Royalti 20% Collab
 actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   const u = req.dbUser;
   const itemId = String(req.body?.itemId || '');
@@ -186,7 +195,9 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   }
 
   const now = Date.now();
-  const hasCreatorRoyalty = item.is_collab === 1 && item.creator_id && String(item.creator_id) !== String(u.id);
+  const creatorId = String(item.creator_id || '').trim();
+  const isCollabItem = Boolean(Number(item.is_collab)) || Boolean(creatorId);
+  const hasCreatorRoyalty = isCollabItem && creatorId && creatorId !== String(u.id) && totalCost > 0;
   const royaltyAmount = hasCreatorRoyalty ? Math.max(1, Math.floor(totalCost * 0.2)) : 0;
 
   const tx = db.transaction(() => {
@@ -202,9 +213,9 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
       .run(u.id, 'shop_buy', -totalCost, `Beli ${item.name} (${qty}x)`, now);
 
     if (royaltyAmount > 0) {
-      db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(royaltyAmount, String(item.creator_id));
+      db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(royaltyAmount, creatorId);
       db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(String(item.creator_id), 'collab_royalty', royaltyAmount, `Royalti Collab: ${item.name} (${qty}x)`, now);
+        .run(creatorId, 'collab_royalty', royaltyAmount, `Royalti Collab: ${item.name} (${qty}x)`, now);
     }
   });
   tx();
@@ -223,7 +234,7 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
 
   if (royaltyAmount > 0) {
     await notifyPrivateUser(
-      item.creator_id,
+      creatorId,
       `🎨 <b>ROYALTI COLLAB CAIR!</b>\n\n` +
       `Warga <b>${escHtml(u.name)}</b> baru saja membeli item collab karyamu: <b>${escHtml(item.name)}</b> (${qty}x)!\n` +
       `• Royalti 20%: <b>+${royaltyAmount} PSC</b>`,
@@ -235,7 +246,6 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   res.json({ user: attachExtraFields(updated), inv, catalog: getCatalog() });
 });
 
-// POST /api/gift/send -> Kirim hadiah gift ke warga lain (Mendukung Mode Anonim + Hanya notif PC)
 actionRouter.post('/gift/send', requireUser, async (req, res) => {
   const u = req.dbUser;
   const itemId = String(req.body?.itemId || '');
@@ -256,17 +266,38 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
   }
 
   const now = Date.now();
+  const creatorId = String(item.creator_id || '').trim();
+  const isCollabItem = Boolean(Number(item.is_collab)) || Boolean(creatorId);
+  const hasCreatorRoyalty = isCollabItem && creatorId && creatorId !== String(u.id) && Number(item.price) > 0;
+  const royaltyAmount = hasCreatorRoyalty ? Math.max(1, Math.floor(Number(item.price) * 0.2)) : 0;
+
   const tx = db.transaction(() => {
     db.prepare('UPDATE users SET psc = psc - ?, cred = cred + 3, has_shared = 1 WHERE id = ?').run(item.price, u.id);
     db.prepare('INSERT INTO inventory (user_id, item_id, acquired_at) VALUES (?, ?, ?)').run(recipient.id, item.id, now);
     db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(u.id, 'gift_send', -item.price, `Kirim ${item.name} ke @${recipient.username}${isAnon ? ' (Anonim)' : ''}`, now);
+
+    if (royaltyAmount > 0) {
+      db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(royaltyAmount, creatorId);
+      db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(creatorId, 'collab_royalty', royaltyAmount, `Royalti Gift Collab: ${item.name}`, now);
+    }
   });
   tx();
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
   const publicSender = isAnon ? 'Warga Misterius' : u.name;
   addFeed(`${publicSender} ngirim ${item.name} ke @${recipient.username}.`);
+
+  if (royaltyAmount > 0) {
+    await notifyPrivateUser(
+      creatorId,
+      `🎨 <b>ROYALTI GIFT COLLAB CAIR!</b>\n\n` +
+      `Item gift collab karyamu (<b>${escHtml(item.name)}</b>) baru saja dikirim antar warga!\n` +
+      `• Royalti 20%: <b>+${royaltyAmount} PSC</b>`,
+      { buttonText: '💰 CEK DOMPET', startParam: 'kas' }
+    );
+  }
 
   const senderDisplay = isAnon
     ? '🕵️ <b>Warga Misterius</b> <i>(Secret Admirer / Anonim)</i>'
@@ -297,7 +328,6 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
   res.json({ user: attachExtraFields(updated) });
 });
 
-// GET /api/wallet/history -> Buku Kas (Riwayat Transaksi)
 actionRouter.get('/wallet/history', requireUser, (req, res) => {
   const rows = db.prepare(`
     SELECT id, type, amount, note, created_at AS createdAt
@@ -306,7 +336,6 @@ actionRouter.get('/wallet/history', requireUser, (req, res) => {
   res.json({ transactions: rows });
 });
 
-// GET /api/leaderboard -> Hall of Fame
 actionRouter.get('/leaderboard', (req, res) => {
   const allowed = { streak: 'streak', cred: 'cred', psc: 'psc', best: 'best' };
   const col = allowed[req.query.by] || 'streak';
