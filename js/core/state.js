@@ -97,19 +97,35 @@ window.PunkCoreState = (function () {
     return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:' + cols[1] + '99"><div class="rot">' + layers + '</div></div>';
   }
 
-  function getSavedBorderTransform(uid, borderId) {
-    if (!uid || !borderId) return '';
+  function getSavedBorderData(uid, borderId) {
+    if (!uid || !borderId) return null;
     try {
       var raw = localStorage.getItem('punk_border_adj_' + String(uid) + '_' + String(borderId));
-      if (!raw) return '';
+      if (!raw) return null;
       var p = JSON.parse(raw);
-      var sc = Math.max(0.6, Math.min(1.6, Number(p.scale) || 1));
-      var x = Math.max(-35, Math.min(35, Number(p.x) || 0));
-      var y = Math.max(-45, Math.min(45, Number(p.y) || 0));
-      if (sc === 1 && x === 0 && y === 0) return '';
-      return 'transform:translate(' + x + 'px,' + y + 'px) scale(' + (sc * 1.24).toFixed(3) + ');animation:none';
+      return {
+        scale: Math.max(0.6, Math.min(1.6, Number(p.scale) || 1)),
+        x: Math.max(-35, Math.min(35, Number(p.x) || 0)),
+        y: Math.max(-45, Math.min(45, Number(p.y) || 0))
+      };
     } catch (e) {
-      return '';
+      return null;
+    }
+  }
+
+  function getSavedGiftData(uid, giftId) {
+    if (!uid || !giftId) return null;
+    try {
+      var raw = localStorage.getItem('punk_gift_adj_' + String(uid) + '_' + String(giftId));
+      if (!raw) return null;
+      var p = JSON.parse(raw);
+      return {
+        scale: Math.max(0.5, Math.min(2.2, Number(p.scale) || 1)),
+        x: Math.max(-145, Math.min(145, Number(p.x) || 0)),
+        y: Math.max(-110, Math.min(65, Number(p.y) || 0))
+      };
+    } catch (e) {
+      return null;
     }
   }
 
@@ -117,22 +133,26 @@ window.PunkCoreState = (function () {
     if (!u) return '';
     var bItem = u.equippedBorderId ? findItem(u.equippedBorderId) : null;
     var borderUrl = u.equippedBorderUrl || (bItem && (bItem.imageUrl || bItem.image_url)) || '';
-    var customStyle = (!isMini && u.id && u.equippedBorderId)
-      ? getSavedBorderTransform(u.id, u.equippedBorderId)
-      : '';
+    var adj = (u.id && u.equippedBorderId) ? getSavedBorderData(u.id, u.equippedBorderId) : null;
 
     if (borderUrl) {
       var resolvedUrl = esc(API.assetUrl(borderUrl));
-      var miniBorderStyle = isMini
-        ? 'position:absolute;inset:0;width:42px;height:42px;transform:scale(1.24);pointer-events:none;z-index:6;object-fit:contain'
-        : customStyle;
+      var ratio = isMini ? (42 / 92) : 1;
+      var tx = adj ? (adj.x * ratio).toFixed(2) : '0';
+      var ty = adj ? (adj.y * ratio).toFixed(2) : '0';
+      var sc = adj ? (adj.scale * 1.24).toFixed(3) : '1.24';
+      var hasCustom = adj && (adj.scale !== 1 || adj.x !== 0 || adj.y !== 0);
+
+      var styleStr = isMini
+        ? 'position:absolute;inset:0;width:42px;height:42px;transform:translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ');pointer-events:none;z-index:6;object-fit:contain'
+        : (hasCustom ? 'transform:translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ');animation:none' : '');
 
       if (isVideoAsset(borderUrl)) {
         return '<video class="dc-border" src="' + resolvedUrl + '" autoplay loop muted playsinline' +
-          (miniBorderStyle ? ' style="' + miniBorderStyle + '"' : '') + '></video>';
+          (styleStr ? ' style="' + styleStr + '"' : '') + '></video>';
       }
       return '<img class="dc-border" src="' + resolvedUrl + '"' +
-        (miniBorderStyle ? ' style="' + miniBorderStyle + '"' : '') + ' alt="">';
+        (styleStr ? ' style="' + styleStr + '"' : '') + ' alt="">';
     }
     if (bItem) {
       var cols = bItem.colors || ['#8FC7FF', '#176BFF'];
@@ -159,7 +179,7 @@ window.PunkCoreState = (function () {
 
     if (!items.length) return '';
 
-    var slots = [
+    var defaultSlots = [
       { x: -74,  y: -52, rot: -10, dur: '3.2s', delay: '0s' },
       { x:  74,  y: -52, rot:  10, dur: '3.6s', delay: '-1.1s' },
       { x: -116, y: -12, rot: -14, dur: '4.0s', delay: '-2.0s' },
@@ -169,14 +189,20 @@ window.PunkCoreState = (function () {
     ];
 
     return items.map(function (giftItem, idx) {
-      var pos = slots[idx] || { x: 0, y: -78, rot: 0, dur: '3.5s', delay: '0s' };
+      var base = defaultSlots[idx] || { x: 0, y: -78, rot: 0, dur: '3.5s', delay: '0s' };
+      var custom = u.id ? getSavedGiftData(u.id, giftItem.id) : null;
+      var posX = custom ? custom.x : base.x;
+      var posY = custom ? custom.y : base.y;
+      var gScale = custom ? custom.scale : 1;
+      var visualSize = Math.round(28 * gScale);
+
       return (
-        '<div class="av-gift-pin" title="' + esc(giftItem.name) + '" ' +
+        '<div class="av-gift-pin" data-gift-id="' + esc(giftItem.id) + '" title="' + esc(giftItem.name) + '" ' +
              'style="position:absolute;left:50%;top:50%;' +
-             'transform:translate(calc(-50% + ' + pos.x + 'px),calc(-50% + ' + pos.y + 'px));' +
+             'transform:translate(calc(-50% + ' + posX + 'px),calc(-50% + ' + posY + 'px));' +
              'z-index:7;pointer-events:none">' +
-          '<div class="gift-live-bob" style="--rot:' + pos.rot + 'deg;animation-duration:' + pos.dur + ';animation-delay:' + pos.delay + '">' +
-            renderItemVisual(giftItem, 28, false) +
+          '<div class="gift-live-bob" style="--rot:' + base.rot + 'deg;animation-duration:' + base.dur + ';animation-delay:' + base.delay + '">' +
+            renderItemVisual(giftItem, visualSize, false) +
           '</div>' +
         '</div>'
       );
@@ -244,6 +270,8 @@ window.PunkCoreState = (function () {
     rankInfo: rankInfo,
     ico: ico,
     findItem: findItem,
+    getSavedBorderData: getSavedBorderData,
+    getSavedGiftData: getSavedGiftData,
     renderItemVisual: renderItemVisual,
     renderAvatar: renderAvatar,
     bindDrag: bindDrag
