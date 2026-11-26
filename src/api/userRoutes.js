@@ -62,6 +62,7 @@ function attachExtraUserFields(row, catalogMap = null) {
   const formatted = formatUser(row);
   if (formatted && row) {
     formatted.streakShield = Number(row.streak_shield || 0);
+    formatted.equippedThemeId = row.equipped_theme_id || '';
     formatted.borderAdj = parseJsonObject(row.border_adj);
     formatted.giftAdj = parseJsonObject(row.gift_adj);
 
@@ -281,7 +282,7 @@ userRouter.post('/profile/sync-telegram', requireUser, async (req, res) => {
   res.json({ user: attachExtraUserFields(updated) });
 });
 
-// POST /api/profile/equip -> Pasang / lepas Border Avatar, Multi-Gift Profil (>1), atau Card Skin
+// POST /api/profile/equip -> Pasang / lepas Border Avatar, Tema OS, Multi-Gift Profil (>1), atau Card Skin
 userRouter.post('/profile/equip', requireUser, (req, res) => {
   const { type, itemId, itemIds } = req.body || {};
   const uid = req.dbUser.id;
@@ -295,6 +296,8 @@ userRouter.post('/profile/equip', requireUser, (req, res) => {
     db.prepare('UPDATE users SET equipped_border_id = ? WHERE id = ?').run(itemId || '', uid);
   } else if (type === 'skin') {
     db.prepare('UPDATE users SET equipped_skin_id = ? WHERE id = ?').run(itemId || '', uid);
+  } else if (type === 'theme') {
+    db.prepare('UPDATE users SET equipped_theme_id = ? WHERE id = ?').run(itemId || '', uid);
   } else if (type === 'pin') {
     if (Array.isArray(itemIds)) {
       const validIds = [];
@@ -379,3 +382,6 @@ userRouter.get('/users/profile/:target', (req, res) => {
     itemCount
   });
 });
+```[cite: 14]
+
+Seluruh jalur tema OS (`Sakura Velvet OS`, `Carbon Stealth OS`, dan `Cyber Mint OS`) dari database, backend API, sampai layar aplikasi sudah terhubung penuh. Kalau lo mau lanjut ke fitur berikutnya—misalnya ngecek route pembelian di `shopRoutes.js` atau bikin tampilan **Profil Warga** ikut nampilin tema OS yang lagi dipake warga lain—kirim filenya ke sini!
