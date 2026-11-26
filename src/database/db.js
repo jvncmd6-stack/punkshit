@@ -38,6 +38,7 @@ export function initDb() {
       ring_style INTEGER DEFAULT 1,
       equipped_border_id TEXT DEFAULT '',
       equipped_skin_id TEXT DEFAULT '',
+      equipped_theme_id TEXT DEFAULT '',
       pinned_gift_id TEXT DEFAULT '',
       border_adj TEXT DEFAULT '',
       gift_adj TEXT DEFAULT '',
@@ -242,6 +243,7 @@ export function initDb() {
 
   safeAddColumn('users', 'is_frozen INTEGER DEFAULT 0');
   safeAddColumn('users', 'extra_spark_slots INTEGER DEFAULT 0');
+  safeAddColumn('users', "equipped_theme_id TEXT DEFAULT ''");
   safeAddColumn('users', "border_adj TEXT DEFAULT ''");
   safeAddColumn('users', "gift_adj TEXT DEFAULT ''");
   safeAddColumn('items', "creator_id TEXT DEFAULT ''");
@@ -273,7 +275,10 @@ export function initDb() {
     { id: 'skin-chrome', type: 'skin', name: 'Chrome Edition Card', price: 200, rarity: 'Epic', desc: 'Lapisan metalik krom untuk kartu PunkID.', colors: JSON.stringify(['#e0e8f5', '#6c7a96']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-chrome', created_at: now },
     { id: 'skin-neon', type: 'skin', name: 'Cyber Neon Card', price: 260, rarity: 'Epic', desc: 'Kartu cyberpunk gradasi biru-ungu bercahaya.', colors: JSON.stringify(['#38bdf8', '#7e22ce']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-neon', created_at: now },
     { id: 'skin-crimson', type: 'skin', name: 'Blood Crimson Card', price: 320, rarity: 'Epic', desc: 'Kartu merah gelap berkarisma khusus pentolan gang.', colors: JSON.stringify(['#f87171', '#7f1d1d']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-crimson', created_at: now },
-    { id: 'skin-gold', type: 'skin', name: 'Sultan Gold Card', price: 450, rarity: 'Legendary', desc: 'Kartu emas khusus donatur & sepuh markas.', colors: JSON.stringify(['#ffe879', '#b87b00']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-gold', created_at: now }
+    { id: 'skin-gold', type: 'skin', name: 'Sultan Gold Card', price: 450, rarity: 'Legendary', desc: 'Kartu emas khusus donatur & sepuh markas.', colors: JSON.stringify(['#ffe879', '#b87b00']), svg_path: 'M15 25h70v50H15z', skin_class: 'skin-gold', created_at: now },
+    { id: 'theme-sakura', type: 'theme', name: 'Sakura Velvet OS', price: 220, rarity: 'Epic', desc: 'Tampilan lembut nuansa kelopak sakura, rose-magenta, dan kilau kaca hangat.', colors: JSON.stringify(['#ff9ad5', '#db2777']), svg_path: 'M50 12c9 14 24 14 33 5-2 15 8 27 21 33-13 6-23 18-21 33-9-9-24-9-33 5-9-14-24-14-33-5 2-15-8-27-21-33 13-6 23-18 21-33 9 9 24 9 33-5z', skin_class: 'theme-sakura', created_at: now },
+    { id: 'theme-carbon', type: 'theme', name: 'Carbon Stealth OS', price: 220, rarity: 'Epic', desc: 'Nuansa gelap titanium & baja matte dengan garis cahaya biru elektrik tajam.', colors: JSON.stringify(['#94a3b8', '#1e293b']), svg_path: 'M20 20h60v60H20z', skin_class: 'theme-carbon', created_at: now },
+    { id: 'theme-mint', type: 'theme', name: 'Cyber Mint OS', price: 220, rarity: 'Epic', desc: 'Gradasi emerald & mint neon segar dengan atmosfer malam futuristik.', colors: JSON.stringify(['#6ee7b7', '#059669']), svg_path: 'M50 8L90 30v40L50 92 10 70V30z', skin_class: 'theme-mint', created_at: now }
   ];
 
   const tx = db.transaction(list => { for (const item of list) ins.run(item); });
