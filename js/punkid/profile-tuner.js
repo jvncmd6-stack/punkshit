@@ -18,7 +18,16 @@
     return 'punk_border_adj_' + String(uid) + '_' + String(borderId);
   }
 
-  function loadBorderAdj(uid, borderId) {
+  function loadBorderAdj(u, borderId) {
+    var uid = u && u.id;
+    if (u && u.borderAdj && typeof u.borderAdj === 'object' && u.borderAdj[borderId]) {
+      var srv = u.borderAdj[borderId];
+      return {
+        scale: Math.max(0.6, Math.min(1.6, Number(srv.scale) || 1)),
+        x: Math.max(-35, Math.min(35, Number(srv.x) || 0)),
+        y: Math.max(-45, Math.min(45, Number(srv.y) || 0))
+      };
+    }
     try {
       var raw = localStorage.getItem(getBorderAdjKey(uid, borderId));
       if (raw) {
@@ -37,7 +46,8 @@
     return 'punk_gift_adj_' + String(uid) + '_' + String(giftId);
   }
 
-  function loadGiftAdj(uid, giftId, slotIdx) {
+  function loadGiftAdj(u, giftId, slotIdx) {
+    var uid = u && u.id;
     var defaultSlots = [
       { x: -74,  y: -52 },
       { x:  74,  y: -52 },
@@ -47,6 +57,15 @@
       { x:  86,  y:  28 }
     ];
     var fallback = defaultSlots[slotIdx] || { x: 0, y: -78 };
+
+    if (u && u.giftAdj && typeof u.giftAdj === 'object' && u.giftAdj[giftId]) {
+      var srv = u.giftAdj[giftId];
+      return {
+        scale: Math.max(0.5, Math.min(2.2, Number(srv.scale) || 1)),
+        x: Math.max(-145, Math.min(145, Number(srv.x) || 0)),
+        y: Math.max(-110, Math.min(65, Number(srv.y) || 0))
+      };
+    }
     try {
       var raw = localStorage.getItem(getGiftAdjKey(uid, giftId));
       if (raw) {
@@ -66,7 +85,7 @@
     var bItem = C.findItem(borderId);
     if (!bItem) return;
 
-    var cur = loadBorderAdj(u.id, bItem.id);
+    var cur = loadBorderAdj(u, bItem.id);
     var photoSrc = u.photoUrl ? API.assetUrl(u.photoUrl) : '';
     var rawBorderUrl = bItem.imageUrl || bItem.image_url || '';
     var borderSrc = rawBorderUrl ? API.assetUrl(rawBorderUrl) : '';
@@ -83,7 +102,7 @@
 
     C.sheet(
       '<h2>🎯 Atur Posisi & Ukuran Border</h2>' +
-      '<p class="sub">Pratinjau skala asli <b>92px</b> (otomatis proporsional di profil utama & list warga).</p>' +
+      '<p class="sub">Pratinjau skala asli <b>92px</b> (tersimpan ke server & tampil di semua warga).</p>' +
 
       '<div style="display:grid;place-items:center;padding:28px 0;background:radial-gradient(circle,rgba(56,189,248,.14),rgba(15,23,42,.92));border:1px solid rgba(255,255,255,.12);border-radius:16px;margin:10px 0">' +
         '<div style="position:relative;width:92px;height:92px">' +
@@ -138,7 +157,11 @@
       syncPreview();
     };
 
-    document.getElementById('bt-save').onclick = function () {
+    document.getElementById('bt-save').onclick = async function () {
+      var btnSave = document.getElementById('bt-save');
+      btnSave.disabled = true;
+      btnSave.textContent = 'Menyimpan...';
+
       var payload = {
         scale: (Number(elS.value) || 100) / 100,
         x: Number(elX.value) || 0,
@@ -147,9 +170,20 @@
       try {
         localStorage.setItem(getBorderAdjKey(u.id, bItem.id), JSON.stringify(payload));
       } catch (e) {}
+
+      var nextBorderMap = Object.assign({}, (u.borderAdj && typeof u.borderAdj === 'object') ? u.borderAdj : {});
+      nextBorderMap[bItem.id] = payload;
+
+      try {
+        var res = await API.post('/api/profile/tuner', { borderAdj: nextBorderMap });
+        if (res && res.user) S.user = res.user;
+      } catch (err) {
+        if (S.user) S.user.borderAdj = nextBorderMap;
+      }
+
       C.shut();
       C.refresh();
-      C.notify('Mas Raka', 'Posisi Border Tersimpan 🎯', 'Ukuran & posisi ' + bItem.name + ' udah sinkron ke seluruh profil!');
+      C.notify('Mas Raka', 'Posisi Border Tersimpan 🎯', 'Ukuran & posisi ' + bItem.name + ' udah sinkron ke seluruh profil warga!');
     };
   }
 
@@ -175,7 +209,7 @@
 
     var stateMap = {};
     giftItems.forEach(function (g) {
-      stateMap[g.item.id] = loadGiftAdj(u.id, g.item.id, g.slotIdx);
+      stateMap[g.item.id] = loadGiftAdj(u, g.item.id, g.slotIdx);
     });
 
     var bannerStyle = u.bannerUrl
@@ -197,8 +231,8 @@
         '<div class="gt-pin-node" data-gt-node="' + idx + '" ' +
              'style="position:absolute;left:50%;top:50%;' +
              'transform:translate(calc(-50% + ' + st.x + 'px),calc(-50% + ' + st.y + 'px));' +
-             'z-index:' + (isSelected ? '9' : '7') + ';pointer-events:none;' +
-             'outline:' + (isSelected ? '1.5px dashed #38BDF8' : 'none') + ';border-radius:8px;padding:2px">' +
+             'z-index:' + (isSelected ? '9' : '7') + ';cursor:grab;touch-action:none;' +
+             'outline:' + (isSelected ? '1.5px dashed #38BDF8' : 'none') + ';border-radius:8px;padding:4px">' +
           C.renderItemVisual(g.item, sz, false) +
         '</div>'
       );
@@ -208,11 +242,11 @@
 
     C.sheet(
       '<h2>🎁 Atur Posisi & Ukuran Gift</h2>' +
-      '<p class="sub">Pilih gift yang terpasang, lalu geser posisi & atur besar kecilnya di latar belakang profil.</p>' +
+      '<p class="sub">Sentuh & geser langsung gift di layar pratinjau atau pakai slider di bawah.</p>' +
 
       '<div class="chips" id="gt-pills" style="margin-bottom:10px">' + selectorPills + '</div>' +
 
-      '<div style="border-radius:18px;overflow:visible;border:1px solid rgba(255,255,255,.15);background:#0f1626;padding-bottom:46px;margin-bottom:10px">' +
+      '<div id="gt-canvas" style="border-radius:18px;overflow:visible;border:1px solid rgba(255,255,255,.15);background:#0f1626;padding-bottom:46px;margin-bottom:10px;user-select:none">' +
         '<div style="height:150px;border-radius:18px 18px 0 0;position:relative;' + bannerStyle + '">' +
           '<div style="position:absolute;inset:0;border-radius:18px 18px 0 0;background:linear-gradient(180deg,rgba(11,17,30,.05) 0%,rgba(15,22,38,.85) 85%,#0f1626 100%)"></div>' +
         '</div>' +
@@ -287,6 +321,41 @@
     elX.oninput = onSliderInput;
     elY.oninput = onSliderInput;
 
+    // Direct Touch / Pointer Drag di pratinjau gift
+    var dragState = null;
+    document.querySelectorAll('.gt-pin-node').forEach(function (node) {
+      node.addEventListener('pointerdown', function (ev) {
+        ev.preventDefault();
+        var idx = Number(node.getAttribute('data-gt-node')) || 0;
+        activeIdx = idx;
+        document.querySelectorAll('#gt-pills [data-gt-idx]').forEach(function (b) {
+          b.classList.toggle('on', Number(b.getAttribute('data-gt-idx')) === idx);
+        });
+        loadSlidersForActive();
+        var g = giftItems[activeIdx];
+        var st = stateMap[g.item.id];
+        dragState = { startX: ev.clientX, startY: ev.clientY, origX: st.x, origY: st.y };
+        node.setPointerCapture(ev.pointerId);
+      });
+
+      node.addEventListener('pointermove', function (ev) {
+        if (!dragState) return;
+        var g = giftItems[activeIdx];
+        var st = stateMap[g.item.id];
+        st.x = Math.max(-145, Math.min(145, Math.round(dragState.origX + (ev.clientX - dragState.startX))));
+        st.y = Math.max(-110, Math.min(65, Math.round(dragState.origY + (ev.clientY - dragState.startY))));
+        elX.value = String(st.x);
+        elY.value = String(st.y);
+        document.getElementById('gt-val-x').textContent = st.x + 'px';
+        document.getElementById('gt-val-y').textContent = st.y + 'px';
+        refreshNodes();
+      });
+
+      node.addEventListener('pointerup', function () {
+        dragState = null;
+      });
+    });
+
     document.querySelectorAll('#gt-pills [data-gt-idx]').forEach(function (btn) {
       btn.onclick = function () {
         document.querySelectorAll('#gt-pills [data-gt-idx]').forEach(function (b) { b.classList.remove('on'); });
@@ -297,23 +366,38 @@
     });
 
     document.getElementById('gt-reset').onclick = function () {
+      var emptyU = Object.assign({}, u, { giftAdj: null });
       giftItems.forEach(function (g) {
         try { localStorage.removeItem(getGiftAdjKey(u.id, g.item.id)); } catch (e) {}
-        stateMap[g.item.id] = loadGiftAdj(u.id, g.item.id, g.slotIdx);
+        stateMap[g.item.id] = loadGiftAdj(emptyU, g.item.id, g.slotIdx);
       });
       loadSlidersForActive();
     };
 
-    document.getElementById('gt-save').onclick = function () {
+    document.getElementById('gt-save').onclick = async function () {
+      var btnSave = document.getElementById('gt-save');
+      btnSave.disabled = true;
+      btnSave.textContent = 'Menyimpan...';
+
+      var nextGiftMap = Object.assign({}, (u.giftAdj && typeof u.giftAdj === 'object') ? u.giftAdj : {});
       giftItems.forEach(function (g) {
         var st = stateMap[g.item.id];
+        nextGiftMap[g.item.id] = st;
         try {
           localStorage.setItem(getGiftAdjKey(u.id, g.item.id), JSON.stringify(st));
         } catch (e) {}
       });
+
+      try {
+        var res = await API.post('/api/profile/tuner', { giftAdj: nextGiftMap });
+        if (res && res.user) S.user = res.user;
+      } catch (err) {
+        if (S.user) S.user.giftAdj = nextGiftMap;
+      }
+
       C.shut();
       C.refresh();
-      C.notify('Mas Raka', 'Layout Gift Tersimpan 🎁', 'Ukuran & posisi semua gift di latar belakang profil udah diperbarui!');
+      C.notify('Mas Raka', 'Layout Gift Tersimpan 🎁', 'Ukuran & posisi gift udah sinkron ke seluruh profil warga!');
     };
   }
 
