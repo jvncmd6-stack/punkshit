@@ -8,20 +8,62 @@
   <meta http-equiv="Expires" content="0">
   <meta name="theme-color" content="#0a0f1c">
   <title>PUNKSHIT.OS — The Underground Digital Hangout</title>
-  <link rel="manifest" href="./manifest.json?v=44">
+  <link rel="manifest" href="./manifest.json?v=46">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/theme.css?v=44">
-  <link rel="stylesheet" href="./css/animations.css?v=44">
-  <link rel="stylesheet" href="./css/components.css?v=44">
-  <link rel="stylesheet" href="./css/arena-liquid.css?v=44">
+  <link rel="stylesheet" href="./css/theme.css?v=46">
+  <link rel="stylesheet" href="./css/animations.css?v=46">
+  <link rel="stylesheet" href="./css/components.css?v=46">
+  <link rel="stylesheet" href="./css/arena-liquid.css?v=46">
 </head>
 <body>
   <div class="phone" id="ph">
     <!-- Wallpaper & Interactive Dynamic Island -->
-    <div class="wall"></div>
+    <div class="wall" id="ph-wall"></div>
+    <script>
+      (function () {
+        try {
+          var th = localStorage.getItem('punk_os_theme_active') || '';
+          if (!th) {
+            for (var i = 0; i < localStorage.length; i++) {
+              var k = localStorage.key(i);
+              if (k && k.indexOf('punk_os_theme_') === 0) {
+                var v = localStorage.getItem(k);
+                if (v) { th = v; break; }
+              }
+            }
+          }
+          var map = {
+            'theme-sakura': {
+              cls: 'theme-sakura',
+              accent: '#f472b6',
+              wall: 'radial-gradient(circle at 20% 18%, rgba(244,114,182,.38), transparent 52%), radial-gradient(circle at 82% 78%, rgba(192,132,252,.32), transparent 55%), linear-gradient(160deg, #1e1024 0%, #120b1c 100%)'
+            },
+            'theme-carbon': {
+              cls: 'theme-carbon',
+              accent: '#38bdf8',
+              wall: 'radial-gradient(circle at 75% 15%, rgba(56,189,248,.22), transparent 50%), radial-gradient(circle at 15% 85%, rgba(71,85,105,.35), transparent 55%), linear-gradient(165deg, #090d16 0%, #05070c 100%)'
+            },
+            'theme-mint': {
+              cls: 'theme-mint',
+              accent: '#34d399',
+              wall: 'radial-gradient(circle at 22% 20%, rgba(52,211,153,.32), transparent 52%), radial-gradient(circle at 80% 75%, rgba(34,211,238,.26), transparent 55%), linear-gradient(160deg, #071c1b 0%, #061017 100%)'
+            }
+          };
+          var cfg = map[th];
+          if (cfg) {
+            var ph = document.getElementById('ph');
+            var wl = document.getElementById('ph-wall');
+            ph.classList.add(cfg.cls);
+            ph.style.setProperty('--gblue', cfg.accent);
+            if (wl) wl.style.background = cfg.wall;
+          }
+        } catch (e) {}
+      })();
+    </script>
+
     <div class="isl" id="isl-pill" data-act="app" data-id="markas" role="button" tabindex="0" title="Buka Markas" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;cursor:pointer;overflow:hidden">
       <span id="isl-dot" style="width:6px;height:6px;border-radius:50%;background:#34C759;box-shadow:0 0 8px #34C759;flex:none"></span>
       <span id="isl-txt" style="font-size:10.5px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.02em">PUNKSHIT.OS</span>
@@ -91,41 +133,41 @@
   </div>
 
   <!-- Core & Config (Modular) -->
-  <script src="./js/config.js?v=44"></script>
+  <script src="./js/config.js?v=46"></script>
   <script>
     window.PUNK_CONFIG = window.PUNK_CONFIG || { API_URL: '', SPARK_API_URL: '', ICONS: {}, BASE_GRID: [], DOCK: [] };
   </script>
-  <script src="./js/api.js?v=44"></script>
-  <script src="./js/core/state.js?v=44"></script>
-  <script src="./js/core/fallback-views.js?v=44"></script>
-  <script src="./js/core.js?v=44"></script>
-  <script src="./js/core/onboarding-tour.js?v=44"></script>
+  <script src="./js/api.js?v=46"></script>
+  <script src="./js/core/state.js?v=46"></script>
+  <script src="./js/core/fallback-views.js?v=46"></script>
+  <script src="./js/core.js?v=46"></script>
+  <script src="./js/core/onboarding-tour.js?v=46"></script>
 
   <!-- 11 Modul Utama + Ruang Dalang -->
-  <script src="./js/modules/01-markas.js?v=44"></script>
-  <script src="./js/punkid/spotify-card.js?v=44"></script>
-  <script src="./js/punkid/profile-tuner.js?v=44"></script>
-  <script src="./js/modules/02-punkid.js?v=44"></script>
-  <script src="./js/modules/03-progression.js?v=44"></script>
-  <script src="./js/modules/04-kas.js?v=44"></script>
-  <script src="./js/arena/state.js?v=44"></script>
-  <script src="./js/arena/lobby.js?v=44"></script>
-  <script src="./js/arena/games-core.js?v=44"></script>
-  <script src="./js/arena/games-extra.js?v=44"></script>
-  <script src="./js/arena/spark-coop.js?v=44"></script>
-  <script src="./js/arena/arena-fx.js?v=44"></script>
-  <script src="./js/modules/05-arena.js?v=44"></script>
-  <script src="./js/warga/profile-modal.js?v=44"></script>
-  <script src="./js/warga/leaderboard.js?v=44"></script>
-  <script src="./js/warga/kotak-archive.js?v=44"></script>
-  <script src="./js/warga/birthday-banner.js?v=44"></script>
-  <script src="./js/modules/06-warga.js?v=44"></script>
-  <script src="./js/modules/07-kalender.js?v=44"></script>
-  <script src="./js/lapak/lapak-seller.js?v=44"></script>
-  <script src="./js/lapak/lapak-themes.js?v=44"></script>
-  <script src="./js/modules/08-lapak.js?v=44"></script>
-  <script src="./js/modules/09-museum.js?v=44"></script>
-  <script src="./js/modules/10-dalang.js?v=44"></script>
-  <script src="./js/modules/11-spark.js?v=44"></script>
+  <script src="./js/modules/01-markas.js?v=46"></script>
+  <script src="./js/punkid/spotify-card.js?v=46"></script>
+  <script src="./js/punkid/profile-tuner.js?v=46"></script>
+  <script src="./js/modules/02-punkid.js?v=46"></script>
+  <script src="./js/modules/03-progression.js?v=46"></script>
+  <script src="./js/modules/04-kas.js?v=46"></script>
+  <script src="./js/arena/state.js?v=46"></script>
+  <script src="./js/arena/lobby.js?v=46"></script>
+  <script src="./js/arena/games-core.js?v=46"></script>
+  <script src="./js/arena/games-extra.js?v=46"></script>
+  <script src="./js/arena/spark-coop.js?v=46"></script>
+  <script src="./js/arena/arena-fx.js?v=46"></script>
+  <script src="./js/modules/05-arena.js?v=46"></script>
+  <script src="./js/warga/profile-modal.js?v=46"></script>
+  <script src="./js/warga/leaderboard.js?v=46"></script>
+  <script src="./js/warga/kotak-archive.js?v=46"></script>
+  <script src="./js/warga/birthday-banner.js?v=46"></script>
+  <script src="./js/modules/06-warga.js?v=46"></script>
+  <script src="./js/modules/07-kalender.js?v=46"></script>
+  <script src="./js/lapak/lapak-seller.js?v=46"></script>
+  <script src="./js/lapak/lapak-themes.js?v=46"></script>
+  <script src="./js/modules/08-lapak.js?v=46"></script>
+  <script src="./js/modules/09-museum.js?v=46"></script>
+  <script src="./js/modules/10-dalang.js?v=46"></script>
+  <script src="./js/modules/11-spark.js?v=46"></script>
 </body>
 </html>
