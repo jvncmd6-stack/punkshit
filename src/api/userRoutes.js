@@ -47,10 +47,24 @@ function getFullCatalogMap() {
   return map;
 }
 
+function parseJsonObject(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try {
+    const parsed = JSON.parse(String(raw));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function attachExtraUserFields(row, catalogMap = null) {
   const formatted = formatUser(row);
   if (formatted && row) {
     formatted.streakShield = Number(row.streak_shield || 0);
+    formatted.borderAdj = parseJsonObject(row.border_adj);
+    formatted.giftAdj = parseJsonObject(row.gift_adj);
+
     const map = catalogMap || getFullCatalogMap();
     const pinnedIds = Array.isArray(formatted.pinnedGifts)
       ? formatted.pinnedGifts
@@ -232,6 +246,24 @@ userRouter.post('/profile', requireUser, (req, res) => {
   `).run(name, bio, spotifyUrl, ringStyle, req.dbUser.id);
 
   const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
+  res.json({ user: attachExtraUserFields(updated) });
+});
+
+// POST /api/profile/tuner -> Simpan posisi & ukuran Border Avatar / Orbit Gift ke database
+userRouter.post('/profile/tuner', requireUser, (req, res) => {
+  const uid = req.dbUser.id;
+  const { borderAdj, giftAdj } = req.body || {};
+
+  if (borderAdj !== undefined) {
+    const rawBorder = borderAdj ? JSON.stringify(borderAdj).slice(0, 600) : '';
+    db.prepare('UPDATE users SET border_adj = ? WHERE id = ?').run(rawBorder, uid);
+  }
+  if (giftAdj !== undefined) {
+    const rawGift = giftAdj ? JSON.stringify(giftAdj).slice(0, 1500) : '';
+    db.prepare('UPDATE users SET gift_adj = ? WHERE id = ?').run(rawGift, uid);
+  }
+
+  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
   res.json({ user: attachExtraUserFields(updated) });
 });
 
