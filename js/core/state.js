@@ -97,33 +97,55 @@ window.PunkCoreState = (function () {
     return '<div class="g3"' + dragAttr + ' style="--s:' + size + 'px;--gl:' + cols[1] + '99"><div class="rot">' + layers + '</div></div>';
   }
 
-  function getSavedBorderData(uid, borderId) {
-    if (!uid || !borderId) return null;
+  function normalizeBorderAdj(p) {
+    if (!p || typeof p !== 'object') return null;
+    return {
+      scale: Math.max(0.6, Math.min(1.6, Number(p.scale) || 1)),
+      x: Math.max(-35, Math.min(35, Number(p.x) || 0)),
+      y: Math.max(-45, Math.min(45, Number(p.y) || 0))
+    };
+  }
+
+  function normalizeGiftAdj(p) {
+    if (!p || typeof p !== 'object') return null;
+    return {
+      scale: Math.max(0.5, Math.min(2.2, Number(p.scale) || 1)),
+      x: Math.max(-145, Math.min(145, Number(p.x) || 0)),
+      y: Math.max(-110, Math.min(65, Number(p.y) || 0))
+    };
+  }
+
+  function getSavedBorderData(uOrUid, borderId) {
+    if (!uOrUid || !borderId) return null;
+    var isObj = typeof uOrUid === 'object';
+    var uid = isObj ? uOrUid.id : uOrUid;
+
+    if (isObj && uOrUid.borderAdj && typeof uOrUid.borderAdj === 'object' && uOrUid.borderAdj[borderId]) {
+      return normalizeBorderAdj(uOrUid.borderAdj[borderId]);
+    }
+    if (!uid) return null;
     try {
       var raw = localStorage.getItem('punk_border_adj_' + String(uid) + '_' + String(borderId));
       if (!raw) return null;
-      var p = JSON.parse(raw);
-      return {
-        scale: Math.max(0.6, Math.min(1.6, Number(p.scale) || 1)),
-        x: Math.max(-35, Math.min(35, Number(p.x) || 0)),
-        y: Math.max(-45, Math.min(45, Number(p.y) || 0))
-      };
+      return normalizeBorderAdj(JSON.parse(raw));
     } catch (e) {
       return null;
     }
   }
 
-  function getSavedGiftData(uid, giftId) {
-    if (!uid || !giftId) return null;
+  function getSavedGiftData(uOrUid, giftId) {
+    if (!uOrUid || !giftId) return null;
+    var isObj = typeof uOrUid === 'object';
+    var uid = isObj ? uOrUid.id : uOrUid;
+
+    if (isObj && uOrUid.giftAdj && typeof uOrUid.giftAdj === 'object' && uOrUid.giftAdj[giftId]) {
+      return normalizeGiftAdj(uOrUid.giftAdj[giftId]);
+    }
+    if (!uid) return null;
     try {
       var raw = localStorage.getItem('punk_gift_adj_' + String(uid) + '_' + String(giftId));
       if (!raw) return null;
-      var p = JSON.parse(raw);
-      return {
-        scale: Math.max(0.5, Math.min(2.2, Number(p.scale) || 1)),
-        x: Math.max(-145, Math.min(145, Number(p.x) || 0)),
-        y: Math.max(-110, Math.min(65, Number(p.y) || 0))
-      };
+      return normalizeGiftAdj(JSON.parse(raw));
     } catch (e) {
       return null;
     }
@@ -133,7 +155,7 @@ window.PunkCoreState = (function () {
     if (!u) return '';
     var bItem = u.equippedBorderId ? findItem(u.equippedBorderId) : null;
     var borderUrl = u.equippedBorderUrl || (bItem && (bItem.imageUrl || bItem.image_url)) || '';
-    var adj = (u.id && u.equippedBorderId) ? getSavedBorderData(u.id, u.equippedBorderId) : null;
+    var adj = u.equippedBorderId ? getSavedBorderData(u, u.equippedBorderId) : null;
 
     if (borderUrl) {
       var resolvedUrl = esc(API.assetUrl(borderUrl));
@@ -190,7 +212,7 @@ window.PunkCoreState = (function () {
 
     return items.map(function (giftItem, idx) {
       var base = defaultSlots[idx] || { x: 0, y: -78, rot: 0, dur: '3.5s', delay: '0s' };
-      var custom = u.id ? getSavedGiftData(u.id, giftItem.id) : null;
+      var custom = getSavedGiftData(u, giftItem.id);
       var posX = custom ? custom.x : base.x;
       var posY = custom ? custom.y : base.y;
       var gScale = custom ? custom.scale : 1;
