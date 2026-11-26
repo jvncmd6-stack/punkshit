@@ -14,6 +14,10 @@ export function getBot() {
   return botInstance;
 }
 
+export function getBotInstance() {
+  return botInstance;
+}
+
 export function todayWib() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
 }
@@ -37,13 +41,23 @@ export function parsePinnedGifts(raw) {
   return [str];
 }
 
+function parseJsonSafe(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try {
+    const parsed = JSON.parse(String(raw));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function buildMiniAppUrl(startParam = '') {
   if (!ENV.MINIAPP_LINK) return '';
   const railwayApi = process.env.RAILWAY_PUBLIC_DOMAIN
     ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
     : (process.env.API_URL || '').trim();
 
-  // Ambil subdomain-nya saja agar total parameter startapp selalu < 64 karakter (limit Telegram)
   const slugMatch = railwayApi.match(/^https?:\/\/([a-zA-Z0-9-]+)\.up\.railway\.app/i);
   let payload = startParam || 'home';
 
@@ -56,7 +70,6 @@ export function buildMiniAppUrl(startParam = '') {
   return `${ENV.MINIAPP_LINK}?startapp=${encodeURIComponent(payload)}`;
 }
 
-// Kirim notif personal khusus ke PC Bot penerima (mendukung direct URL seperti https://t.me/username)
 export async function notifyPrivateUser(targetUserId, text, { buttonText = '🪪 BUKA PUNKSHIT.OS', startParam = 'home', buttonUrl = '' } = {}) {
   if (!botInstance || !targetUserId || !text) return;
   try {
@@ -143,8 +156,11 @@ export function formatUser(row) {
     equippedBorderId: row.equipped_border_id,
     equippedBorderUrl,
     equippedSkinId: row.equipped_skin_id,
+    equippedThemeId: row.equipped_theme_id || '',
     pinnedGiftId: pinnedGifts[0] || '',
     pinnedGifts,
+    borderAdj: parseJsonSafe(row.border_adj),
+    giftAdj: parseJsonSafe(row.gift_adj),
     fishToday: row.fish_date === today ? row.fish_today : 0,
     fishCount: row.fish_count,
     scratchedToday: row.scratched_date === today,
@@ -185,7 +201,6 @@ export async function broadcastToTelegram({ target = 'group', text = '', buttonT
 
   const upperText = text.toUpperCase();
 
-  // 1. Blokir total notif personal/spam agar TIDAK pernah dikirim ke Grup maupun Channel
   const blockedKeywords = [
     'MASIH HIDUP TERNYATA',
     'ABSEN HARI KE-',
@@ -203,7 +218,6 @@ export async function broadcastToTelegram({ target = 'group', text = '', buttonT
     return;
   }
 
-  // 2. Pisahkan tujuan Channel Confess vs Channel Pengumuman
   const confessChannelId = (ENV.MENFESS_CHANNEL_ID || process.env.MENFESS_CHANNEL_ID || ENV.CHANNEL_ID || '').trim();
   const announceChannelId = (ENV.CHANNEL_ID || '').trim();
 
