@@ -556,10 +556,3 @@ app.listen(PORT, '0.0.0.0', () => {
     runBot();
   }
 });
-```[cite: 33]
-
----
-
-### 📂 Langkah Selanjutnya (Kirim 2 File Ini)
-1. **`src/api/userRoutes.js`** — Supaya pengaturan posisi Border & Gift tersimpan permanen di server dan langsung kelihatan di profil warga lain.
-2. **`js/config.js`** — Supaya ikon **App Museum** langsung muncul di Home Screen dan bisa dibuka warga.
