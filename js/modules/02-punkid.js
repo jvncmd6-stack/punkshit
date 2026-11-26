@@ -3,9 +3,9 @@
   var API = window.PunkAPI;
   var CFG = window.PUNK_CONFIG;
   var S = C.S;
+  var M = window.PunkIDMod = window.PunkIDMod || {};
 
   var pendingBannerFile = null;
-  var spotifyMetaCache = {};
 
   function getTongkronganTier(u) {
     var cred = Number(u.cred) || 0;
@@ -14,115 +14,6 @@
     if (cred >= 100 && best >= 7) return { icon: '🔥', title: 'Pentolan Gang' };
     if (cred >= 25 && best >= 3) return { icon: '☕', title: 'Anak Nongkrong' };
     return { icon: '🌱', title: 'Warga Baru' };
-  }
-
-  function normalizeSpotifyUrl(raw) {
-    var s = String(raw || '').trim();
-    if (!s) return '';
-    return s.replace(/open\.spotify\.com\/intl-[a-zA-Z-]+\//i, 'open.spotify.com/');
-  }
-
-  function detectSpotifyType(url) {
-    if (/\/playlist\//i.test(url)) return 'Playlist';
-    if (/\/album\//i.test(url)) return 'Album';
-    if (/\/artist\//i.test(url)) return 'Artist';
-    return 'Single';
-  }
-
-  function applySpotifyCardDom(meta, cleanUrl) {
-    var titleEl = document.getElementById('pid-sp-title');
-    var artistEl = document.getElementById('pid-sp-artist');
-    var subEl = document.getElementById('pid-sp-sub');
-    var coverEl = document.getElementById('pid-sp-cover');
-
-    if (titleEl && meta.title) titleEl.textContent = meta.title;
-    if (artistEl) artistEl.textContent = meta.artist || 'Spotify';
-    if (subEl) subEl.textContent = meta.sub || ('Spotify · ' + detectSpotifyType(cleanUrl));
-    if (coverEl && meta.cover) {
-      coverEl.src = meta.cover;
-      coverEl.style.display = 'block';
-    }
-  }
-
-  function hydrateSpotifyCard(cleanUrl) {
-    if (!cleanUrl) return;
-    var cacheKey = 'psk_sp_card_v2_' + cleanUrl;
-
-    if (!spotifyMetaCache[cleanUrl]) {
-      try {
-        var saved = localStorage.getItem(cacheKey);
-        if (saved) spotifyMetaCache[cleanUrl] = JSON.parse(saved);
-      } catch (e) {}
-    }
-
-    if (spotifyMetaCache[cleanUrl]) {
-      setTimeout(function () { applySpotifyCardDom(spotifyMetaCache[cleanUrl], cleanUrl); }, 0);
-      return;
-    }
-
-    fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent(cleanUrl))
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (data) {
-        if (!data || !data.title) return;
-        var kind = detectSpotifyType(cleanUrl);
-        var meta = {
-          title: data.title,
-          artist: data.author_name || 'Spotify',
-          sub: data.title + ' - ' + kind + ' · Spotify',
-          cover: data.thumbnail_url || ''
-        };
-        spotifyMetaCache[cleanUrl] = meta;
-        try { localStorage.setItem(cacheKey, JSON.stringify(meta)); } catch (e) {}
-        applySpotifyCardDom(meta, cleanUrl);
-      })
-      .catch(function () {});
-  }
-
-  function renderSpotifyCard(rawUrl) {
-    var cleanUrl = normalizeSpotifyUrl(rawUrl);
-    if (!cleanUrl) return '';
-
-    var cacheKey = 'psk_sp_card_v2_' + cleanUrl;
-    var cached = spotifyMetaCache[cleanUrl];
-    if (!cached) {
-      try {
-        var saved = localStorage.getItem(cacheKey);
-        if (saved) {
-          cached = JSON.parse(saved);
-          spotifyMetaCache[cleanUrl] = cached;
-        }
-      } catch (e) {}
-    }
-
-    var kind = detectSpotifyType(cleanUrl);
-    var titleText = (cached && cached.title) ? cached.title : 'Memuat lagu...';
-    var artistText = (cached && cached.artist) ? cached.artist : 'Spotify';
-    var subText = (cached && cached.sub) ? cached.sub : ('Spotify · ' + kind);
-    var coverUrl = (cached && cached.cover) ? cached.cover : '';
-
-    hydrateSpotifyCard(cleanUrl);
-
-    return (
-      '<a href="' + C.esc(cleanUrl) + '" target="_blank" rel="noopener noreferrer" ' +
-         'style="display:flex;align-items:center;gap:13px;margin-top:12px;padding:10px 14px 10px 10px;' +
-         'background:#232326;border:1px solid rgba(255,255,255,.07);border-radius:16px;' +
-         'text-decoration:none;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.28)">' +
-        '<div style="width:62px;height:62px;border-radius:11px;overflow:hidden;flex-shrink:0;' +
-                    'background:linear-gradient(135deg,#1DB954,#14532d);display:grid;place-items:center">' +
-          '<img id="pid-sp-cover" src="' + C.esc(coverUrl) + '" alt="Cover" ' +
-               'style="width:100%;height:100%;object-fit:cover;' + (coverUrl ? 'display:block' : 'display:none') + '">' +
-        '</div>' +
-        '<div style="flex:1;min-width:0;text-align:left">' +
-          '<div id="pid-sp-title" style="font-size:16px;font-weight:600;color:#f5f5f7;line-height:1.25;' +
-               'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + C.esc(titleText) + '</div>' +
-          '<div id="pid-sp-artist" style="font-size:13.5px;font-weight:500;color:#9a9aa1;margin-top:2px;' +
-               'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + C.esc(artistText) + '</div>' +
-          '<div id="pid-sp-sub" style="font-size:12px;color:#787880;margin-top:2px;' +
-               'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + C.esc(subText) + '</div>' +
-        '</div>' +
-        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#ff3b5c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 3l5 5-5 5"/></svg>' +
-      '</a>'
-    );
   }
 
   function compressBannerIfNeeded(file) {
@@ -157,110 +48,6 @@
       img.onerror = function () { URL.revokeObjectURL(objUrl); resolve(file); };
       img.src = objUrl;
     });
-  }
-
-  function getPinnedList(u) {
-    if (Array.isArray(u.pinnedGifts)) return u.pinnedGifts;
-    return u.pinnedGiftId ? [u.pinnedGiftId] : [];
-  }
-
-  function getBorderAdjKey(uid, borderId) {
-    return 'punk_border_adj_' + String(uid) + '_' + String(borderId);
-  }
-
-  function loadBorderAdj(uid, borderId) {
-    try {
-      var raw = localStorage.getItem(getBorderAdjKey(uid, borderId));
-      if (raw) {
-        var p = JSON.parse(raw);
-        return {
-          scale: Math.max(0.6, Math.min(1.6, Number(p.scale) || 1)),
-          x: Math.max(-35, Math.min(35, Number(p.x) || 0)),
-          y: Math.max(-45, Math.min(45, Number(p.y) || 0))
-        };
-      }
-    } catch (e) {}
-    return { scale: 1, x: 0, y: 0 };
-  }
-
-  function openBorderTuneSheet(borderId) {
-    var u = S.user || {};
-    var bItem = C.findItem(borderId);
-    if (!bItem) return;
-
-    var cur = loadBorderAdj(u.id, bItem.id);
-    var photoSrc = u.photoUrl ? API.assetUrl(u.photoUrl) : '';
-    var borderSrc = (bItem.imageUrl || bItem.image_url) ? API.assetUrl(bItem.imageUrl || bItem.image_url) : '';
-
-    C.sheet(
-      '<h2>🎯 Atur Posisi & Ukuran Border</h2>' +
-      '<p class="sub">Pasin posisi & besar kecil <b>' + C.esc(bItem.name) + '</b> (misal topi/tanduk) terhadap lingkaran avatar lo.</p>' +
-
-      '<div style="display:grid;place-items:center;padding:24px 0;background:radial-gradient(circle,rgba(56,189,248,.14),rgba(15,23,42,.92));border:1px solid rgba(255,255,255,.12);border-radius:16px;margin:10px 0">' +
-        '<div style="position:relative;width:104px;height:104px">' +
-          '<div style="width:104px;height:104px;border-radius:50%;overflow:hidden;border:2.5px dashed rgba(92,225,255,.75);background:#1e293b;display:grid;place-items:center">' +
-            (photoSrc ? '<img src="' + C.esc(photoSrc) + '" style="width:100%;height:100%;object-fit:cover">' : '<b style="font-size:28px">' + C.esc((u.name || '?')[0].toUpperCase()) + '</b>') +
-          '</div>' +
-          (borderSrc
-            ? '<img id="bt-prev-img" src="' + C.esc(borderSrc) + '" style="position:absolute;inset:-14px;width:132px;height:132px;object-fit:contain;pointer-events:none;transform:translate(' + cur.x + 'px,' + cur.y + 'px) scale(' + cur.scale + ')">'
-            : '<div id="bt-prev-img" style="position:absolute;inset:-10px;border-radius:50%;border:3px solid #38bdf8;pointer-events:none;transform:translate(' + cur.x + 'px,' + cur.y + 'px) scale(' + cur.scale + ')"></div>') +
-        '</div>' +
-      '</div>' +
-
-      '<label>UKURAN / SKALA (<span id="bt-val-s">' + Math.round(cur.scale * 100) + '%</span>)</label>' +
-      '<input id="bt-scale" type="range" min="60" max="160" value="' + Math.round(cur.scale * 100) + '">' +
-
-      '<label>GESER KIRI / KANAN (<span id="bt-val-x">' + cur.x + 'px</span>)</label>' +
-      '<input id="bt-x" type="range" min="-35" max="35" value="' + cur.x + '">' +
-
-      '<label>GESER ATAS / BAWAH (<span id="bt-val-y">' + cur.y + 'px</span>)</label>' +
-      '<input id="bt-y" type="range" min="-45" max="45" value="' + cur.y + '">' +
-
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">' +
-        '<button type="button" class="btn b2" id="bt-reset">↺ Reset Tengah</button>' +
-        '<button type="button" class="btn" id="bt-save">💾 Simpan Posisi</button>' +
-      '</div>'
-    );
-
-    var elS = document.getElementById('bt-scale');
-    var elX = document.getElementById('bt-x');
-    var elY = document.getElementById('bt-y');
-    var prev = document.getElementById('bt-prev-img');
-
-    function syncPreview() {
-      var sc = (Number(elS.value) || 100) / 100;
-      var px = Number(elX.value) || 0;
-      var py = Number(elY.value) || 0;
-      document.getElementById('bt-val-s').textContent = Math.round(sc * 100) + '%';
-      document.getElementById('bt-val-x').textContent = px + 'px';
-      document.getElementById('bt-val-y').textContent = py + 'px';
-      if (prev) prev.style.transform = 'translate(' + px + 'px,' + py + 'px) scale(' + sc + ')';
-    }
-
-    elS.oninput = syncPreview;
-    elX.oninput = syncPreview;
-    elY.oninput = syncPreview;
-
-    document.getElementById('bt-reset').onclick = function () {
-      elS.value = '100';
-      elX.value = '0';
-      elY.value = '0';
-      syncPreview();
-    };
-
-    document.getElementById('bt-save').onclick = function () {
-      var payload = {
-        scale: (Number(elS.value) || 100) / 100,
-        x: Number(elX.value) || 0,
-        y: Number(elY.value) || 0
-      };
-      try {
-        localStorage.setItem(getBorderAdjKey(u.id, bItem.id), JSON.stringify(payload));
-      } catch (e) {}
-      C.shut();
-      C.refresh();
-      C.notify('Mas Raka', 'Posisi Border Tersimpan 🎯', 'Ukuran & posisi ' + bItem.name + ' udah dipasin ke avatar lo!');
-    };
   }
 
   function renderPunkCard(u) {
@@ -336,7 +123,7 @@
     var gifts = groupInventoryByType('gift');
     var borders = groupInventoryByType('border');
     var skins = groupInventoryByType('skin');
-    var pinnedIds = getPinnedList(u);
+    var pinnedIds = M.getPinnedList ? M.getPinnedList(u) : (Array.isArray(u.pinnedGifts) ? u.pinnedGifts : []);
 
     var roleBadge = (u.role && u.role !== 'member')
       ? '<span class="role-tag">' + C.esc(u.role) + '</span>'
@@ -352,7 +139,7 @@
           '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
           '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + tier.icon + ' ' + tier.title + '</div>' +
           (u.bio ? '<p class="bio">' + C.esc(u.bio) + '</p>' : '') +
-          (u.spotifyUrl ? renderSpotifyCard(u.spotifyUrl) : '') +
+          (u.spotifyUrl && M.renderSpotifyCard ? M.renderSpotifyCard(u.spotifyUrl) : '') +
           '<div style="display:flex;gap:8px;margin-top:12px">' +
             '<button class="btn b2" style="margin-top:0;flex:1" data-act="pid-edit">Edit Profil & Banner</button>' +
             '<button class="btn b2" style="margin-top:0;width:auto;padding:0 12px" data-act="pid-copy-id" title="Salin Nomor PunkID">🪪 ID</button>' +
@@ -400,9 +187,12 @@
           '</div>'
         : '<div class="grp" style="margin-bottom:14px;margin-top:8px"><div class="rw"><small>Belum punya Avatar Border. Cek koleksi di Lapak Rongsok yuk!</small></div></div>') +
 
-      '<h3 class="gh">ORBIT GIFT DI LUAR PP (' + pinnedIds.length + '/6 PINNED)</h3>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">' +
+        '<h3 class="gh" style="margin:0">ORBIT GIFT DI LUAR PP (' + pinnedIds.length + '/6 PINNED)</h3>' +
+        (pinnedIds.length ? '<button class="pill" style="font-size:11px" data-act="pid-tune-gift">🎯 Atur Gift</button>' : '') +
+      '</div>' +
       (gifts.length
-        ? '<div class="hs">' +
+        ? '<div class="hs" style="margin-top:8px">' +
             '<button data-act="pid-pin-gift" data-id="" class="' + (!pinnedIds.length ? 'on' : '') + '"><div style="height:58px;display:grid;place-items:center;font-size:20px">🚫</div>Reset Pin</button>' +
             gifts.map(function (entry) {
               var it = entry.item;
@@ -411,7 +201,7 @@
               return '<button data-act="pid-pin-gift" data-id="' + C.esc(it.id) + '" class="' + (active ? 'on' : '') + '">' + C.renderItemVisual(it, 58, false) + '<span>' + C.esc(it.name + qtyTag) + '</span>' + limitedTag(it) + '</button>';
             }).join('') +
           '</div>'
-        : '<div class="grp"><div class="rw"><small>Gudang gift masih kosong cuy. Beli di Lapak Rongsok atau tunggu kiriman warga lain!</small></div></div>')
+        : '<div class="grp" style="margin-top:8px"><div class="rw"><small>Gudang gift masih kosong cuy. Beli di Lapak Rongsok atau tunggu kiriman warga lain!</small></div></div>')
     );
   }
 
@@ -516,14 +306,17 @@
     } else if (act === 'pid-edit') {
       openEditProfileSheet();
     } else if (act === 'pid-tune-border') {
-      openBorderTuneSheet(t.getAttribute('data-id'));
+      if (M.openBorderTuneSheet) M.openBorderTuneSheet(t.getAttribute('data-id'));
+    } else if (act === 'pid-tune-gift') {
+      if (M.openGiftTuneSheet) M.openGiftTuneSheet(t.getAttribute('data-id') || '');
     } else if (act === 'pid-pick-ring') {
       document.querySelectorAll('#ed-rings .chip').forEach(function (c) { c.classList.remove('on'); });
       t.classList.add('on');
     } else if (act === 'pid-save-profile') {
       var name = (document.getElementById('ed-name').value || '').trim();
       var bio = (document.getElementById('ed-bio').value || '').trim();
-      var sp = normalizeSpotifyUrl((document.getElementById('ed-sp').value || '').trim());
+      var rawSp = (document.getElementById('ed-sp').value || '').trim();
+      var sp = M.normalizeSpotifyUrl ? M.normalizeSpotifyUrl(rawSp) : rawSp;
       var activeRing = document.querySelector('#ed-rings .chip.on');
       var ringStyle = activeRing ? Number(activeRing.getAttribute('data-idx')) : 0;
 
@@ -603,15 +396,16 @@
       }
     } else if (act === 'pid-pin-gift') {
       var rawGiftId = t.getAttribute('data-id') || '';
-      var beforeList = getPinnedList(S.user);
+      var beforeList = M.getPinnedList ? M.getPinnedList(S.user) : [];
       var wasPinned = rawGiftId && beforeList.indexOf(rawGiftId) !== -1;
       try {
         var res = await API.post('/api/profile/equip', { type: 'pin', itemId: rawGiftId || null });
         if (res.user) S.user = res.user;
         C.refresh();
+        var afterList = M.getPinnedList ? M.getPinnedList(S.user) : [];
         var msg = !rawGiftId
           ? 'Pin gift di-reset.'
-          : (wasPinned ? 'Gift dilepas dari pin utama.' : 'Gift dipasang ke orbit profil! (' + getPinnedList(S.user).length + '/6)');
+          : (wasPinned ? 'Gift dilepas dari pin utama.' : 'Gift dipasang! Tap "🎯 Atur Gift" buat atur besar kecil & posisinya (' + afterList.length + '/6).');
         C.notify('Mas Raka', 'Orbit Gift Profil', msg);
       } catch (err) {
         C.notify('Mas Raka', 'Info', err.message);
