@@ -65,8 +65,8 @@ async function sendProtectedItemPreview(ctx, localFile, caption, kb) {
   };
 
   if (localFile) {
-    if (/\.webm$/i.test(localFile)) {
-      // Coba kirim sebagai video sticker VP9 agar transparansi tetap utuh & tidak jadi file unduhan
+    // 1. Format .webm (video sticker) & .png / .webp (static sticker) -> transparansi utuh + anti-download
+    if (/\.(webm|png|webp)$/i.test(localFile)) {
       try {
         const stickerMsg = await ctx.replyWithSticker(new InputFile(localFile), {
           protect_content: true
@@ -79,14 +79,21 @@ async function sendProtectedItemPreview(ctx, localFile, caption, kb) {
         });
         return;
       } catch (_) {
-        // Fallback jika dimensi/durasi .webm melebihi batas stiker Telegram
-        try {
-          await ctx.replyWithVideo(new InputFile(localFile), {
-            ...baseOpts,
-            supports_streaming: true
-          });
-          return;
-        } catch (__) {}
+        // Fallback jika dimensi/durasi melebihi syarat stiker Telegram (mis. foto Lapak Warga 900px)
+        if (/\.webm$/i.test(localFile)) {
+          try {
+            await ctx.replyWithVideo(new InputFile(localFile), {
+              ...baseOpts,
+              supports_streaming: true
+            });
+            return;
+          } catch (__) {}
+        } else {
+          try {
+            await ctx.replyWithPhoto(new InputFile(localFile), baseOpts);
+            return;
+          } catch (__) {}
+        }
       }
     } else if (/\.gif$/i.test(localFile)) {
       try {
@@ -112,7 +119,7 @@ export function registerLapakCommands(bot) {
   if (bot.__punkLapakCmdsBound) return;
   bot.__punkLapakCmdsBound = true;
 
-  // Tampilkan / pamer item Lapak Rongsok (Collab/Resmi) atau Lapak Warga langsung di grup (Anti-Save)
+  // Tampilkan / pamer item Lapak Rongsok (Collab/Resmi) atau Lapak Warga langsung di grup (Anti-Save & Transparan)
   bot.command(['item', 'pamer'], async (ctx) => {
     const query = String(ctx.match || '').trim();
     if (!query) {
