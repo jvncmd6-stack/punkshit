@@ -159,11 +159,20 @@
 
     C.sheet(
       '<h2>🎨 Ajukan Item Collab</h2>' +
-      '<p class="sub">Kirim desain Avatar Border, Card Skin, atau Gift. Kalau di-ACC admin, otomatis masuk gudang lo gratis & dapat <b>royalti 20% PSC</b> tiap laku!</p>' +
+      '<p class="sub">Bisa solo atau tim (<b>maks. 3 orang</b>). Kalau di-ACC admin, semua kreator dapat item gratis & <b>royalti 20% PSC</b> dibagi rata tiap laku!</p>' +
 
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
         '<div><label>TIPE ITEM PROFIL</label><select id="col-type"><option value="border">🖼️ Avatar Border</option><option value="skin">🪪 Card Skin</option><option value="gift">🎁 Gift Pin</option></select></div>' +
         '<div><label>AJUAN HARGA (PSC)</label><input id="col-price" type="number" min="50" max="5000" value="150"></div>' +
+      '</div>' +
+
+      '<div style="background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.22);padding:10px;border-radius:12px;margin-top:8px">' +
+        '<b style="font-size:11.5px;color:#7DD3FC;display:block;margin-bottom:4px">🤝 PARTNER COLLAB (OPSIONAL · MAKS. 2 PARTNER)</b>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+          '<input id="col-partner-1" maxlength="32" placeholder="Partner 2 (@username / ID)">' +
+          '<input id="col-partner-2" maxlength="32" placeholder="Partner 3 (@username / ID)">' +
+        '</div>' +
+        '<small id="col-split-info" style="display:block;font-size:10.5px;color:#cbd5e1;margin-top:4px">Solo Creator: Royalti 20% utuh untuk kamu.</small>' +
       '</div>' +
 
       '<label>FILE DESAIN (PNG TRANSPARAN / GIF / WEBM)</label>' +
@@ -180,7 +189,6 @@
         '</div>' +
 
         '<div id="col-stage-canvas" style="display:grid;place-items:center;min-height:148px;position:relative;overflow:hidden">' +
-          /* Mode Avatar Guide (untuk Border & Gift) */
           '<div id="col-avatar-guide" style="position:relative;width:104px;height:104px">' +
             '<div style="width:104px;height:104px;border-radius:50%;overflow:hidden;border:2.5px dashed rgba(92,225,255,.85);box-shadow:0 0 0 4px rgba(92,225,255,.12);background:#1e293b;display:grid;place-items:center">' +
               (photoSrc
@@ -190,7 +198,6 @@
             '<div id="col-media-layer" style="position:absolute;inset:-14px;width:132px;height:132px;display:grid;place-items:center;pointer-events:none;transform:translate(0px,0px) scale(1)"></div>' +
           '</div>' +
 
-          /* Mode Card Skin Guide */
           '<div id="col-card-guide" style="display:none;position:relative;width:248px;height:146px;border-radius:16px;overflow:hidden;border:2px dashed rgba(92,225,255,.85);background:#0f172a">' +
             '<div id="col-card-media-layer" style="position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;transform:translate(0px,0px) scale(1)"></div>' +
             '<div style="position:relative;z-index:2;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;height:100%;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.55))">' +
@@ -224,6 +231,24 @@
 
       '<button class="btn" data-act="lp-collab-send">🚀 KIRIM PENGAJUAN KE ADMIN</button>'
     );
+
+    var p1El = document.getElementById('col-partner-1');
+    var p2El = document.getElementById('col-partner-2');
+    var splitInfo = document.getElementById('col-split-info');
+    function updateSplitPreview() {
+      var count = 1;
+      if (p1El && p1El.value.trim()) count++;
+      if (p2El && p2El.value.trim()) count++;
+      if (count === 1) {
+        splitInfo.textContent = 'Solo Creator (1 orang): Royalti 20% utuh untuk kamu.';
+      } else if (count === 2) {
+        splitInfo.textContent = 'Duo Collab (2 orang): Royalti 20% dibagi rata (10% + 10%) & masing-masing dapat item gratis.';
+      } else {
+        splitInfo.textContent = 'Trio Collab (3 orang): Royalti 20% dibagi rata 3 kreator & masing-masing dapat item gratis.';
+      }
+    }
+    if (p1El) p1El.oninput = updateSplitPreview;
+    if (p2El) p2El.oninput = updateSplitPreview;
 
     var typeEl = document.getElementById('col-type');
     var scaleEl = document.getElementById('col-adj-scale');
@@ -267,7 +292,6 @@
         avatarGuide.style.display = 'block';
         cardGuide.style.display = 'none';
         stageTitle.textContent = '🎁 PRATINJAU ORBIT GIFT DI LUAR AVATAR';
-        // Posisi default gift berada di orbit luar lingkaran avatar (+56px kanan-atas)
         mediaLayer.style.transform = 'translate(' + (px + 48) + 'px,' + (py - 32) + 'px) scale(' + (sc * 0.34) + ')';
       } else {
         avatarGuide.style.display = 'block';
