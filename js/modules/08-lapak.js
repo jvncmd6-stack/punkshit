@@ -4,6 +4,16 @@
   var S = C.S;
   var L = window.PunkLapak = window.PunkLapak || {};
 
+  function formatCreatorsLabel(it) {
+    if (Array.isArray(it.creators) && it.creators.length > 1) {
+      return '🤝 ' + it.creators.map(function (c) {
+        return c.username ? ('@' + c.username) : (c.name || 'Warga');
+      }).join(' × ');
+    }
+    if (it.creatorName) return 'by ' + it.creatorName;
+    return '';
+  }
+
   function defaultRenderLapak() {
     if (typeof L.applyActiveOsTheme === 'function') L.applyActiveOsTheme();
 
@@ -78,12 +88,14 @@
             : '<span style="color:#FFD633;font-weight:800;font-size:12px">' + it.price + ' PSC</span>');
 
       var typeText = it.type === 'theme' ? 'TEMA OS' : (it.type || '').toUpperCase();
+      var creatorText = formatCreatorsLabel(it);
 
       return '<div class="card" data-act="lp-detail" data-id="' + C.esc(it.id) + '" style="padding:12px;text-align:center;cursor:pointer;position:relative">' +
         (topBadge ? '<div style="position:absolute;top:8px;right:8px">' + topBadge + '</div>' : '') +
         '<div style="display:grid;place-items:center;height:78px">' + C.renderItemVisual(it, 68, false) + '</div>' +
         '<div style="font-weight:700;font-size:13px;margin-top:6px;line-height:1.25">' + C.esc(it.name) + '</div>' +
-        '<small style="display:block;opacity:.7;font-size:10px;margin:2px 0 6px">' + C.esc(typeText) + ' · ' + C.esc(it.rarity || 'Rare') + '</small>' +
+        '<small style="display:block;opacity:.7;font-size:10px;margin:2px 0 ' + (creatorText ? '2px' : '6px') + '">' + C.esc(typeText) + ' · ' + C.esc(it.rarity || 'Rare') + '</small>' +
+        (creatorText ? '<small style="display:block;color:#7DD3FC;font-size:9.5px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + C.esc(creatorText) + '</small>' : '') +
         badge +
       '</div>';
     }).join('');
@@ -263,6 +275,9 @@
       var cPrice = Number(document.getElementById('col-price').value) || 150;
       var cName = (document.getElementById('col-name').value || '').trim();
       var cDesc = (document.getElementById('col-desc').value || '').trim();
+      var p1 = (document.getElementById('col-partner-1') && document.getElementById('col-partner-1').value || '').trim();
+      var p2 = (document.getElementById('col-partner-2') && document.getElementById('col-partner-2').value || '').trim();
+      var partners = [p1, p2].filter(Boolean);
 
       if (cName.length < 3 || !L.pendingCollabFile) {
         C.notify('Mas Raka', 'Validasi', 'Isi nama item (min 3 huruf) dan pilih file desainnya dulu!');
@@ -277,12 +292,13 @@
         cfd.append('price', String(cPrice));
         cfd.append('name', cName);
         cfd.append('desc', cDesc);
+        cfd.append('partners', JSON.stringify(partners));
         cfd.append('media', L.pendingCollabFile);
 
         await API.upload('/api/shop/collab-submit', cfd);
         L.pendingCollabFile = null;
         C.shut();
-        C.notify('Mas Raka', 'Collab Diajukan! 🎨', 'Karya "' + cName + '" sudah dikirim ke Admin. Cek notifikasi bot kalau sudah di-ACC!');
+        C.notify('Mas Raka', 'Collab Diajukan! 🎨', 'Karya "' + cName + '"' + (partners.length ? ' (tim ' + (partners.length + 1) + ' kreator)' : '') + ' sudah dikirim ke Admin!');
       } catch (err) {
         t.disabled = false;
         t.textContent = '🚀 KIRIM PENGAJUAN KE ADMIN';
