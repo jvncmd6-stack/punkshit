@@ -106,12 +106,16 @@ window.PunkCoreState = (function () {
     };
   }
 
-  function normalizeGiftAdj(p) {
+  function normalizeGiftAdj(p, fallbackRot) {
     if (!p || typeof p !== 'object') return null;
+    var hasRot = p.rot !== undefined && p.rot !== null && p.rot !== '';
+    var rotVal = hasRot ? Number(p.rot) : (Number(fallbackRot) || 0);
+    if (isNaN(rotVal)) rotVal = 0;
     return {
       scale: Math.max(0.5, Math.min(2.2, Number(p.scale) || 1)),
       x: Math.max(-145, Math.min(145, Number(p.x) || 0)),
-      y: Math.max(-110, Math.min(65, Number(p.y) || 0))
+      y: Math.max(-110, Math.min(65, Number(p.y) || 0)),
+      rot: Math.max(-45, Math.min(45, Math.round(rotVal)))
     };
   }
 
@@ -133,19 +137,19 @@ window.PunkCoreState = (function () {
     }
   }
 
-  function getSavedGiftData(uOrUid, giftId) {
+  function getSavedGiftData(uOrUid, giftId, fallbackRot) {
     if (!uOrUid || !giftId) return null;
     var isObj = typeof uOrUid === 'object';
     var uid = isObj ? uOrUid.id : uOrUid;
 
     if (isObj && uOrUid.giftAdj && typeof uOrUid.giftAdj === 'object' && uOrUid.giftAdj[giftId]) {
-      return normalizeGiftAdj(uOrUid.giftAdj[giftId]);
+      return normalizeGiftAdj(uOrUid.giftAdj[giftId], fallbackRot);
     }
     if (!uid) return null;
     try {
       var raw = localStorage.getItem('punk_gift_adj_' + String(uid) + '_' + String(giftId));
       if (!raw) return null;
-      return normalizeGiftAdj(JSON.parse(raw));
+      return normalizeGiftAdj(JSON.parse(raw), fallbackRot);
     } catch (e) {
       return null;
     }
@@ -212,10 +216,11 @@ window.PunkCoreState = (function () {
 
     return items.map(function (giftItem, idx) {
       var base = defaultSlots[idx] || { x: 0, y: -78, rot: 0, dur: '3.5s', delay: '0s' };
-      var custom = getSavedGiftData(u, giftItem.id);
+      var custom = getSavedGiftData(u, giftItem.id, base.rot);
       var posX = custom ? custom.x : base.x;
       var posY = custom ? custom.y : base.y;
       var gScale = custom ? custom.scale : 1;
+      var gRot = custom ? custom.rot : base.rot;
       var visualSize = Math.round(28 * gScale);
 
       return (
@@ -223,7 +228,7 @@ window.PunkCoreState = (function () {
              'style="position:absolute;left:50%;top:50%;' +
              'transform:translate(calc(-50% + ' + posX + 'px),calc(-50% + ' + posY + 'px));' +
              'z-index:7;pointer-events:none">' +
-          '<div class="gift-live-bob" style="--rot:' + base.rot + 'deg;animation-duration:' + base.dur + ';animation-delay:' + base.delay + '">' +
+          '<div class="gift-live-bob" style="--rot:' + gRot + 'deg;animation-duration:' + base.dur + ';animation-delay:' + base.delay + '">' +
             renderItemVisual(giftItem, visualSize, false) +
           '</div>' +
         '</div>'
