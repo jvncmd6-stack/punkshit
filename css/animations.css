@@ -34,6 +34,28 @@
   pointer-events: none;
 }
 
+/* Matikan efek layer ganda & sway 3D saat gift dipasang di Orbit Avatar / Tuner */
+.av-gift-pin .g3,
+.gt-pin-node .g3 {
+  margin: 0;
+  perspective: none;
+  filter: none;
+}
+.av-gift-pin .rot,
+.gt-pin-node .rot {
+  animation: none !important;
+  transform: none !important;
+  transform-style: flat;
+}
+.av-gift-pin .rot svg:not(:last-child),
+.gt-pin-node .rot svg:not(:last-child) {
+  display: none;
+}
+.av-gift-pin .rot svg:last-child,
+.gt-pin-node .rot svg:last-child {
+  transform: none !important;
+}
+
 @keyframes sway {
   from {
     transform: rotateY(-34deg) rotateX(8deg);
