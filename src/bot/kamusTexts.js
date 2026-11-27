@@ -32,7 +32,7 @@ export const DEFAULT_HELP =
   '<blockquote>' +
   '1. 🪪 Cetak identitas PunkID melalui menu utama WebApp.\n' +
   '2. 🎧 Request lagu Spotify melalui Radio Gang atau kirim MP3 ke PC Bot Mas Raka.\n' +
-  '3. 🛒 Jual-beli barang dan jasa melalui Lapak Punkshit menggunakan PSC.\n' +
+  '3. 🛒 Jual-beli barang dan jasa melalui Lapak Punkshit menggunakan PSC (ketik <code>/item nama</code> untuk pamer item di grup).\n' +
   '4. 🎮 Mainkan mini-game di Arena Gabut untuk mengumpulkan Arcade XP, naik level, dan klaim hadiah Arcade Pass.' +
   '</blockquote>\n\n' +
   '<i>Ketik /tutor untuk panduan lengkap setiap aplikasi di Mini App.</i>';
@@ -73,7 +73,8 @@ export function renderTutorMiniAppText(page = 'overview') {
       '<blockquote>' +
       '<b>🛒 Lapak Rongsok vs Lapak Warga</b>\n' +
       '• <b>Lapak Rongsok:</b> Toko resmi (jual <i>Border, Card Skin, & Gift langka</i>).\n' +
-      '• <b>Lapak Warga:</b> Pasar bebas—kamu bisa pasang dagangan/jasa sendiri dan dibayar pakai <b>PSC</b> oleh warga lain.' +
+      '• <b>Lapak Warga:</b> Pasar bebas—kamu bisa pasang dagangan/jasa sendiri dan dibayar pakai <b>PSC</b> oleh warga lain.\n' +
+      '• <b>Pamer di Grup:</b> Ketik <code>/item nama_item</code> di grup untuk menampilkan preview item secara langsung.' +
       '</blockquote>\n\n' +
       '<blockquote>' +
       '<b>🔥 Spark Buddies (Maks. 3 Slot)</b>\n' +
@@ -149,7 +150,8 @@ export function renderKamusText() {
     '• <code>/myid</code> — Cek Telegram ID akun kamu' +
     '</blockquote>\n\n' +
     '<blockquote>' +
-    '<b>2. Spark Buddies & Dompet:</b>\n' +
+    '<b>2. Lapak, Spark Buddies & Dompet:</b>\n' +
+    '• <code>/item nama_item</code> — Pamer item Lapak Rongsok / Lapak Warga di grup\n' +
     '• <code>/spark</code> — Buka menu Spark Buddies\n' +
     '• <code>/setor</code> — Setor harian nyalain api Spark (1x/hari)\n' +
     '• <code>/acc</code> — Terima ajakan Spark yang masuk\n' +
