@@ -49,35 +49,43 @@
   function loadGiftAdj(u, giftId, slotIdx) {
     var uid = u && u.id;
     var defaultSlots = [
-      { x: -74,  y: -52 },
-      { x:  74,  y: -52 },
-      { x: -116, y: -12 },
-      { x:  116, y: -12 },
-      { x: -86,  y:  28 },
-      { x:  86,  y:  28 }
+      { x: -74,  y: -52, rot: -10 },
+      { x:  74,  y: -52, rot:  10 },
+      { x: -116, y: -12, rot: -14 },
+      { x:  116, y: -12, rot:  14 },
+      { x: -86,  y:  28, rot:  -8 },
+      { x:  86,  y:  28, rot:   8 }
     ];
-    var fallback = defaultSlots[slotIdx] || { x: 0, y: -78 };
+    var fallback = defaultSlots[slotIdx] || { x: 0, y: -78, rot: 0 };
 
     if (u && u.giftAdj && typeof u.giftAdj === 'object' && u.giftAdj[giftId]) {
       var srv = u.giftAdj[giftId];
+      var hasSrvRot = srv.rot !== undefined && srv.rot !== null && srv.rot !== '';
+      var srvRot = hasSrvRot ? Number(srv.rot) : fallback.rot;
+      if (isNaN(srvRot)) srvRot = fallback.rot;
       return {
         scale: Math.max(0.5, Math.min(2.2, Number(srv.scale) || 1)),
         x: Math.max(-145, Math.min(145, Number(srv.x) || 0)),
-        y: Math.max(-110, Math.min(65, Number(srv.y) || 0))
+        y: Math.max(-110, Math.min(65, Number(srv.y) || 0)),
+        rot: Math.max(-45, Math.min(45, Math.round(srvRot)))
       };
     }
     try {
       var raw = localStorage.getItem(getGiftAdjKey(uid, giftId));
       if (raw) {
         var p = JSON.parse(raw);
+        var hasLocRot = p.rot !== undefined && p.rot !== null && p.rot !== '';
+        var locRot = hasLocRot ? Number(p.rot) : fallback.rot;
+        if (isNaN(locRot)) locRot = fallback.rot;
         return {
           scale: Math.max(0.5, Math.min(2.2, Number(p.scale) || 1)),
           x: Math.max(-145, Math.min(145, Number(p.x) || 0)),
-          y: Math.max(-110, Math.min(65, Number(p.y) || 0))
+          y: Math.max(-110, Math.min(65, Number(p.y) || 0)),
+          rot: Math.max(-45, Math.min(45, Math.round(locRot)))
         };
       }
     } catch (e) {}
-    return { scale: 1, x: fallback.x, y: fallback.y };
+    return { scale: 1, x: fallback.x, y: fallback.y, rot: fallback.rot };
   }
 
   function openBorderTuneSheet(borderId) {
@@ -230,7 +238,7 @@
       return (
         '<div class="gt-pin-node" data-gt-node="' + idx + '" ' +
              'style="position:absolute;left:50%;top:50%;' +
-             'transform:translate(calc(-50% + ' + st.x + 'px),calc(-50% + ' + st.y + 'px));' +
+             'transform:translate(calc(-50% + ' + st.x + 'px),calc(-50% + ' + st.y + 'px)) rotate(' + st.rot + 'deg);' +
              'z-index:' + (isSelected ? '9' : '7') + ';cursor:grab;touch-action:none;' +
              'outline:' + (isSelected ? '1.5px dashed #38BDF8' : 'none') + ';border-radius:8px;padding:4px">' +
           C.renderItemVisual(g.item, sz, false) +
@@ -241,8 +249,8 @@
     var activeData = stateMap[giftItems[activeIdx].item.id];
 
     C.sheet(
-      '<h2>🎁 Atur Posisi & Ukuran Gift</h2>' +
-      '<p class="sub">Sentuh & geser langsung gift di layar pratinjau atau pakai slider di bawah.</p>' +
+      '<h2>🎁 Atur Posisi, Ukuran & Kemiringan Gift</h2>' +
+      '<p class="sub">Geser langsung gift di pratinjau atau atur ukuran & kemiringannya di bawah.</p>' +
 
       '<div class="chips" id="gt-pills" style="margin-bottom:10px">' + selectorPills + '</div>' +
 
@@ -263,6 +271,9 @@
       '<label>UKURAN GIFT (<span id="gt-val-s">' + Math.round(activeData.scale * 100) + '%</span>)</label>' +
       '<input id="gt-scale" type="range" min="50" max="220" value="' + Math.round(activeData.scale * 100) + '">' +
 
+      '<label>KEMIRINGAN / ROTASI (<span id="gt-val-r">' + activeData.rot + '°</span>)</label>' +
+      '<input id="gt-rot" type="range" min="-45" max="45" value="' + activeData.rot + '">' +
+
       '<label>GESER KIRI / KANAN (<span id="gt-val-x">' + activeData.x + 'px</span>)</label>' +
       '<input id="gt-x" type="range" min="-145" max="145" value="' + activeData.x + '">' +
 
@@ -276,6 +287,7 @@
     );
 
     var elS = document.getElementById('gt-scale');
+    var elR = document.getElementById('gt-rot');
     var elX = document.getElementById('gt-x');
     var elY = document.getElementById('gt-y');
 
@@ -285,7 +297,7 @@
         var node = document.querySelector('[data-gt-node="' + idx + '"]');
         if (!node) return;
         var isSel = idx === activeIdx;
-        node.style.transform = 'translate(calc(-50% + ' + st.x + 'px),calc(-50% + ' + st.y + 'px))';
+        node.style.transform = 'translate(calc(-50% + ' + st.x + 'px),calc(-50% + ' + st.y + 'px)) rotate(' + st.rot + 'deg)';
         node.style.zIndex = isSel ? '9' : '7';
         node.style.outline = isSel ? '1.5px dashed #38BDF8' : 'none';
         var g3 = node.querySelector('.g3');
@@ -297,9 +309,11 @@
       var g = giftItems[activeIdx];
       var st = stateMap[g.item.id];
       elS.value = String(Math.round(st.scale * 100));
+      elR.value = String(st.rot);
       elX.value = String(st.x);
       elY.value = String(st.y);
       document.getElementById('gt-val-s').textContent = Math.round(st.scale * 100) + '%';
+      document.getElementById('gt-val-r').textContent = st.rot + '°';
       document.getElementById('gt-val-x').textContent = st.x + 'px';
       document.getElementById('gt-val-y').textContent = st.y + 'px';
       refreshNodes();
@@ -309,15 +323,18 @@
       var g = giftItems[activeIdx];
       var st = stateMap[g.item.id];
       st.scale = (Number(elS.value) || 100) / 100;
+      st.rot = Math.max(-45, Math.min(45, Number(elR.value) || 0));
       st.x = Number(elX.value) || 0;
       st.y = Number(elY.value) || 0;
       document.getElementById('gt-val-s').textContent = Math.round(st.scale * 100) + '%';
+      document.getElementById('gt-val-r').textContent = st.rot + '°';
       document.getElementById('gt-val-x').textContent = st.x + 'px';
       document.getElementById('gt-val-y').textContent = st.y + 'px';
       refreshNodes();
     }
 
     elS.oninput = onSliderInput;
+    elR.oninput = onSliderInput;
     elX.oninput = onSliderInput;
     elY.oninput = onSliderInput;
 
@@ -397,7 +414,7 @@
 
       C.shut();
       C.refresh();
-      C.notify('Mas Raka', 'Layout Gift Tersimpan 🎁', 'Ukuran & posisi gift udah sinkron ke seluruh profil warga!');
+      C.notify('Mas Raka', 'Layout Gift Tersimpan 🎁', 'Ukuran, kemiringan & posisi gift udah sinkron ke seluruh profil warga!');
     };
   }
 
