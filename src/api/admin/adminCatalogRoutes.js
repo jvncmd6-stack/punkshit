@@ -8,6 +8,47 @@ import { isAdminUser, logAudit } from './adminHelpers.js';
 
 export const adminCatalogRouter = Router();
 
+try { db.exec("ALTER TABLE items ADD COLUMN creators_json TEXT DEFAULT ''"); } catch (_) {}
+try { db.exec("ALTER TABLE item_submissions ADD COLUMN creators_json TEXT DEFAULT ''"); } catch (_) {}
+
+function extractSubmissionCreators(sub) {
+  const list = [];
+  const seen = new Set();
+
+  if (sub?.creators_json) {
+    try {
+      const parsed = typeof sub.creators_json === 'string'
+        ? JSON.parse(sub.creators_json)
+        : sub.creators_json;
+      if (Array.isArray(parsed)) {
+        for (const c of parsed) {
+          const cid = String(c?.id || '').trim();
+          if (cid && !seen.has(cid)) {
+            seen.add(cid);
+            list.push({
+              id: cid,
+              name: c.name || 'Warga',
+              username: c.username || ''
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  const mainId = String(sub?.creator_id || '').trim();
+  if (mainId && !seen.has(mainId)) {
+    seen.add(mainId);
+    list.push({
+      id: mainId,
+      name: sub.creator_name || 'Warga',
+      username: sub.creator_username || ''
+    });
+  }
+
+  return list.slice(0, 3);
+}
+
 adminCatalogRouter.post('/admin/collab/review', requireUser, async (req, res) => {
   if (!isAdminUser(req.dbUser)) return res.status(403).json({ error: 'Akses ditolak.' });
 
@@ -18,40 +59,70 @@ adminCatalogRouter.post('/admin/collab/review', requireUser, async (req, res) =>
     return res.status(404).json({ error: 'Pengajuan collab tidak ditemukan atau sudah diproses.' });
   }
 
+  const creators = extractSubmissionCreators(sub);
+  const creatorLabel = creators.length > 1
+    ? creators.map((c) => (c.username ? `@${c.username}` : c.name)).join(' × ')
+    : (sub.creator_username ? `@${sub.creator_username}` : sub.creator_name);
+
   if (decision === 'approve') {
     const itemId = 'collab-' + crypto.randomBytes(3).toString('hex');
     const finalPrice = Number(sub.price) || 100;
-    const creatorId = String(sub.creator_id || '').trim();
-    const creatorLabel = sub.creator_username ? `@${sub.creator_username}` : sub.creator_name;
+    const primaryCreatorId = creators[0]?.id || String(sub.creator_id || '').trim();
     const fullDesc = `${sub.desc || 'Item spesial kolaborasi warga.'} (Collab by ${creatorLabel})`;
+    const now = Date.now();
 
     db.transaction(() => {
       db.prepare(`
-        INSERT INTO items (id, type, name, price, rarity, stock, desc, image_url, creator_id, creator_name, is_collab, created_at)
-        VALUES (?, ?, ?, ?, 'Collab', -1, ?, ?, ?, ?, 1, ?)
-      `).run(itemId, sub.type, sub.name, finalPrice, fullDesc, sub.image_url || '', creatorId, creatorLabel, Date.now());
+        INSERT INTO items (id, type, name, price, rarity, stock, desc, image_url, creator_id, creator_name, creators_json, is_collab, created_at)
+        VALUES (?, ?, ?, ?, 'Collab', -1, ?, ?, ?, ?, ?, 1, ?)
+      `).run(
+        itemId,
+        sub.type,
+        sub.name,
+        finalPrice,
+        fullDesc,
+        sub.image_url || '',
+        primaryCreatorId,
+        creatorLabel,
+        JSON.stringify(creators),
+        now
+      );
 
-      db.prepare("UPDATE item_submissions SET status = 'approved', reviewed_by = ? WHERE id = ?").run(String(req.dbUser.id), id);
-      db.prepare('INSERT INTO inventory (user_id, item_id, acquired_at) VALUES (?, ?, ?)').run(creatorId, itemId, Date.now());
+      db.prepare("UPDATE item_submissions SET status = 'approved', reviewed_by = ? WHERE id = ?")
+        .run(String(req.dbUser.id), id);
+
+      const insInv = db.prepare('INSERT INTO inventory (user_id, item_id, acquired_at) VALUES (?, ?, ?)');
+      creators.forEach((cr, idx) => {
+        insInv.run(cr.id, itemId, now + idx);
+      });
     })();
 
     logAudit(req.dbUser.id, 'ACC COLLAB', `Setujui ${sub.name} (${itemId}) oleh ${creatorLabel}`);
 
-    await notifyPrivateUser(
-      creatorId,
-      `🎉 <b>ITEM COLLAB KAMU DI-ACC!</b>\n\nKarya <b>${escHtml(sub.name)}</b> resmi rilis di <b>Lapak Rongsok</b> seharga <b>${finalPrice} PSC</b>!\n` +
-      `• Kamu otomatis dapat 1 item gratis di gudang.\n` +
-      `• Tiap kali warga lain beli, kamu dapat <b>royalti 20% PSC</b> otomatis!`,
-      { buttonText: '🛍️ CEK LAPAK RONGSOK', startParam: 'lapak' }
-    ).catch(() => {});
-  } else {
-    db.prepare("UPDATE item_submissions SET status = 'rejected', reviewed_by = ? WHERE id = ?").run(String(req.dbUser.id), id);
-    logAudit(req.dbUser.id, 'TOLAK COLLAB', `${sub.name} oleh ${sub.creator_name}`);
+    const splitNote = creators.length > 1
+      ? `<b>royalti 20% PSC dibagi rata (${creators.length} kreator)</b> otomatis!`
+      : `<b>royalti 20% PSC</b> otomatis!`;
 
-    await notifyPrivateUser(
-      sub.creator_id,
-      `❌ <b>PENGAJUAN COLLAB DITOLAK</b>\nItem: <b>${escHtml(sub.name)}</b>\nAlasan: <i>Belum sesuai kriteria tema markas.</i>`
-    ).catch(() => {});
+    for (const cr of creators) {
+      await notifyPrivateUser(
+        cr.id,
+        `🎉 <b>ITEM COLLAB KAMU DI-ACC!</b>\n\nKarya <b>${escHtml(sub.name)}</b> resmi rilis di <b>Lapak Rongsok</b> seharga <b>${finalPrice} PSC</b>!\n` +
+        `• Kamu otomatis dapat 1 item gratis di gudang.\n` +
+        `• Tiap kali warga lain beli, kamu dapat ${splitNote}`,
+        { buttonText: '🛍️ CEK LAPAK RONGSOK', startParam: 'lapak' }
+      ).catch(() => {});
+    }
+  } else {
+    db.prepare("UPDATE item_submissions SET status = 'rejected', reviewed_by = ? WHERE id = ?")
+      .run(String(req.dbUser.id), id);
+    logAudit(req.dbUser.id, 'TOLAK COLLAB', `${sub.name} oleh ${creatorLabel}`);
+
+    for (const cr of creators) {
+      await notifyPrivateUser(
+        cr.id,
+        `❌ <b>PENGAJUAN COLLAB DITOLAK</b>\nItem: <b>${escHtml(sub.name)}</b>\nAlasan: <i>Belum sesuai kriteria tema markas.</i>`
+      ).catch(() => {});
+    }
   }
 
   res.json({ ok: true, catalog: getCatalog() });
@@ -145,6 +216,11 @@ adminCatalogRouter.delete('/admin/items/:id', requireUser, (req, res) => {
   );
 
   if (ownedCount > 0 || isCollabOrLimited) {
+    let parsedCreators = null;
+    if (item.creators_json) {
+      try { parsedCreators = JSON.parse(item.creators_json); } catch (_) {}
+    }
+
     const snapshot = JSON.stringify({
       id: item.id,
       type: item.type,
@@ -156,6 +232,7 @@ adminCatalogRouter.delete('/admin/items/:id', requireUser, (req, res) => {
       imageUrl: item.image_url || '',
       skinClass: item.skin_class || '',
       creatorName: item.creator_name || '',
+      creators: parsedCreators,
       isLimited: true,
       isArchived: true
     });
