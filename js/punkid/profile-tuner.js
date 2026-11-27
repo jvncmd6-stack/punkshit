@@ -10,8 +10,14 @@
 
   function getPinnedList(u) {
     if (!u) return [];
-    if (Array.isArray(u.pinnedGifts)) return u.pinnedGifts;
-    return u.pinnedGiftId ? [u.pinnedGiftId] : [];
+    var raw = Array.isArray(u.pinnedGifts) ? u.pinnedGifts : (u.pinnedGiftId ? [u.pinnedGiftId] : []);
+    var seen = {};
+    return raw.filter(function (id) {
+      var k = String(id || '').trim();
+      if (!k || seen[k]) return false;
+      seen[k] = true;
+      return true;
+    });
   }
 
   function getBorderAdjKey(uid, borderId) {
@@ -338,7 +344,6 @@
     elX.oninput = onSliderInput;
     elY.oninput = onSliderInput;
 
-    // Direct Touch / Pointer Drag di pratinjau gift
     var dragState = null;
     document.querySelectorAll('.gt-pin-node').forEach(function (node) {
       node.addEventListener('pointerdown', function (ev) {
