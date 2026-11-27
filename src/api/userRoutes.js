@@ -77,12 +77,31 @@ function attachExtraUserFields(row, catalogMap = null) {
   return formatted;
 }
 
+// Helper: Tarik PP Telegram terbaru & tambahkan versi unik agar menembus cache WebView
+async function refreshTelegramPhotoOnly(uid, tgUser, oldPhotoUrl) {
+  try {
+    await syncTelegramAvatar(uid, tgUser);
+    const row = db.prepare('SELECT photo_url FROM users WHERE id = ?').get(uid);
+    const latestUrl = row?.photo_url || '';
+    if (!latestUrl) return;
+
+    const cleanBase = latestUrl.split('?')[0];
+    const oldBase = String(oldPhotoUrl || '').split('?')[0];
+
+    // Jika file lokal di-overwrite (path dasar sama) atau belum punya query versi, beri timestamp baru
+    if (!latestUrl.includes('?v=') || cleanBase === oldBase) {
+      const versionedUrl = `${cleanBase}?v=${Date.now()}`;
+      db.prepare('UPDATE users SET photo_url = ? WHERE id = ?').run(versionedUrl, uid);
+    }
+  } catch (_) {}
+}
+
 userRouter.get('/me', async (req, res) => {
   const uid = String(req.tgUser.id);
   let user = req.dbUser;
 
   if (user && !user.photo_url) {
-    await syncTelegramAvatar(uid, req.tgUser);
+    await refreshTelegramPhotoOnly(uid, req.tgUser, user.photo_url);
     user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
   }
 
@@ -202,7 +221,7 @@ userRouter.post('/register', async (req, res) => {
   db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
     .run(uid, 'bonus', 110, 'Modal awal warga baru PunkID', now);
 
-  await syncTelegramAvatar(uid, req.tgUser);
+  await refreshTelegramPhotoOnly(uid, req.tgUser, '');
   const freshUser = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
 
   await broadcastToTelegram({
@@ -263,15 +282,26 @@ userRouter.post('/profile/tuner', requireUser, (req, res) => {
 });
 
 userRouter.post('/profile/sync-telegram', requireUser, async (req, res) => {
-  const firstName = req.tgUser.first_name || '';
-  const lastName = req.tgUser.last_name || '';
-  const tgFullName = `${firstName} ${lastName}`.trim().slice(0, 24) || req.dbUser.name;
+  const photoOnly = Boolean(req.body?.photoOnly);
+  const uid = req.dbUser.id;
+  const oldPhotoUrl = req.dbUser.photo_url || '';
 
-  db.prepare('UPDATE users SET username = ?, name = ? WHERE id = ?')
-    .run(req.tgUser.username || '', tgFullName, req.dbUser.id);
+  if (photoOnly) {
+    // Auto-sync saat web dibuka: hanya perbarui username & PP tanpa mereset nama panggilan/bio/banner/stiker
+    db.prepare('UPDATE users SET username = ? WHERE id = ?')
+      .run(req.tgUser.username || '', uid);
+  } else {
+    // Sinkron manual lewat tombol "🔄 Tele": ikut perbarui nama & username dari Telegram
+    const firstName = req.tgUser.first_name || '';
+    const lastName = req.tgUser.last_name || '';
+    const tgFullName = `${firstName} ${lastName}`.trim().slice(0, 24) || req.dbUser.name;
 
-  await syncTelegramAvatar(req.dbUser.id, req.tgUser);
-  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.dbUser.id);
+    db.prepare('UPDATE users SET username = ?, name = ? WHERE id = ?')
+      .run(req.tgUser.username || '', tgFullName, uid);
+  }
+
+  await refreshTelegramPhotoOnly(uid, req.tgUser, oldPhotoUrl);
+  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
   res.json({ user: attachExtraUserFields(updated) });
 });
 
