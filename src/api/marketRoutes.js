@@ -8,6 +8,8 @@ import { broadcastToTelegram, notifyPrivateUser, escHtml } from '../services/syn
 
 export const marketRouter = Router();
 
+try { db.exec("ALTER TABLE item_submissions ADD COLUMN creators_json TEXT DEFAULT ''"); } catch (_) {}
+
 function getAdminAndOwnerIds() {
   const idSet = new Set((ENV.OWNER_IDS || []).map((id) => String(id).trim()).filter(Boolean));
   try {
@@ -202,7 +204,6 @@ marketRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
   const buyerUsn = String(buyerRow?.username || buyer.username || '').replace(/^@/, '').trim();
   const noteLine = note ? `\n• Catatan: <i>${escHtml(note)}</i>` : '';
 
-  // 1. Kirim PM Bot ke PEMBELI & arahkan langsung ke @username penjual
   await notifyPrivateUser(
     buyer.id,
     `🛒 <b>TRANSAKSI LAPAK WARGA BERHASIL!</b>\n` +
@@ -219,7 +220,6 @@ marketRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
     }
   );
 
-  // 2. Kirim PM Bot ke PENJUAL & arahkan langsung ke @username pembeli
   await notifyPrivateUser(
     item.seller_id,
     `💰 <b>DAGANGAN LAPAK WARGA TERJUAL!</b>\n` +
@@ -264,7 +264,7 @@ marketRouter.post('/warga-shop/delete', requireUser, (req, res) => {
   res.json({ ok: true, ...getShopSnapshot(u.id) });
 });
 
-// POST /api/shop/collab-submit -> Warga mengajukan item Collab (Notif khusus ke PC Bot Admin/Owner)
+// POST /api/shop/collab-submit -> Warga mengajukan item Collab (Maks. 3 kreator)
 marketRouter.post('/shop/collab-submit', requireUser, uploadMem.single('media'), async (req, res) => {
   try {
     const u = req.dbUser;
@@ -277,20 +277,70 @@ marketRouter.post('/shop/collab-submit', requireUser, uploadMem.single('media'),
       return res.status(400).json({ error: 'Nama item minimal 3 huruf dan wajib upload gambar/WebM desainnya!' });
     }
 
+    let rawPartners = [];
+    if (req.body?.partners) {
+      try {
+        const parsed = typeof req.body.partners === 'string' ? JSON.parse(req.body.partners) : req.body.partners;
+        if (Array.isArray(parsed)) rawPartners = parsed;
+      } catch (_) {}
+    }
+
+    const creators = [
+      { id: String(u.id), name: u.name, username: u.username || '' }
+    ];
+    const seenIds = new Set([String(u.id)]);
+
+    for (const rawTarget of rawPartners) {
+      const cleanTarget = String(rawTarget || '').trim().replace(/^@+/, '');
+      if (!cleanTarget) continue;
+      if (creators.length >= 3) {
+        return res.status(400).json({ error: 'Maksimal 3 kreator dalam 1 item collab cuy!' });
+      }
+
+      const partnerRow = db.prepare(
+        'SELECT id, name, username FROM users WHERE id = ? OR LOWER(username) = LOWER(?) LIMIT 1'
+      ).get(cleanTarget, cleanTarget);
+
+      if (!partnerRow) {
+        return res.status(400).json({ error: `Partner "${rawTarget}" belum terdaftar di PunkID.` });
+      }
+      if (seenIds.has(String(partnerRow.id))) {
+        return res.status(400).json({ error: `Akun "${rawTarget}" duplikat atau akun lo sendiri cuy.` });
+      }
+
+      seenIds.add(String(partnerRow.id));
+      creators.push({
+        id: String(partnerRow.id),
+        name: partnerRow.name,
+        username: partnerRow.username || ''
+      });
+    }
+
     const subId = 'col_' + crypto.randomBytes(3).toString('hex');
     const imageUrl = await processAndSaveImage(req.file, 'shop', { width: 512, height: 512, fit: 'inside' });
+    const teamDisplay = creators.map((c) => (c.username ? `@${c.username}` : c.name)).join(' × ');
 
     db.prepare(`
-      INSERT INTO item_submissions (id, creator_id, creator_name, creator_username, type, name, price, desc, image_url, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-    `).run(subId, String(u.id), u.name, u.username || '', type, name, price, desc, imageUrl, Date.now());
+      INSERT INTO item_submissions (id, creator_id, creator_name, creator_username, creators_json, type, name, price, desc, image_url, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+    `).run(subId, String(u.id), teamDisplay, u.username || '', JSON.stringify(creators), type, name, price, desc, imageUrl, Date.now());
 
-    addAuditLog(u.id, 'COLLAB_SUBMIT', `Ajukan item collab ${name} (${type}) ID: ${subId}`);
+    addAuditLog(u.id, 'COLLAB_SUBMIT', `Ajukan item collab ${name} (${type}) tim: ${teamDisplay} ID: ${subId}`);
+
+    for (let i = 1; i < creators.length; i++) {
+      await notifyPrivateUser(
+        creators[i].id,
+        `🤝 <b>UNDANGAN TIM COLLAB!</b>\n` +
+        `Kamu dicantumkan oleh <b>${escHtml(u.name)}</b> sebagai co-creator item <b>${escHtml(name)}</b> (${type.toUpperCase()}).\n` +
+        `Jika di-ACC Admin, kamu otomatis mendapat item gratis & bagi hasil royalti PSC tiap terjual!`,
+        { buttonText: '🏪 BUKA LAPAK', startParam: 'lapak' }
+      );
+    }
 
     const adminNotifText =
       `🎨 <b>PENGAJUAN ITEM COLLAB BARU!</b>\n` +
       `• ID Pengajuan: <code>${subId}</code>\n` +
-      `• Kreator: ${u.username ? '@' + escHtml(u.username) : escHtml(u.name)}\n` +
+      `• Kreator (${creators.length} orang): <b>${escHtml(teamDisplay)}</b>\n` +
       `• Kategori: <b>${type.toUpperCase()}</b>\n` +
       `• Nama Item: <b>${escHtml(name)}</b> (${price} PSC)\n` +
       (desc ? `• Deskripsi: <i>${escHtml(desc)}</i>\n` : '') +
