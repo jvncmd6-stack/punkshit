@@ -3,6 +3,7 @@ import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { bindBotInstance } from '../services/syncEngine.js';
 import { registerBotHandlers } from './handlers.js';
+import { registerLapakCommands } from './lapakCommands.js';
 import { registerSparkAdminSync } from './sparkAdminSync.js';
 
 let botInstance = null;
@@ -80,6 +81,7 @@ export function startBot() {
 
   bot.api.setMyCommands([
     { command: 'start', description: 'Menu Utama Markas PUNKSHIT.OS' },
+    { command: 'item', description: 'Pamer Item Rongsok / Lapak Warga (/item nama)' },
     { command: 'tutor', description: 'Panduan Cara Pakai Semua App Mini App' },
     { command: 'spark', description: 'Buka Spark Buddies' },
     { command: 'setor', description: 'Setor Harian Api Spark (1x Sehari)' },
@@ -93,6 +95,7 @@ export function startBot() {
     { command: 'myid', description: 'Cek Telegram ID Kamu' }
   ]).catch(() => {});
 
+  registerLapakCommands(bot);
   registerSparkAdminSync(bot);
   registerBotHandlers(bot);
 
