@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import fs from 'fs';
 import { InputFile, InlineKeyboard } from 'grammy';
 import path from 'path';
 import { ENV } from '../config/env.js';
 import { db, addFeed } from '../database/db.js';
 import { requireUser } from '../middlewares/authTma.js';
 import { uploadMem, processAndSaveImage } from '../middlewares/upload.js';
-import { formatUser, getBot, broadcastToTelegram, notifyPrivateUser, escHtml } from '../services/syncEngine.js';
+import { getBot, broadcastToTelegram, notifyPrivateUser, buildMiniAppUrl, escHtml } from '../services/syncEngine.js';
 
 export const socialRouter = Router();
 
@@ -27,43 +28,10 @@ db.exec(`
     status TEXT DEFAULT 'waiting',
     created_at INTEGER NOT NULL
   );
-  CREATE TABLE IF NOT EXISTS shop_items (
-    id TEXT PRIMARY KEY,
-    seller_id TEXT NOT NULL,
-    seller_name TEXT NOT NULL,
-    seller_avatar TEXT DEFAULT '',
-    title TEXT NOT NULL,
-    price INTEGER NOT NULL,
-    category TEXT DEFAULT 'Etalase',
-    image_url TEXT DEFAULT '',
-    description TEXT DEFAULT '',
-    status TEXT DEFAULT 'available',
-    buyer_id TEXT DEFAULT '',
-    buyer_name TEXT DEFAULT '',
-    sold_at INTEGER DEFAULT 0,
-    created_at INTEGER NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS shop_orders (
-    id TEXT PRIMARY KEY,
-    item_id TEXT NOT NULL,
-    item_title TEXT NOT NULL,
-    category TEXT DEFAULT 'Etalase',
-    price INTEGER NOT NULL,
-    seller_id TEXT NOT NULL,
-    seller_name TEXT NOT NULL,
-    buyer_id TEXT NOT NULL,
-    buyer_name TEXT NOT NULL,
-    note TEXT DEFAULT '',
-    created_at INTEGER NOT NULL
-  );
 `);
 
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN source_type TEXT DEFAULT 'spotify'"); } catch (e) {}
 try { db.exec("ALTER TABLE radio_queue ADD COLUMN file_id TEXT DEFAULT ''"); } catch (e) {}
-try { db.exec("ALTER TABLE shop_items ADD COLUMN status TEXT DEFAULT 'available'"); } catch (e) {}
-try { db.exec("ALTER TABLE shop_items ADD COLUMN buyer_id TEXT DEFAULT ''"); } catch (e) {}
-try { db.exec("ALTER TABLE shop_items ADD COLUMN buyer_name TEXT DEFAULT ''"); } catch (e) {}
-try { db.exec("ALTER TABLE shop_items ADD COLUMN sold_at INTEGER DEFAULT 0"); } catch (e) {}
 
 // GET /api/rules-help -> Ambil teks Pasal & Help dinamis dari setting bot untuk WebApp
 socialRouter.get('/rules-help', (req, res) => {
@@ -102,177 +70,7 @@ socialRouter.get('/rules-help', (req, res) => {
   });
 });
 
-// GET /api/shop -> Etalase Toko Warga + Riwayat Order User
-socialRouter.get('/shop', (req, res) => {
-  const items = db.prepare(`
-    SELECT * FROM shop_items
-    ORDER BY CASE WHEN status = 'available' THEN 0 ELSE 1 END ASC, created_at DESC
-    LIMIT 50
-  `).all();
-
-  const authUser = req.user || req.tgUser || res.locals?.user;
-  let orders = [];
-  if (authUser && authUser.id) {
-    const uid = String(authUser.id);
-    orders = db.prepare(`
-      SELECT * FROM shop_orders
-      WHERE buyer_id = ? OR seller_id = ?
-      ORDER BY created_at DESC
-      LIMIT 25
-    `).all(uid, uid);
-  }
-
-  res.json({ items, orders });
-});
-
-// POST /api/shop -> Tambah produk/jasa ke etalase Lapak Warga
-socialRouter.post('/shop', requireUser, uploadMem.single('media'), async (req, res) => {
-  try {
-    const title = String(req.body?.title || '').trim().slice(0, 60);
-    const price = Math.max(1, Math.floor(Number(req.body?.price) || 0));
-    const category = String(req.body?.category || 'Barang').trim().slice(0, 30);
-    const description = String(req.body?.description || '').trim().slice(0, 220);
-
-    if (title.length < 3) {
-      return res.status(400).json({ error: 'Nama produk/jasa minimal 3 karakter cuy.' });
-    }
-    if (price < 1 || price > 100000) {
-      return res.status(400).json({ error: 'Harga harus antara 1 sampai 100.000 PSC.' });
-    }
-
-    let imageUrl = '';
-    if (req.file) {
-      imageUrl = await processAndSaveImage(req.file, 'shop', { width: 1080, height: 1080, fit: 'inside' });
-    }
-
-    const id = 'sh_' + crypto.randomBytes(4).toString('hex');
-    const sellerAvatar = req.dbUser.photo_url || req.dbUser.avatar || '';
-
-    db.prepare(`
-      INSERT INTO shop_items (id, seller_id, seller_name, seller_avatar, title, price, category, image_url, description, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available', ?)
-    `).run(id, req.dbUser.id, req.dbUser.name, sellerAvatar, title, price, category, imageUrl, description, Date.now());
-
-    res.json({ ok: true, id, imageUrl });
-  } catch (err) {
-    res.status(400).json({ error: err.message || 'Gagal pajang produk di lapak.' });
-  }
-});
-
-// POST /api/warga-shop/buy -> Beli item/jasa dari Lapak Warga (Hanya notif PC ke Pembeli & Penjual)
-socialRouter.post('/warga-shop/buy', requireUser, async (req, res) => {
-  const buyer = req.dbUser;
-  const itemId = String(req.body?.itemId || '').trim();
-  const note = String(req.body?.note || '').trim().slice(0, 120);
-
-  const item = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(itemId);
-  if (!item) return res.status(404).json({ error: 'Produk atau jasa tidak ditemukan di etalase.' });
-  if (item.status === 'sold') return res.status(400).json({ error: 'Yah telat! Barang ini sudah dibeli warga lain.' });
-  if (String(item.seller_id) === String(buyer.id)) return res.status(400).json({ error: 'Nggak bisa beli dagangan sendiri bro!' });
-  if ((buyer.psc || 0) < item.price) {
-    return res.status(400).json({ error: `Saldo PSC kurang! Butuh ${item.price} PSC, saldo lu ${buyer.psc || 0} PSC.` });
-  }
-
-  const seller = db.prepare('SELECT * FROM users WHERE id = ?').get(String(item.seller_id));
-  if (!seller) return res.status(404).json({ error: 'Akun pelapak sudah tidak aktif.' });
-
-  const orderId = 'ord_' + crypto.randomBytes(4).toString('hex');
-  const now = Date.now();
-  const nextStatus = item.category === 'Jasa' ? 'available' : 'sold';
-
-  const tx = db.transaction(() => {
-    db.prepare('UPDATE users SET psc = psc - ? WHERE id = ?').run(item.price, buyer.id);
-    db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(item.price, seller.id);
-
-    db.prepare(`
-      UPDATE shop_items
-      SET status = ?, buyer_id = ?, buyer_name = ?, sold_at = ?
-      WHERE id = ?
-    `).run(nextStatus, buyer.id, buyer.name, now, item.id);
-
-    db.prepare(`
-      INSERT INTO shop_orders (id, item_id, item_title, category, price, seller_id, seller_name, buyer_id, buyer_name, note, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(orderId, item.id, item.title, item.category, item.price, seller.id, seller.name, buyer.id, buyer.name, note, now);
-
-    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(buyer.id, 'lapak_buy', -item.price, `Beli "${item.title}" dari ${seller.name}`, now);
-
-    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(seller.id, 'lapak_sell', item.price, `Terjual "${item.title}" ke ${buyer.name}`, now);
-  });
-  tx();
-
-  const updatedBuyer = db.prepare('SELECT * FROM users WHERE id = ?').get(buyer.id);
-
-  // Kirim DM hanya ke PC Bot Penjual & Pembeli (tidak broadcast ke Grup/Channel)
-  const buyerTag = buyer.username ? `@${escHtml(buyer.username)}` : `<b>${escHtml(buyer.name)}</b>`;
-  await notifyPrivateUser(
-    seller.id,
-    `🛍️ <b>ORDERAN LAPAK WARGA MASUK!</b>\n\n` +
-    `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
-    `• Harga: <b>+${item.price} PSC</b> (otomatis masuk dompet)\n` +
-    `• Pembeli: <b>${escHtml(buyer.name)}</b> (${buyerTag})\n` +
-    (note ? `• Catatan Pembeli: <i>"${escHtml(note)}"</i>\n` : '') +
-    `\nSegera hubungi pembeli buat serah terima barang/jasanya!`,
-    { buttonText: '🪪 BUKA LAPAK WARGA', startParam: 'lapakwarga' }
-  );
-
-  const sellerTag = seller.username ? `@${escHtml(seller.username)}` : `<b>${escHtml(seller.name)}</b>`;
-  await notifyPrivateUser(
-    buyer.id,
-    `🛍️ <b>TRANSAKSI LAPAK WARGA BERHASIL!</b>\n\n` +
-    `• Item: <b>${escHtml(item.title)}</b> (${escHtml(item.category)})\n` +
-    `• Harga: <b>-${item.price} PSC</b> (Sisa: <b>${updatedBuyer.psc} PSC</b>)\n` +
-    `• Penjual: <b>${escHtml(seller.name)}</b> (${sellerTag})\n` +
-    (note ? `• Catatan Lu: <i>"${escHtml(note)}"</i>\n` : '') +
-    `\nSilakan kontak penjual untuk serah terima barang/jasanya!`,
-    { buttonText: '🪪 BUKA LAPAK WARGA', startParam: 'lapakwarga' }
-  );
-
-  const items = db.prepare(`
-    SELECT * FROM shop_items
-    ORDER BY CASE WHEN status = 'available' THEN 0 ELSE 1 END ASC, created_at DESC
-    LIMIT 50
-  `).all();
-  const orders = db.prepare(`
-    SELECT * FROM shop_orders
-    WHERE buyer_id = ? OR seller_id = ?
-    ORDER BY created_at DESC
-    LIMIT 25
-  `).all(buyer.id, buyer.id);
-
-  res.json({
-    ok: true,
-    orderId,
-    message: `Berhasil membeli "${item.title}"! Saldo -${item.price} PSC.`,
-    user: formatUser(updatedBuyer),
-    items,
-    orders
-  });
-});
-
-// POST /api/warga-shop/delete -> Hapus dagangan sendiri dari etalase
-socialRouter.post('/warga-shop/delete', requireUser, (req, res) => {
-  const itemId = String(req.body?.itemId || '').trim();
-  const item = db.prepare('SELECT * FROM shop_items WHERE id = ?').get(itemId);
-
-  if (!item) return res.status(404).json({ error: 'Item tidak ditemukan.' });
-  if (String(item.seller_id) !== String(req.dbUser.id)) {
-    return res.status(403).json({ error: 'Lu cuma bisa hapus dagangan milik sendiri.' });
-  }
-
-  db.prepare('DELETE FROM shop_items WHERE id = ?').run(itemId);
-  const items = db.prepare(`
-    SELECT * FROM shop_items
-    ORDER BY CASE WHEN status = 'available' THEN 0 ELSE 1 END ASC, created_at DESC
-    LIMIT 50
-  `).all();
-
-  res.json({ ok: true, items });
-});
-
-// POST /api/social/greet -> Sapa warga lain (Jalur pribadi ke PC penerima + log feed WebApp, tanpa spam Grup)
+// POST /api/social/greet -> Sapa warga lain (Jalur pribadi ke PC penerima + log feed WebApp)
 socialRouter.post('/social/greet', requireUser, async (req, res) => {
   const targetId = String(req.body?.targetUserId || '');
   const target = db.prepare('SELECT * FROM users WHERE id = ?').get(targetId);
@@ -507,7 +305,7 @@ socialRouter.post('/capsule', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/meme -> Upload meme (JPG/PNG/GIF/WebM) ke server & kirim ke Grup Telegram
+// POST /api/meme -> Upload meme / Photobooth (JPG/PNG/WEBP/GIF/WebM) ke Grup & Channel Info
 socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, res) => {
   try {
     if (!req.file) {
@@ -516,30 +314,57 @@ socialRouter.post('/meme', requireUser, uploadMem.single('meme'), async (req, re
 
     const publicPath = await processAndSaveImage(req.file, 'memes', { width: 1080, height: 1080, fit: 'inside' });
     const caption = String(req.body?.caption || '').trim().slice(0, 90);
+    const target = String(req.body?.target || 'both').trim();
+
+    addFeed(`${req.dbUser.name} ngirim momen ke Meme & Galeri Board${caption ? ': ' + caption : '.'}`);
 
     const bot = getBot();
-    if (bot && ENV.GROUP_ID) {
-      try {
-        const uploadBase = ENV.UPLOAD_DIR || path.join(process.cwd(), 'data', 'uploads');
-        const localFile = path.join(uploadBase, 'memes', path.basename(publicPath));
-        const kb = new InlineKeyboard().url('KIRIM MEME DI WEB', `${ENV.MINIAPP_LINK}?startapp=meme`);
-        const isAnim = /\.(gif|webm)$/i.test(publicPath);
+    if (bot) {
+      const uploadBase = ENV.UPLOAD_DIR || path.join(process.cwd(), 'data', 'uploads');
+      const localFile = path.join(uploadBase, 'memes', path.basename(publicPath));
+      const appUrl = buildMiniAppUrl('meme');
+      const kb = /^https?:\/\//i.test(appUrl)
+        ? new InlineKeyboard().url('🖼️ KIRIM MEME DI WEB', appUrl)
+        : undefined;
 
-        if (isAnim) {
-          await bot.api.sendAnimation(ENV.GROUP_ID, new InputFile(localFile), {
-            caption: `<b>MEME BARU</b>\nDari: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n<i>${escHtml(caption)}</i>` : ''),
-            parse_mode: 'HTML',
-            reply_markup: kb
-          });
-        } else {
-          await bot.api.sendPhoto(ENV.GROUP_ID, new InputFile(localFile), {
-            caption: `<b>MEME BARU</b>\nDari: <b>${escHtml(req.dbUser.name)}</b>` + (caption ? `\n<i>${escHtml(caption)}</i>` : ''),
-            parse_mode: 'HTML',
-            reply_markup: kb
-          });
+      const msgCaption =
+        `🖼️ <b>MEME & GALERI BOARD</b>\n` +
+        `Dari: <b>${escHtml(req.dbUser.name)}</b>` +
+        (caption ? `\n<i>"${escHtml(caption)}"</i>` : '');
+
+      const isWebm = /\.webm$/i.test(publicPath);
+      const isGif = /\.gif$/i.test(publicPath);
+
+      const chatIds = [];
+      if ((target === 'group' || target === 'both') && ENV.GROUP_ID) chatIds.push(ENV.GROUP_ID);
+      if ((target === 'channel' || target === 'both') && ENV.CHANNEL_ID) chatIds.push(ENV.CHANNEL_ID);
+
+      for (const chatId of chatIds) {
+        if (!fs.existsSync(localFile)) break;
+        try {
+          if (isWebm) {
+            await bot.api.sendVideo(chatId, new InputFile(localFile), {
+              caption: msgCaption,
+              parse_mode: 'HTML',
+              reply_markup: kb,
+              supports_streaming: true
+            });
+          } else if (isGif) {
+            await bot.api.sendAnimation(chatId, new InputFile(localFile), {
+              caption: msgCaption,
+              parse_mode: 'HTML',
+              reply_markup: kb
+            });
+          } else {
+            await bot.api.sendPhoto(chatId, new InputFile(localFile), {
+              caption: msgCaption,
+              parse_mode: 'HTML',
+              reply_markup: kb
+            });
+          }
+        } catch (botErr) {
+          console.error(`[Meme Broadcast Error -> ${chatId}]:`, botErr.message);
         }
-      } catch (botErr) {
-        console.error('[Meme Telegram Broadcast Error]:', botErr.message);
       }
     }
 
