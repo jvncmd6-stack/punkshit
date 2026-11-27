@@ -6,7 +6,7 @@ import multer from 'multer';
 import { db } from '../../database/db.js';
 import { ENV } from '../../config/env.js';
 import { requireUser } from '../../middlewares/authTma.js';
-import { escHtml } from '../../services/syncEngine.js';
+import { escHtml, notifyPrivateUser } from '../../services/syncEngine.js';
 import { isAdminUser, isOwnerUser, isOwnerOnly, logAudit } from './adminHelpers.js';
 
 export const adminFinanceRouter = Router();
@@ -36,7 +36,7 @@ adminFinanceRouter.post('/admin/economy/request', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
-adminFinanceRouter.post('/admin/economy/review', requireUser, (req, res) => {
+adminFinanceRouter.post('/admin/economy/review', requireUser, async (req, res) => {
   if (!isOwnerUser(req.dbUser)) {
     return res.status(403).json({ error: 'Hanya Owner Markas yang berhak memberi izin pencairan PSC.' });
   }
@@ -47,9 +47,26 @@ adminFinanceRouter.post('/admin/economy/review', requireUser, (req, res) => {
   if (!item) return res.status(404).json({ error: 'Pengajuan sudah diproses atau tidak ditemukan.' });
 
   if (decision === 'approve') {
-    db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(item.amount, item.target_id);
-    db.prepare("UPDATE psc_requests SET status = 'approved' WHERE id = ?").run(id);
+    const now = Date.now();
+    db.transaction(() => {
+      db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(item.amount, item.target_id);
+      db.prepare("UPDATE psc_requests SET status = 'approved' WHERE id = ?").run(id);
+      db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(String(item.target_id), 'admin_grant', item.amount, `Pencairan PSC: ${item.reason}`, now);
+    })();
+
+    const updatedTarget = db.prepare('SELECT psc FROM users WHERE id = ?').get(String(item.target_id));
     logAudit(req.dbUser.id, 'IZIN PSC DISETUJUI', `+${item.amount} PSC ke ${item.target_name} (ajuan ${item.requester_name})`);
+
+    await notifyPrivateUser(
+      item.target_id,
+      `💰 <b>SALDO PSC CAIR!</b>\n\n` +
+      `• Nominal: <b>+${item.amount} PSC</b>\n` +
+      `• Keterangan: <i>${escHtml(item.reason)}</i>\n` +
+      `• Pengurus: ${escHtml(item.requester_name)} (ACC Owner)\n` +
+      `• Saldo Sekarang: <b>${updatedTarget?.psc ?? 0} PSC</b>`,
+      { buttonText: '💳 CEK RIWAYAT DOMPET', startParam: 'kas' }
+    );
   } else {
     db.prepare("UPDATE psc_requests SET status = 'rejected' WHERE id = ?").run(id);
     logAudit(req.dbUser.id, 'IZIN PSC DITOLAK', `Tolak ${item.amount} PSC untuk ${item.target_name}`);
@@ -58,14 +75,14 @@ adminFinanceRouter.post('/admin/economy/review', requireUser, (req, res) => {
   res.json({ ok: true });
 });
 
-adminFinanceRouter.post('/admin/economy/adjust', requireUser, (req, res) => {
+adminFinanceRouter.post('/admin/economy/adjust', requireUser, async (req, res) => {
   if (!isOwnerUser(req.dbUser)) {
     return res.status(403).json({ error: 'Akses ditolak. Eksekusi langsung PSC hanya untuk Owner!' });
   }
 
   const rawTarget = String(req.body?.target || '').trim().replace(/^@/, '');
-  const amount = Number(req.body?.amount);
-  const reason = String(req.body?.reason || 'Penyesuaian Owner').trim();
+  const amount = Math.trunc(Number(req.body?.amount));
+  const reason = String(req.body?.reason || 'Penyesuaian Saldo oleh Owner').trim().slice(0, 120);
 
   if (!rawTarget || !amount || Number.isNaN(amount)) {
     return res.status(400).json({ error: 'Target warga dan nominal PSC wajib valid.' });
@@ -74,8 +91,27 @@ adminFinanceRouter.post('/admin/economy/adjust', requireUser, (req, res) => {
   const targetUser = db.prepare('SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)').get(rawTarget, rawTarget);
   if (!targetUser) return res.status(404).json({ error: 'Warga tidak ditemukan di database.' });
 
-  db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(amount, targetUser.id);
-  logAudit(req.dbUser.id, 'OWNER PSC', `${amount > 0 ? '+' : ''}${amount} PSC ke ${targetUser.name} (${reason})`);
+  const now = Date.now();
+  const isPlus = amount > 0;
+  const noteText = `${isPlus ? 'Suntik Dana Markas' : 'Penyesuaian Saldo'}: ${reason}`;
+
+  db.transaction(() => {
+    db.prepare('UPDATE users SET psc = MAX(0, psc + ?) WHERE id = ?').run(amount, targetUser.id);
+    db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(String(targetUser.id), 'admin_adjust', amount, noteText, now);
+  })();
+
+  const updatedTarget = db.prepare('SELECT psc FROM users WHERE id = ?').get(String(targetUser.id));
+  logAudit(req.dbUser.id, 'OWNER PSC', `${isPlus ? '+' : ''}${amount} PSC ke ${targetUser.name} (${reason})`);
+
+  await notifyPrivateUser(
+    targetUser.id,
+    `${isPlus ? '💸 <b>SUNTIK DANA MASUK!</b>' : '📉 <b>PENYESUAIAN SALDO PSC</b>'}\n\n` +
+    `• Nominal: <b>${isPlus ? '+' : ''}${amount} PSC</b>\n` +
+    `• Catatan: <i>${escHtml(reason)}</i>\n` +
+    `• Saldo Sekarang: <b>${updatedTarget?.psc ?? 0} PSC</b>`,
+    { buttonText: '💳 CEK RIWAYAT DOMPET', startParam: 'kas' }
+  );
 
   res.json({ ok: true });
 });
