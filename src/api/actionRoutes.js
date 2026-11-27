@@ -15,9 +15,8 @@ import {
 
 export const actionRouter = Router();
 
-try {
-  db.exec('ALTER TABLE users ADD COLUMN streak_shield INTEGER DEFAULT 0');
-} catch (_) {}
+try { db.exec('ALTER TABLE users ADD COLUMN streak_shield INTEGER DEFAULT 0'); } catch (_) {}
+try { db.exec("ALTER TABLE items ADD COLUMN creators_json TEXT DEFAULT ''"); } catch (_) {}
 
 function parseJsonObject(raw) {
   if (!raw) return null;
@@ -39,6 +38,36 @@ function attachExtraFields(row) {
     formatted.giftAdj = parseJsonObject(row.gift_adj);
   }
   return formatted;
+}
+
+function getItemCreatorsList(item) {
+  const list = [];
+  const seen = new Set();
+
+  if (item && item.creators_json) {
+    try {
+      const parsed = typeof item.creators_json === 'string'
+        ? JSON.parse(item.creators_json)
+        : item.creators_json;
+      if (Array.isArray(parsed)) {
+        for (const c of parsed) {
+          const cid = String(c?.id || '').trim();
+          if (cid && !seen.has(cid)) {
+            seen.add(cid);
+            list.push({ id: cid, name: c.name || 'Kreator', username: c.username || '' });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  const fallbackId = String(item?.creator_id || '').trim();
+  if (fallbackId && !seen.has(fallbackId)) {
+    seen.add(fallbackId);
+    list.push({ id: fallbackId, name: item.creator_name || 'Kreator', username: '' });
+  }
+
+  return list.slice(0, 3);
 }
 
 function getTierAbsenBonus(u) {
@@ -195,10 +224,15 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
   }
 
   const now = Date.now();
-  const creatorId = String(item.creator_id || '').trim();
-  const isCollabItem = Boolean(Number(item.is_collab)) || Boolean(creatorId);
-  const hasCreatorRoyalty = isCollabItem && creatorId && creatorId !== String(u.id) && totalCost > 0;
-  const royaltyAmount = hasCreatorRoyalty ? Math.max(1, Math.floor(totalCost * 0.2)) : 0;
+  const creators = getItemCreatorsList(item);
+  const eligibleCreators = creators.filter((c) => c.id !== String(u.id));
+  const isCollabItem = Boolean(Number(item.is_collab)) || creators.length > 0;
+  const totalRoyaltyPool = (isCollabItem && eligibleCreators.length > 0 && totalCost > 0)
+    ? Math.max(eligibleCreators.length, Math.floor(totalCost * 0.2))
+    : 0;
+  const sharePerCreator = eligibleCreators.length > 0
+    ? Math.floor(totalRoyaltyPool / eligibleCreators.length)
+    : 0;
 
   const tx = db.transaction(() => {
     db.prepare('UPDATE users SET psc = psc - ? WHERE id = ?').run(totalCost, u.id);
@@ -212,10 +246,19 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
     db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(u.id, 'shop_buy', -totalCost, `Beli ${item.name} (${qty}x)`, now);
 
-    if (royaltyAmount > 0) {
-      db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(royaltyAmount, creatorId);
-      db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(creatorId, 'collab_royalty', royaltyAmount, `Royalti Collab: ${item.name} (${qty}x)`, now);
+    if (sharePerCreator > 0) {
+      const updPsc = db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?');
+      const insTx = db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)');
+      for (const cr of eligibleCreators) {
+        updPsc.run(sharePerCreator, cr.id);
+        insTx.run(
+          cr.id,
+          'collab_royalty',
+          sharePerCreator,
+          `Royalti Collab${creators.length > 1 ? ` (Tim ${creators.length})` : ''}: ${item.name} (${qty}x)`,
+          now
+        );
+      }
     }
   });
   tx();
@@ -232,14 +275,16 @@ actionRouter.post('/shop/buy', requireUser, async (req, res) => {
     { buttonText: '🛒 BUKA LAPAK RONGSOK', startParam: 'lapak' }
   );
 
-  if (royaltyAmount > 0) {
-    await notifyPrivateUser(
-      creatorId,
-      `🎨 <b>ROYALTI COLLAB CAIR!</b>\n\n` +
-      `Warga <b>${escHtml(u.name)}</b> baru saja membeli item collab karyamu: <b>${escHtml(item.name)}</b> (${qty}x)!\n` +
-      `• Royalti 20%: <b>+${royaltyAmount} PSC</b>`,
-      { buttonText: '💰 CEK DOMPET', startParam: 'kas' }
-    );
+  if (sharePerCreator > 0) {
+    for (const cr of eligibleCreators) {
+      await notifyPrivateUser(
+        cr.id,
+        `🎨 <b>ROYALTI COLLAB CAIR!</b>\n\n` +
+        `Warga <b>${escHtml(u.name)}</b> baru saja membeli item collab karyamu: <b>${escHtml(item.name)}</b> (${qty}x)!\n` +
+        `• Bagian Royalti${creators.length > 1 ? ` (Bagi Rata ${creators.length} Kreator)` : ' 20%'}: <b>+${sharePerCreator} PSC</b>`,
+        { buttonText: '💰 CEK DOMPET', startParam: 'kas' }
+      );
+    }
   }
 
   const inv = db.prepare('SELECT id, item_id AS itemId, acquired_at AS acquiredAt FROM inventory WHERE user_id = ? ORDER BY id DESC').all(u.id);
@@ -266,10 +311,15 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
   }
 
   const now = Date.now();
-  const creatorId = String(item.creator_id || '').trim();
-  const isCollabItem = Boolean(Number(item.is_collab)) || Boolean(creatorId);
-  const hasCreatorRoyalty = isCollabItem && creatorId && creatorId !== String(u.id) && Number(item.price) > 0;
-  const royaltyAmount = hasCreatorRoyalty ? Math.max(1, Math.floor(Number(item.price) * 0.2)) : 0;
+  const creators = getItemCreatorsList(item);
+  const eligibleCreators = creators.filter((c) => c.id !== String(u.id));
+  const isCollabItem = Boolean(Number(item.is_collab)) || creators.length > 0;
+  const totalRoyaltyPool = (isCollabItem && eligibleCreators.length > 0 && Number(item.price) > 0)
+    ? Math.max(eligibleCreators.length, Math.floor(Number(item.price) * 0.2))
+    : 0;
+  const sharePerCreator = eligibleCreators.length > 0
+    ? Math.floor(totalRoyaltyPool / eligibleCreators.length)
+    : 0;
 
   const tx = db.transaction(() => {
     db.prepare('UPDATE users SET psc = psc - ?, cred = cred + 3, has_shared = 1 WHERE id = ?').run(item.price, u.id);
@@ -277,10 +327,19 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
     db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(u.id, 'gift_send', -item.price, `Kirim ${item.name} ke @${recipient.username}${isAnon ? ' (Anonim)' : ''}`, now);
 
-    if (royaltyAmount > 0) {
-      db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?').run(royaltyAmount, creatorId);
-      db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)')
-        .run(creatorId, 'collab_royalty', royaltyAmount, `Royalti Gift Collab: ${item.name}`, now);
+    if (sharePerCreator > 0) {
+      const updPsc = db.prepare('UPDATE users SET psc = psc + ? WHERE id = ?');
+      const insTx = db.prepare('INSERT INTO transactions (user_id, type, amount, note, created_at) VALUES (?, ?, ?, ?, ?)');
+      for (const cr of eligibleCreators) {
+        updPsc.run(sharePerCreator, cr.id);
+        insTx.run(
+          cr.id,
+          'collab_royalty',
+          sharePerCreator,
+          `Royalti Gift Collab${creators.length > 1 ? ` (Tim ${creators.length})` : ''}: ${item.name}`,
+          now
+        );
+      }
     }
   });
   tx();
@@ -289,14 +348,16 @@ actionRouter.post('/gift/send', requireUser, async (req, res) => {
   const publicSender = isAnon ? 'Warga Misterius' : u.name;
   addFeed(`${publicSender} ngirim ${item.name} ke @${recipient.username}.`);
 
-  if (royaltyAmount > 0) {
-    await notifyPrivateUser(
-      creatorId,
-      `🎨 <b>ROYALTI GIFT COLLAB CAIR!</b>\n\n` +
-      `Item gift collab karyamu (<b>${escHtml(item.name)}</b>) baru saja dikirim antar warga!\n` +
-      `• Royalti 20%: <b>+${royaltyAmount} PSC</b>`,
-      { buttonText: '💰 CEK DOMPET', startParam: 'kas' }
-    );
+  if (sharePerCreator > 0) {
+    for (const cr of eligibleCreators) {
+      await notifyPrivateUser(
+        cr.id,
+        `🎨 <b>ROYALTI GIFT COLLAB CAIR!</b>\n\n` +
+        `Item gift collab karyamu (<b>${escHtml(item.name)}</b>) baru saja dikirim antar warga!\n` +
+        `• Bagian Royalti${creators.length > 1 ? ` (Bagi Rata ${creators.length} Kreator)` : ' 20%'}: <b>+${sharePerCreator} PSC</b>`,
+        { buttonText: '💰 CEK DOMPET', startParam: 'kas' }
+      );
+    }
   }
 
   const senderDisplay = isAnon
