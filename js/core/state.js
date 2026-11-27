@@ -192,7 +192,18 @@ window.PunkCoreState = (function () {
       ? u.pinnedGifts
       : (u.pinnedGiftId ? [u.pinnedGiftId] : []);
 
-    var items = rawIds.slice(0, 6).map(function (gid) {
+    // Deduplikasi ID supaya gift yang sama tidak pernah dirender ganda di titik yang sama
+    var seen = {};
+    var uniqueIds = [];
+    rawIds.forEach(function (gid) {
+      var key = String(gid || '').trim();
+      if (key && !seen[key]) {
+        seen[key] = true;
+        uniqueIds.push(key);
+      }
+    });
+
+    var items = uniqueIds.slice(0, 6).map(function (gid) {
       var found = findItem(gid);
       if (found) return found;
       if (Array.isArray(u.pinnedGiftItems)) {
