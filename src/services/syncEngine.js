@@ -235,8 +235,6 @@ export async function broadcastToTelegram({ target = 'group', text = '', buttonT
   let finalTarget = target;
   if (upperText.includes('KOTAK RAHASIA') || upperText.includes('CONFESS')) {
     finalTarget = 'confess';
-  } else if (upperText.includes('PENGUMUMAN MARKAS')) {
-    finalTarget = 'both';
   }
 
   const url = buildMiniAppUrl(startParam);
