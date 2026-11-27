@@ -61,25 +61,44 @@ async function sendProtectedItemPreview(ctx, localFile, caption, kb) {
     caption,
     parse_mode: 'HTML',
     reply_markup: kb,
-    protect_content: true // Anti-save, anti-download, anti-forward
+    protect_content: true
   };
 
   if (localFile) {
-    try {
-      if (/\.webm$/i.test(localFile)) {
-        await ctx.replyWithVideo(new InputFile(localFile), {
-          ...baseOpts,
-          supports_streaming: true
+    if (/\.webm$/i.test(localFile)) {
+      // Coba kirim sebagai video sticker VP9 agar transparansi tetap utuh & tidak jadi file unduhan
+      try {
+        const stickerMsg = await ctx.replyWithSticker(new InputFile(localFile), {
+          protect_content: true
+        });
+        await ctx.reply(caption, {
+          parse_mode: 'HTML',
+          reply_markup: kb,
+          protect_content: true,
+          reply_parameters: { message_id: stickerMsg.message_id }
         });
         return;
+      } catch (_) {
+        // Fallback jika dimensi/durasi .webm melebihi batas stiker Telegram
+        try {
+          await ctx.replyWithVideo(new InputFile(localFile), {
+            ...baseOpts,
+            supports_streaming: true
+          });
+          return;
+        } catch (__) {}
       }
-      if (/\.gif$/i.test(localFile)) {
+    } else if (/\.gif$/i.test(localFile)) {
+      try {
         await ctx.replyWithAnimation(new InputFile(localFile), baseOpts);
         return;
-      }
-      await ctx.replyWithPhoto(new InputFile(localFile), baseOpts);
-      return;
-    } catch (_) {}
+      } catch (_) {}
+    } else {
+      try {
+        await ctx.replyWithPhoto(new InputFile(localFile), baseOpts);
+        return;
+      } catch (_) {}
+    }
   }
 
   await ctx.reply(caption, {
