@@ -56,11 +56,44 @@ function extractSubmissionCreators(sub) {
   return list.slice(0, 3);
 }
 
+async function sendProtectedItemPreview(ctx, localFile, caption, kb) {
+  const baseOpts = {
+    caption,
+    parse_mode: 'HTML',
+    reply_markup: kb,
+    protect_content: true // Anti-save, anti-download, anti-forward
+  };
+
+  if (localFile) {
+    try {
+      if (/\.webm$/i.test(localFile)) {
+        await ctx.replyWithVideo(new InputFile(localFile), {
+          ...baseOpts,
+          supports_streaming: true
+        });
+        return;
+      }
+      if (/\.gif$/i.test(localFile)) {
+        await ctx.replyWithAnimation(new InputFile(localFile), baseOpts);
+        return;
+      }
+      await ctx.replyWithPhoto(new InputFile(localFile), baseOpts);
+      return;
+    } catch (_) {}
+  }
+
+  await ctx.reply(caption, {
+    parse_mode: 'HTML',
+    reply_markup: kb,
+    protect_content: true
+  });
+}
+
 export function registerLapakCommands(bot) {
   if (bot.__punkLapakCmdsBound) return;
   bot.__punkLapakCmdsBound = true;
 
-  // Tampilkan / pamer item Lapak Rongsok (Collab/Resmi) atau Lapak Warga langsung di grup
+  // Tampilkan / pamer item Lapak Rongsok (Collab/Resmi) atau Lapak Warga langsung di grup (Anti-Save)
   bot.command(['item', 'pamer'], async (ctx) => {
     const query = String(ctx.match || '').trim();
     if (!query) {
@@ -74,7 +107,7 @@ export function registerLapakCommands(bot) {
 
     const likePattern = `%${query}%`;
 
-    // 1. Cari dulu di Lapak Rongsok (item resmi & item collab yang belum diarsip)
+    // 1. Cari di Lapak Rongsok (item resmi & item collab aktif)
     const rongsokItem = db.prepare(`
       SELECT * FROM items
       WHERE COALESCE(is_archived, 0) = 0
@@ -114,30 +147,11 @@ export function registerLapakCommands(bot) {
       const kb = appUrl ? new InlineKeyboard().url('🛒 LIHAT & BELI DI LAPAK', appUrl) : undefined;
       const localFile = resolveLocalUploadPath(rongsokItem.image_url);
 
-      if (localFile) {
-        try {
-          if (/\.(webm|gif)$/i.test(localFile)) {
-            await ctx.replyWithAnimation(new InputFile(localFile), {
-              caption,
-              parse_mode: 'HTML',
-              reply_markup: kb
-            });
-            return;
-          }
-          await ctx.replyWithPhoto(new InputFile(localFile), {
-            caption,
-            parse_mode: 'HTML',
-            reply_markup: kb
-          });
-          return;
-        } catch (_) {}
-      }
-
-      await ctx.reply(caption, { parse_mode: 'HTML', reply_markup: kb });
+      await sendProtectedItemPreview(ctx, localFile, caption, kb);
       return;
     }
 
-    // 2. Jika tidak ada di Lapak Rongsok, cari di Lapak Warga yang masih open
+    // 2. Cari di Lapak Warga yang masih open
     const wargaItem = db.prepare(`
       SELECT * FROM warga_shop_items
       WHERE status = 'open'
@@ -165,26 +179,7 @@ export function registerLapakCommands(bot) {
       const kb = appUrl ? new InlineKeyboard().url('🛍️ INTIP LAPAK WARGA', appUrl) : undefined;
       const localFile = resolveLocalUploadPath(wargaItem.image_url);
 
-      if (localFile) {
-        try {
-          if (/\.(webm|gif)$/i.test(localFile)) {
-            await ctx.replyWithAnimation(new InputFile(localFile), {
-              caption,
-              parse_mode: 'HTML',
-              reply_markup: kb
-            });
-            return;
-          }
-          await ctx.replyWithPhoto(new InputFile(localFile), {
-            caption,
-            parse_mode: 'HTML',
-            reply_markup: kb
-          });
-          return;
-        } catch (_) {}
-      }
-
-      await ctx.reply(caption, { parse_mode: 'HTML', reply_markup: kb });
+      await sendProtectedItemPreview(ctx, localFile, caption, kb);
       return;
     }
 
