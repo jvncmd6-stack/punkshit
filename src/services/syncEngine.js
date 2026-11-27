@@ -169,23 +169,34 @@ export function formatUser(row) {
 }
 
 export function getCatalog() {
-  return db.prepare('SELECT * FROM items ORDER BY created_at DESC').all().map(it => ({
-    id: it.id,
-    type: it.type,
-    name: it.name,
-    price: it.price,
-    rarity: it.rarity,
-    stock: it.stock,
-    desc: it.desc,
-    imageUrl: it.image_url,
-    colors: it.colors ? JSON.parse(it.colors) : null,
-    svgPath: it.svg_path,
-    skinClass: it.skin_class,
-    creatorName: it.creator_name || '',
-    isCollab: Boolean(it.is_collab),
-    isLimited: Boolean(it.is_limited),
-    isArchived: Boolean(it.is_archived)
-  }));
+  return db.prepare('SELECT * FROM items ORDER BY created_at DESC').all().map(it => {
+    let creators = null;
+    if (it.creators_json) {
+      try {
+        const parsed = JSON.parse(it.creators_json);
+        if (Array.isArray(parsed)) creators = parsed;
+      } catch (_) {}
+    }
+
+    return {
+      id: it.id,
+      type: it.type,
+      name: it.name,
+      price: it.price,
+      rarity: it.rarity,
+      stock: it.stock,
+      desc: it.desc,
+      imageUrl: it.image_url,
+      colors: it.colors ? JSON.parse(it.colors) : null,
+      svgPath: it.svg_path,
+      skinClass: it.skin_class,
+      creatorName: it.creator_name || '',
+      creators,
+      isCollab: Boolean(it.is_collab),
+      isLimited: Boolean(it.is_limited),
+      isArchived: Boolean(it.is_archived)
+    };
+  });
 }
 
 export function getOnlineUsers() {
