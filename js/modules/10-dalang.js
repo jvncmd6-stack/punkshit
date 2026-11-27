@@ -87,12 +87,23 @@
           ? '<video src="' + resolved + '" autoplay loop muted playsinline style="width:52px;height:52px;border-radius:10px;object-fit:cover;background:#0f172a"></video>'
           : '<img src="' + resolved + '" style="width:52px;height:52px;border-radius:10px;object-fit:cover;background:#0f172a">';
       }
+      var teamLabel = 'oleh ' + C.esc(c.creator_name || 'Warga');
+      if (c.creators_json) {
+        try {
+          var arr = typeof c.creators_json === 'string' ? JSON.parse(c.creators_json) : c.creators_json;
+          if (Array.isArray(arr) && arr.length > 1) {
+            teamLabel = '🤝 Tim (' + arr.length + '): ' + arr.map(function (m) {
+              return C.esc(m.username ? ('@' + m.username) : m.name);
+            }).join(' × ');
+          }
+        } catch (_) {}
+      }
       return '<div class="card" style="padding:12px;margin-bottom:8px">' +
         '<div style="display:flex;gap:10px;align-items:center">' +
           mediaHtml +
           '<div style="flex:1">' +
             '<span class="pill">' + C.esc((c.type || 'item').toUpperCase()) + '</span> <b>' + C.esc(c.name) + '</b>' +
-            '<div style="font-size:12px;color:#FFD633">' + c.price + ' PSC · oleh ' + C.esc(c.creator_name) + '</div>' +
+            '<div style="font-size:12px;color:#FFD633">' + c.price + ' PSC · ' + teamLabel + '</div>' +
             '<small style="opacity:.75">' + C.esc(c.desc || '') + '</small>' +
           '</div>' +
         '</div>' +
