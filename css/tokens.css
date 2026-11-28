@@ -1,0 +1,78 @@
+:root {
+  --ink: #F5F7FC;
+  --mut: #929BAE;
+  --blue: #176BFF;
+  --yel: #FFD633;
+  --navy: #101827;
+  --deep: #080B12;
+  --gblue: #8FC7FF;
+  --stage: #05070c;
+  --gb: rgba(255, 255, 255, 0.24);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Variabel Dinamis Tema OS (Default) */
+  --os-app-bg: #0c1322;
+  --os-nav-bg: rgba(12, 19, 34, 0.82);
+  --os-sheet-bg: #121b30;
+  --os-ban-bg: rgba(24, 34, 58, 0.9);
+  --os-accent: #176BFF;
+  --os-accent-txt: #4d9bff;
+  --os-glass-bg: rgba(255, 255, 255, 0.14);
+  --os-card-tint: rgba(255, 255, 255, 0.06);
+
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --stage: #dfe5f1;
+  }
+}
+:root[data-theme="light"] {
+  --stage: #dfe5f1;
+}
+
+/* Tema OS Lengkap */
+.phone.theme-sakura {
+  --blue: #db2777;
+  --gblue: #f9a8d4;
+  --gb: rgba(244, 114, 182, 0.34);
+  --os-app-bg: linear-gradient(180deg, #1d0e24 0%, #120919 100%);
+  --os-nav-bg: rgba(29, 14, 36, 0.84);
+  --os-sheet-bg: #23112b;
+  --os-ban-bg: rgba(45, 19, 54, 0.92);
+  --os-accent: #db2777;
+  --os-accent-txt: #f472b6;
+  --os-glass-bg: rgba(244, 114, 182, 0.14);
+  --os-card-tint: rgba(244, 114, 182, 0.08);
+}
+
+.phone.theme-carbon {
+  --blue: #0284c7;
+  --gblue: #7dd3fc;
+  --gb: rgba(148, 163, 184, 0.26);
+  --os-app-bg: linear-gradient(180deg, #090d16 0%, #05070c 100%);
+  --os-nav-bg: rgba(9, 13, 22, 0.86);
+  --os-sheet-bg: #0f1522;
+  --os-ban-bg: rgba(17, 24, 39, 0.94);
+  --os-accent: #0284c7;
+  --os-accent-txt: #38bdf8;
+  --os-glass-bg: rgba(148, 163, 184, 0.11);
+  --os-card-tint: rgba(148, 163, 184, 0.06);
+}
+
+.phone.theme-mint {
+  --blue: #059669;
+  --gblue: #6ee7b7;
+  --gb: rgba(52, 211, 153, 0.32);
+  --os-app-bg: linear-gradient(180deg, #071b1a 0%, #051015 100%);
+  --os-nav-bg: rgba(7, 27, 26, 0.84);
+  --os-sheet-bg: #0b2422;
+  --os-ban-bg: rgba(11, 38, 35, 0.92);
+  --os-accent: #059669;
+  --os-accent-txt: #34d399;
+  --os-glass-bg: rgba(52, 211, 153, 0.13);
+  --os-card-tint: rgba(52, 211, 153, 0.07);
+}
