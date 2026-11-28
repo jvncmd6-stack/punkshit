@@ -12,12 +12,15 @@ html, body {
 }
 
 body {
-  background: var(--stage);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(29, 116, 255, 0.14), transparent 60%),
+    var(--stage);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--ink);
   display: grid;
   place-items: center;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 button {
@@ -28,63 +31,120 @@ button {
   cursor: pointer;
 }
 
-/* Frame Perangkat & Wallpaper */
+/* Frame Perangkat & Bezel Titanium */
 .phone {
   position: relative;
-  width: min(100vw, 390px);
-  height: min(100dvh, 844px);
+  width: min(100vw, 392px);
+  height: min(100dvh, 848px);
   overflow: hidden;
   isolation: isolate;
   background: var(--deep);
 }
 
+/* Pantulan Tipis di Pinggir Layar */
+.phone::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 98;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), inset 0 1px 2px rgba(255, 255, 255, 0.25);
+}
+
 @media (min-width: 500px) {
   .phone {
-    border-radius: 55px;
-    box-shadow: 0 0 0 11px #0b0d12, 0 0 0 13px #3a3f4b, 0 30px 80px rgba(0, 0, 0, 0.55);
+    border-radius: 54px;
+    box-shadow:
+      0 0 0 2px #1c202b,
+      0 0 0 10px #0d1017,
+      0 0 0 12px #474e5e,
+      0 0 0 13px #181c26,
+      0 36px 90px rgba(0, 0, 0, 0.72),
+      0 0 60px rgba(29, 116, 255, 0.16);
   }
 }
 
+/* Wallpaper Berlapis + Aura Bergerak */
 .wall {
   position: absolute;
-  inset: 0;
+  inset: -12%;
   z-index: -1;
   background:
-    radial-gradient(70% 40% at 15% 8%, #2f7bff 0, transparent 70%),
-    radial-gradient(60% 40% at 95% 45%, #ffd63375 0, transparent 70%),
-    radial-gradient(80% 50% at 10% 95%, #7a3cff66 0, transparent 70%),
-    linear-gradient(180deg, #12213f, var(--deep));
+    radial-gradient(58% 38% at 18% 12%, rgba(47, 123, 255, 0.85) 0, transparent 72%),
+    radial-gradient(52% 38% at 92% 42%, rgba(255, 214, 51, 0.42) 0, transparent 70%),
+    radial-gradient(70% 48% at 15% 92%, rgba(122, 60, 255, 0.52) 0, transparent 72%),
+    radial-gradient(50% 40% at 85% 88%, rgba(16, 185, 129, 0.25) 0, transparent 70%),
+    linear-gradient(175deg, #132547 0%, #0a1224 55%, var(--deep) 100%);
+  animation: wallFloat 18s ease-in-out infinite alternate;
+}
+
+.wall::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.14), transparent 55%),
+    repeating-linear-gradient(118deg, transparent 0 44px, rgba(255, 255, 255, 0.028) 44px 46px);
 }
 
 .wall::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(115deg, transparent 0 46px, rgba(255, 255, 255, 0.03) 46px 48px);
+  background: linear-gradient(180deg, rgba(6, 9, 17, 0.12) 0%, rgba(6, 9, 17, 0.48) 100%);
 }
 
-/* Frutiger Aero Glass Surface */
+@keyframes wallFloat {
+  0% { transform: scale(1) translate3d(0, 0, 0); }
+  100% { transform: scale(1.06) translate3d(-2%, -1.5%, 0); }
+}
+
+/* Spatial Frutiger Aero Glass */
 .glass {
   background: var(--os-glass-bg);
-  backdrop-filter: blur(24px) saturate(1.7);
-  -webkit-backdrop-filter: blur(24px) saturate(1.7);
+  backdrop-filter: blur(26px) saturate(1.85);
+  -webkit-backdrop-filter: blur(26px) saturate(1.85);
   border: 0.5px solid var(--gb);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    inset 0 1px 0 var(--gb-strong),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 12px 32px rgba(0, 0, 0, 0.26);
 }
 
-/* Dynamic Island & Status Bar */
+/* Dynamic Island Interaktif */
 .isl {
   position: absolute;
   top: 11px;
   left: 50%;
   transform: translateX(-50%);
-  width: 124px;
+  min-width: 126px;
+  max-width: 176px;
   height: 36px;
   border-radius: 20px;
-  background: #000;
+  background: #020305;
   z-index: 90;
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    0 6px 18px rgba(0, 0, 0, 0.55),
+    0 0 16px rgba(52, 199, 89, 0.12);
+  transition: transform 0.28s var(--spring), box-shadow 0.3s, border-color 0.3s;
 }
 
+.isl:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    0 8px 22px rgba(0, 0, 0, 0.65),
+    0 0 20px rgba(77, 155, 255, 0.26);
+}
+
+.isl:active {
+  transform: translateX(-50%) scale(0.93);
+}
+
+/* Status Bar */
 .sb {
   position: absolute;
   top: 0;
@@ -95,15 +155,16 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 26px 0 46px;
+  padding: 6px 24px 0 34px;
   pointer-events: none;
 }
 
 .sb b {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 15.5px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.3px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
 .sb span {
@@ -114,8 +175,8 @@ button {
 
 /* Indikator Sinkronisasi Server */
 .sync-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #FF9F0A;
   box-shadow: 0 0 8px #FF9F0A;
@@ -123,21 +184,23 @@ button {
 }
 .sync-dot.ok {
   background: #34C759;
-  box-shadow: 0 0 8px #34C759;
+  box-shadow: 0 0 9px #34C759;
 }
 .sync-dot.err {
   background: #FF453A;
-  box-shadow: 0 0 8px #FF453A;
+  box-shadow: 0 0 9px #FF453A;
 }
 
+/* Home Indicator */
 .hi {
   position: absolute;
   bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
-  width: 136px;
+  width: 138px;
   height: 5px;
   border-radius: 3px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   z-index: 95;
 }
