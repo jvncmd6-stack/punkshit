@@ -30,20 +30,74 @@ function getUserRow(username) {
   const usn = cleanUsn(username);
   if (!usn) return null;
   return db.prepare(`
-    SELECT id, username, COALESCE(psc, 0) AS psc, COALESCE(cred, 0) AS cred,
-           COALESCE(active_title, '') AS active_title,
-           COALESCE(unlocked_titles, '[]') AS unlocked_titles
-    FROM users
-    WHERE LOWER(username) = ?
+    SELECT * FROM users WHERE LOWER(username) = ?
   `).get(usn);
+}
+
+// Evaluasi otomatis gelar prestasi berdasarkan data di DB
+export function syncAchievementTitles(userRow) {
+  if (!userRow) return [];
+  const usn = cleanUsn(userRow.username);
+  const unlocked = new Set(parseUnlocked(userRow.unlocked_titles));
+  let changed = false;
+
+  const grant = (id) => {
+    if (!unlocked.has(id)) {
+      unlocked.add(id);
+      changed = true;
+    }
+  };
+
+  // 1. Bestie Jalur Api: Streak Spark 7 hari tanpa bolong
+  try {
+    const maxSpark = db.prepare(`
+      SELECT MAX(streak) AS ms FROM spark_pairs
+      WHERE (LOWER(user1) = ? OR LOWER(user2) = ?) AND status = 'ACTIVE'
+    `).get(usn, usn);
+    if ((Number(maxSpark?.ms) || 0) >= 7) grant('first_fire');
+  } catch (_) {}
+
+  // 2. CCTV Grup: Setor harian 14 hari berturut-turut (cek streak / best user)
+  const bestStreak = Math.max(Number(userRow.streak) || 0, Number(userRow.best) || 0);
+  if (bestStreak >= 14) grant('cctv');
+
+  // 3. Kang Goreng: Selesaikan 10 misi/event atau total Cred >= 150
+  const missionsDone = Number(userRow.missions_done || userRow.quests_done || 0);
+  if (missionsDone >= 10 || (Number(userRow.cred) || 0) >= 150) grant('kang_goreng');
+
+  // 4. Mak Comblang: Ajak 5 warga baru masuk & aktif
+  try {
+    const refCount = db.prepare(`
+      SELECT COUNT(*) AS c FROM users WHERE LOWER(referred_by) = ?
+    `).get(usn);
+    if ((Number(refCount?.c) || 0) >= 5) grant('mak_comblang');
+  } catch (_) {}
+
+  // 5. Gak Napak Tanah: Punya 3 slot Spark Lv 5+ aktif (XP >= 400 / streak >= 10)
+  try {
+    const highSparks = db.prepare(`
+      SELECT COUNT(*) AS c FROM spark_pairs
+      WHERE (LOWER(user1) = ? OR LOWER(user2) = ?)
+        AND status = 'ACTIVE'
+        AND (xp >= 400 OR streak >= 10)
+    `).get(usn, usn);
+    if ((Number(highSparks?.c) || 0) >= 3) grant('gak_napak');
+  } catch (_) {}
+
+  const list = [...unlocked];
+  if (changed) {
+    db.prepare('UPDATE users SET unlocked_titles = ? WHERE id = ?').run(JSON.stringify(list), userRow.id);
+    userRow.unlocked_titles = JSON.stringify(list);
+  }
+  return list;
 }
 
 export function buildUserTitlePayload(userRow) {
   if (!userRow) return null;
+  const unlockedIds = syncAchievementTitles(userRow);
   const cred = Number(userRow.cred) || 0;
   const psc = Number(userRow.psc) || 0;
   const rank = getRankByCred(cred);
-  const unlockedIds = parseUnlocked(userRow.unlocked_titles);
 
   const allCatalog = [
     ...SHOP_TITLES.map(t => ({ ...t, category: 'shop' })),
@@ -101,19 +155,18 @@ titleRouter.post('/titles/action', (req, res) => {
     const row = getUserRow(usn);
     if (!row) return res.status(404).json({ ok: false, message: 'Akun PunkID belum terdaftar.' });
 
-    const unlocked = new Set(parseUnlocked(row.unlocked_titles));
+    const unlocked = new Set(syncAchievementTitles(row));
 
-    // 1. Beli Gelar dari Toko Tongkrongan
     if (type === 'BUY_TITLE') {
       const item = SHOP_TITLES.find(t => t.id === titleId);
       if (!item) return res.json({ ok: false, message: 'Gelar tidak ditemukan.' });
       if (unlocked.has(item.id)) {
         return res.json({ ok: false, message: `Gelar "${item.name}" sudah kamu miliki!` });
       }
-      if (row.cred < item.minCred) {
+      if ((Number(row.cred) || 0) < item.minCred) {
         return res.json({ ok: false, message: `Cred kurang! Butuh minimal ${item.minCred} Cred buat nebus "${item.name}".` });
       }
-      if (row.psc < item.price) {
+      if ((Number(row.psc) || 0) < item.price) {
         return res.json({ ok: false, message: `Saldo PSC kurang! Butuh ${item.price} PSC.` });
       }
 
@@ -134,15 +187,13 @@ titleRouter.post('/titles/action', (req, res) => {
       });
     }
 
-    // 2. Pasang Gelar yang Sudah Dimiliki
     if (type === 'EQUIP_TITLE') {
       if (!titleId) {
-        // Kembali pakai pangkat Cred default
         db.prepare("UPDATE users SET active_title = '' WHERE id = ?").run(row.id);
         const updated = getUserRow(usn);
         return res.json({
           ok: true,
-          message: `Balik pakai pangkat default: ${updated.activeTitleName || getRankByCred(row.cred).title}`,
+          message: `Balik pakai pangkat default: ${getRankByCred(row.cred).title}`,
           ...buildUserTitlePayload(updated)
         });
       }
