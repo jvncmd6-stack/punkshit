@@ -1,0 +1,169 @@
+/* Home Screen & Widgets */
+.home {
+  position: absolute;
+  inset: 0;
+  padding: 60px 21px 0;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.4s var(--ease), filter 0.4s var(--ease);
+}
+
+.home.bk {
+  transform: scale(0.93);
+  filter: blur(5px) brightness(0.65);
+}
+
+.wd {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  height: 152px;
+}
+
+.w {
+  border-radius: 26px;
+  padding: 14px 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  transition: transform 0.15s var(--ease);
+}
+.w:active {
+  transform: scale(0.96);
+}
+.w small {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: var(--yel);
+}
+.w b {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+.w p {
+  font-size: 12px;
+  color: #dbe4f6;
+  line-height: 1.3;
+}
+
+.faces {
+  display: flex;
+  align-items: center;
+}
+.faces i, .faces img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin-right: -8px;
+  border: 2px solid #1b2a4a;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  font: 700 11px/1 -apple-system, sans-serif;
+  color: var(--navy);
+  font-style: normal;
+}
+
+/* App Grid & Icons */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 62px);
+  justify-content: space-between;
+  gap: 20px 0;
+  margin-top: 22px;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.13s var(--ease);
+}
+.app:active {
+  transform: scale(0.91);
+}
+.app span {
+  font-size: 11px;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ic {
+  width: 58px;
+  height: 58px;
+  border-radius: 22.4%;
+  background: linear-gradient(160deg, var(--a), var(--b));
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.6), inset 0 -10px 16px rgba(0, 0, 0, 0.18), 0 5px 12px rgba(0, 0, 0, 0.35);
+}
+.ic::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 52%;
+  background: linear-gradient(rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0));
+}
+.ic svg {
+  width: 29px;
+  height: 29px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  position: relative;
+}
+
+/* Search Pill & Dock */
+.srch {
+  margin: auto auto 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 17px;
+  font-size: 13.5px;
+  color: #e6ecfa;
+}
+
+.dots {
+  display: flex;
+  gap: 7px;
+  justify-content: center;
+  margin: 10px 0 12px;
+}
+.dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff6;
+}
+.dots i:first-child {
+  background: #fff;
+}
+
+.dock {
+  height: 90px;
+  border-radius: 34px;
+  padding: 0 16px;
+  margin: 0 -8px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
