@@ -16,10 +16,10 @@ export const TH = {
 };
 
 export const GN = {
-  "Dress Tartan": "Cewek", "Pita Besar": "Cewek", "Jepit Petir": "Cewek",
+  "Dress Tartan": "Cewek", "Pita Besar": "Cewek",
   "Bulu Mata": "Cewek", "Choker": "Cewek", "Telinga Kucing": "Cewek", "Pipi Merah": "Cewek",
   "Kaos Petir": "Cowok", "Rompi Jeans": "Cowok", "Jambul Petir": "Cowok",
-  "Kumis": "Cowok", "Kalung Spike": "Cowok", Tengkorak: "Cowok",
+  "Kumis": "Cowok", Tengkorak: "Cowok",
   Mohawk: "Cowok", "Parut Petir": "Cowok"
 };
 
@@ -27,9 +27,9 @@ export const gen = v => GN[v] || "Unisex";
 
 export const TABS = [
   ["Baju", "outfit", ["Polos", "Hoodie", "Jaket Punk", "Singlet", "Dress Tartan", "Kaos Petir", "Rompi Jeans", "Flanel", "Tengkorak", "Jersey", "Kaos Garis"]],
-  ["Kepala", "head", ["Polos", "Beanie", "Snapback", "Ikat Kepala", "Pita Besar", "Jepit Petir", "Jambul Petir", "Bucket", "Mohawk", "Telinga Kucing", "Mahkota", "Headphone"]],
+  ["Kepala", "head", ["Polos", "Beanie", "Snapback", "Ikat Kepala", "Pita Besar", "Jambul Petir", "Bucket", "Mohawk", "Telinga Kucing", "Mahkota", "Headphone"]],
   ["Muka", "face", ["Normal", "Kacamata", "Bandana", "Bulu Mata", "Kumis", "Masker", "Bintik", "Pipi Merah", "Parut Petir"]],
-  ["Gear", "extra", ["Gitar", "Rantai", "Gelang", "Peniti", "Choker", "Kalung Spike", "Syal", "Tindik", "Pin Petir", "Stiker"]],
+  ["Gear", "extra", ["Gitar", "Rantai", "Gelang", "Peniti", "Choker", "Syal", "Pin Petir", "Stiker"]],
   ["Warna", "theme", Object.keys(TH)],
   ["Reaksi", "emo", ["Happy", "Excited", "Waiting", "Worried", "Dancing", "Crying", "Celebrating", "Sleepy", "Love", "Angry", "Surprised", "Wink"]],
   ["Misi Duo", "missions", []]
@@ -64,20 +64,20 @@ export const GFL = [
 
 export const U = {
   Singlet: 2, "Kaos Petir": 2, "Kaos Garis": 3, "Rompi Jeans": 3, Flanel: 4, "Dress Tartan": 4, Tengkorak: 5, Jersey: 6,
-  Snapback: 2, "Ikat Kepala": 2, Bucket: 3, "Pita Besar": 3, "Jepit Petir": 3, "Telinga Kucing": 4, Headphone: 4, Mohawk: 5, "Jambul Petir": 6, Mahkota: 8,
+  Snapback: 2, "Ikat Kepala": 2, Bucket: 3, "Pita Besar": 3, "Telinga Kucing": 4, Headphone: 4, Mohawk: 5, "Jambul Petir": 6, Mahkota: 8,
   Kacamata: 2, Bandana: 2, "Bulu Mata": 3, Kumis: 3, Bintik: 3, "Pipi Merah": 4, Masker: 5, "Parut Petir": 6,
-  Rantai: 2, Gitar: 3, Choker: 3, "Pin Petir": 3, "Kalung Spike": 4, Tindik: 4, Syal: 5, Stiker: 6,
+  Rantai: 2, Gitar: 3, Choker: 3, "Pin Petir": 3, Syal: 5, Stiker: 6,
   Toxic: 2, Pink: 2, Ungu: 3, Merah: 4, Tosca: 5,
   Crying: 2, Dancing: 2, Wink: 3, Surprised: 3, Love: 4, Angry: 4, Celebrating: 6
 };
 
 export const UD = { Emas: 30, Putih: 100 };
-export const NECK = ["Rantai", "Choker", "Kalung Spike", "Syal"];
+export const NECK = ["Rantai", "Choker", "Syal"];
 
 export const E = {
   Happy: { br: .022, bf: 1.7, h: 24, hi: 5.2, sw: 1.6, sf: .8, sh: 0, dy: 0, ln: 0, up: 0, wv: 0, sp: 1 },
   Excited: { br: .02, bf: 4, h: 14, hi: .55, sw: 3, sf: 1.8, sh: 0, dy: 0, ln: 0, up: 1, wv: 14, sp: 2.2 },
-  Waiting: { br: .012, bf: 1.3, h: 0, hi: 0, sw: 3.5, sf: .3, sh: 0, dy: 0, ln: 0, up: 0, wv: 0, sp: .9 },
+  Waiting: { br: .012, bf: 1.3, h: 0, hi: 0, sw: 3.5, sf .3, sh: 0, dy: 0, ln: 0, up: 0, wv: 0, sp: .9 },
   Worried: { br: .012, bf: 5, h: 0, hi: 0, sw: 0, sf: 1, sh: 1.5, dy: 2, ln: 0, up: .08, wv: 3, sp: 3 },
   Dancing: { br: .02, bf: 2, h: 12, hi: .67, sw: 6, sf: .75, sh: 0, dy: 0, ln: 0, up: 1, wv: 10, sp: 1.8 },
   Crying: { br: .02, bf: 1.8, h: 0, hi: 0, sw: 1, sf: .9, sh: 0, dy: 4, ln: 0, up: 0, wv: 0, sp: .8 },
