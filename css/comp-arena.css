@@ -1,0 +1,62 @@
+/* =========================================================
+   4. CHIPS, ARENA GABUT & PHOTOBOOTH
+   ========================================================= */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background: var(--os-card-tint);
+  border: 0.5px solid var(--gb);
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform 0.15s var(--spring), background 0.2s, border-color 0.2s;
+}
+.chip:active {
+  transform: scale(0.94);
+}
+.chip.on {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)), var(--os-accent);
+  border-color: var(--gblue);
+  font-weight: 700;
+  color: #fff;
+}
+
+.game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.game-card {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 0.5px solid var(--gb);
+  border-radius: 22px;
+  padding: 16px 14px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 8px 22px rgba(0, 0, 0, 0.22);
+  transition: transform 0.18s var(--spring), border-color 0.2s;
+}
+.game-card:active {
+  transform: scale(0.96);
+}
+.game-card em { font-style: normal; font-size: 28px; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35)); }
+.game-card b { font-size: 15px; font-weight: 800; }
+.game-card small { font-size: 12px; color: var(--mut); line-height: 1.32; }
+
+.pb-canvas {
+  width: 100%;
+  max-width: 300px;
+  border-radius: 20px;
+  margin: 10px auto;
+  display: block;
+  border: 1px solid var(--gb);
+  background: #080b12;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+
+.emp {
+  text-align: center;
+  color: var(--mut);
+  margin: 44px 0;
+  line-height: 1.5;
+  font-size: 14px;
+}
