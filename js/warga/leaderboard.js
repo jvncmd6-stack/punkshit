@@ -2,6 +2,57 @@
   var C = window.PunkCore;
   var API = window.PunkAPI;
 
+  var CRED_RANKS = [
+    { minCred: 600, title: 'Sesepuh Akut',    badge: '👑' },
+    { minCred: 350, title: 'Pentolan Markas', badge: '🔥' },
+    { minCred: 200, title: 'Biang Rame',      badge: '⚡' },
+    { minCred: 100, title: 'Anak Nongkrong',  badge: '🎸' },
+    { minCred: 50,  title: 'Warga Tetap',     badge: '🧢' },
+    { minCred: 20,  title: 'Baru Kenal',      badge: '🥤' },
+    { minCred: 0,   title: 'Anak Nyasar',     badge: '🛹' }
+  ];
+
+  var ALL_TITLES = [
+    { id: 'sider',        name: 'Sider Abadi' },
+    { id: 'yapping',      name: 'Tukang Yapping' },
+    { id: 'beban',        name: 'Beban Grup' },
+    { id: 'admin',        name: 'Admin Jalur Belakang' },
+    { id: 'spill',        name: 'Spill Master' },
+    { id: 'kalong',       name: 'Raja Jam Kalong' },
+    { id: 'fomo',         name: 'Korban FOMO' },
+    { id: 'sepuh',        name: 'Sepuh Turun Gunung' },
+    { id: 'donatur',      name: 'Donatur Tanpa Syarat' },
+    { id: 'first_fire',   name: 'Bestie Jalur Api' },
+    { id: 'cctv',         name: 'CCTV Grup' },
+    { id: 'kang_goreng',  name: 'Kang Goreng' },
+    { id: 'mak_comblang', name: 'Mak Comblang' },
+    { id: 'gak_napak',    name: 'Gak Napak Tanah' }
+  ];
+
+  function resolveUserSubLabel(u) {
+    var cred = Number(u && u.cred) || 0;
+    var rank = CRED_RANKS[CRED_RANKS.length - 1];
+    for (var i = 0; i < CRED_RANKS.length; i++) {
+      if (cred >= CRED_RANKS[i].minCred) {
+        rank = CRED_RANKS[i];
+        break;
+      }
+    }
+    var activeId = (u && (u.activeTitleId || u.active_title)) || '';
+    var found = activeId ? ALL_TITLES.find(function (t) { return t.id === activeId; }) : null;
+    var titleText = rank.badge + ' ' + (found ? found.name : rank.title);
+    return u.username ? ('@' + u.username + ' · ' + titleText) : titleText;
+  }
+
+  function getDuoBondLabel(streak) {
+    var d = Number(streak) || 0;
+    if (d >= 30) return 'Lengket Kayak Lem';
+    if (d >= 14) return 'Sehidup Semati';
+    if (d >= 7)  return 'Partner Yapping';
+    if (d >= 3)  return 'Satu Frekuensi';
+    return 'Baru Nimbrung';
+  }
+
   var lbState = {
     loaded: false,
     loading: false,
@@ -53,7 +104,7 @@
             '<div style="display:flex;align-items:center;gap:10px">' +
               '<span style="font-weight:900;width:26px">' + medal + '</span>' +
               C.renderAvatar(u, 'mini') +
-              '<div><b>' + C.esc(u.name) + '</b><small>' + (u.username ? '@' + C.esc(u.username) : C.rankInfo(u.streak || 0).title) + '</small></div>' +
+              '<div><b>' + C.esc(u.name) + '</b><small>' + C.esc(resolveUserSubLabel(u)) + '</small></div>' +
             '</div>' +
             '<b style="color:' + valColor + '">' + valText + '</b>' +
           '</div>'
@@ -63,11 +114,12 @@
       var spList = lbState.data.topSpark;
       rowsHtml = spList.map(function (pair, i) {
         var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1);
+        var bond = getDuoBondLabel(pair.streak || 0);
         return (
           '<div class="rw">' +
             '<div style="display:flex;align-items:center;gap:10px">' +
               '<span style="font-weight:900;width:26px">' + medal + '</span>' +
-              '<div><b>@' + C.esc(pair.user1) + ' × @' + C.esc(pair.user2) + '</b><small>' + (pair.xp || 0) + ' Spark XP</small></div>' +
+              '<div><b>@' + C.esc(pair.user1) + ' × @' + C.esc(pair.user2) + '</b><small>' + C.esc(bond) + ' · ' + (pair.xp || 0) + ' XP</small></div>' +
             '</div>' +
             '<b style="color:#FB923C">🔥 ' + (pair.streak || 0) + ' Hari</b>' +
           '</div>'
