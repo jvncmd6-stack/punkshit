@@ -54,3 +54,25 @@ export function getRankByCred(cred = 0) {
   const c = Number(cred) || 0;
   return CRED_RANKS.find(r => c >= r.minCred) || CRED_RANKS[CRED_RANKS.length - 1];
 }
+
+export function resolveUserBadgeAndTitle(user) {
+  const rank = getRankByCred(user?.cred || 0);
+  const activeId = user?.active_title || user?.activeTitleId || "";
+  const custom = [...SHOP_TITLES, ...ACHIEVEMENT_TITLES].find(t => t.id === activeId);
+  const title = custom ? custom.name : rank.title;
+  return {
+    badge: rank.badge,
+    title,
+    rankTitle: rank.title,
+    isCustom: Boolean(custom),
+    display: `${rank.badge} ${title}`
+  };
+}
+
+export function getSparkLevelName(xp = 0) {
+  const lv = Math.min(SPARK_LEVEL_NAMES.length, Math.max(1, Math.floor((Number(xp) || 0) / 100) + 1));
+  return {
+    level: lv,
+    name: SPARK_LEVEL_NAMES[lv - 1]
+  };
+}
