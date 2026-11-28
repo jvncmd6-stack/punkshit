@@ -1,0 +1,331 @@
+/* =========================================================
+   1. PROFIL, AVATAR TELEGRAM & DISCORD-STYLE AVATAR BORDER
+   ========================================================= */
+.pc {
+  background: linear-gradient(180deg, rgba(22, 33, 56, 0.86) 0%, rgba(13, 20, 36, 0.94) 45%, rgba(9, 14, 26, 0.98) 100%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 26px;
+  overflow: visible;
+  border: 0.5px solid var(--gb);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 16px 38px rgba(0, 0, 0, 0.42);
+}
+
+.cv {
+  height: 170px;
+  border-radius: 26px 26px 0 0;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 12px 14px;
+  background-size: cover;
+  background-position: center;
+  background-color: #131c31;
+}
+
+/* Fade halus di bawah banner agar menyatu mulus tanpa garis terpotong */
+.cv::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(9, 14, 26, 0.04) 0%,
+    rgba(12, 19, 34, 0.22) 48%,
+    rgba(13, 20, 36, 0.86) 82%,
+    #0d1424 100%
+  );
+  pointer-events: none;
+}
+.cv > * {
+  position: relative;
+  z-index: 2;
+}
+
+.pb {
+  padding: 0 16px 18px;
+  text-align: center;
+  position: relative;
+  overflow: visible;
+}
+
+/* Slot Avatar membelah area transisi banner secara simetris & lega */
+.av-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: -54px;
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 5;
+  overflow: visible;
+}
+
+/* Animasi Hidup (Melayang, Bernapas & Berkilau) untuk Orbit Gift Profil */
+.gift-live-bob {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform, filter;
+  animation: giftLiveBob 3.4s ease-in-out infinite;
+}
+
+@keyframes giftLiveBob {
+  0%, 100% {
+    transform: translateY(0px) rotate(var(--rot, 0deg)) scale(1);
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
+  }
+  50% {
+    transform: translateY(-6px) rotate(calc(var(--rot, 0deg) * -0.65)) scale(1.09);
+    filter: drop-shadow(0 8px 16px rgba(143, 199, 255, 0.45));
+  }
+}
+
+/* Wrapper Avatar Utama (94px) + Lapisan Border Ala Discord */
+.av-wrap {
+  position: relative;
+  width: 94px;
+  height: 94px;
+  margin: 0 auto;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+}
+
+.ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  padding: 3px;
+  position: relative;
+  z-index: 3;
+  background: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+}
+
+.ring span, .ring img.pfp {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--os-accent), #0b2a6e);
+  font-size: 36px;
+  font-weight: 700;
+  border: 3px solid #0d1424;
+  object-fit: cover;
+}
+
+/* Ring Warna Dasar */
+.r0 { background: rgba(255, 255, 255, 0.28); }
+.r1 { background: conic-gradient(#ffd633, #ff9500, #fff3a0, #ffd633); box-shadow: 0 0 18px rgba(255, 214, 51, 0.35); }
+.r2 { background: #4d9bff; box-shadow: 0 0 22px rgba(29, 116, 255, 0.65); }
+.r3 { background: conic-gradient(#f33, #fd3, #3f6, #3df, #53f, #f3d, #f33); animation: hue 4s linear infinite; }
+
+/* Discord-Style Animated/Custom Border Overlay (PNG/GIF/WEBP Transparan) */
+.dc-border {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scale(1.24);
+  pointer-events: none;
+  z-index: 6;
+  object-fit: contain;
+  animation: borderFloat 4s ease-in-out infinite;
+}
+
+/* Efek Avatar Border Bawaan Lapak Rongsok (CSS Glow Ring) */
+.dc-border-fx {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 6;
+  border: 3px solid var(--bc1, #8FC7FF);
+  box-shadow:
+    0 0 12px var(--bc2, #176BFF),
+    inset 0 0 8px var(--bc1, #8FC7FF);
+  animation: borderPulse 2.8s ease-in-out infinite;
+}
+
+.dc-border-fx::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--bc1, #8FC7FF);
+  opacity: 0.75;
+  animation: borderSpin 10s linear infinite;
+}
+
+.dc-border-fx.border-gold {
+  border-width: 3.5px;
+  box-shadow: 0 0 16px #eab308, 0 0 28px rgba(255, 214, 51, 0.55), inset 0 0 10px #fff3a0;
+}
+
+.dc-border-fx.border-crimson {
+  box-shadow: 0 0 16px #dc2626, 0 0 26px rgba(220, 38, 38, 0.55), inset 0 0 8px #ff9e9e;
+}
+
+.dc-border-fx.border-violet {
+  box-shadow: 0 0 16px #7c3aed, 0 0 26px rgba(124, 58, 237, 0.55), inset 0 0 8px #e5b8ff;
+}
+
+.dc-border-fx.border-toxic {
+  box-shadow: 0 0 15px #16a34a, 0 0 24px rgba(34, 197, 94, 0.5), inset 0 0 8px #9effa9;
+}
+
+@keyframes borderPulse {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(1.03); opacity: 1; }
+}
+
+@keyframes borderSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Mini Avatar di List Warga, Leaderboard & Kartu PunkID */
+.mini-av {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.mini-av img.pfp, .mini-av span {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--os-accent), #0b2a6e);
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+.mini-av .dc-border {
+  transform: scale(1.24);
+  animation: none;
+}
+.mini-av .dc-border-fx {
+  inset: -2px;
+  border-width: 2px;
+  animation: none;
+}
+.mini-av .dc-border-fx::before {
+  display: none;
+}
+
+.nm {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.role-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffeb8a, var(--yel));
+  color: var(--navy);
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(255, 214, 51, 0.25);
+}
+.lim-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 214, 51, 0.24), rgba(245, 158, 11, 0.3));
+  border: 1px solid rgba(255, 214, 51, 0.55);
+  color: #fde047;
+  text-transform: uppercase;
+}
+.hd {
+  color: var(--mut);
+  font-size: 13px;
+  margin-top: 3px;
+  text-align: center;
+}
+.bio {
+  margin: 10px auto 2px;
+  padding: 9px 13px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 0.5px solid rgba(255, 255, 255, 0.11);
+  line-height: 1.42;
+  font-size: 13.5px;
+  color: #e8eefc;
+  text-align: center;
+}
+.sp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(29, 185, 84, 0.18);
+  color: #74f5a6;
+  border: 0.5px solid rgba(29, 185, 84, 0.48);
+  border-radius: 18px;
+  padding: 6px 13px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  margin-bottom: 4px;
+  box-shadow: 0 4px 14px rgba(29, 185, 84, 0.16);
+  transition: transform 0.16s var(--spring), background 0.2s;
+}
+.sp:active {
+  transform: scale(0.95);
+}
+
+/* Upload Banner Box (Edit Profil & Ruang Dalang) */
+.up-box {
+  border: 1.5px dashed var(--gb);
+  border-radius: 18px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.045);
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+}
+.up-box:active {
+  border-color: var(--yel);
+  background: rgba(255, 255, 255, 0.09);
+  transform: scale(0.98);
+}
+.up-prev {
+  width: 100%;
+  height: 110px;
+  border-radius: 12px;
+  object-fit: cover;
+  margin-top: 8px;
+  display: block;
+  border: 0.5px solid rgba(255, 255, 255, 0.24);
+}
+.up-prev.icon-mode {
+  width: 96px;
+  height: 96px;
+  margin: 8px auto 0;
+  object-fit: contain;
+  background: #080b12;
+  padding: 8px;
+}
