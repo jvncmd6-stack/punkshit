@@ -4,11 +4,11 @@
   inset: 0;
   z-index: 60;
   background: var(--os-app-bg);
-  transform: scale(0.2);
+  transform: scale(0.88) translateY(24px);
   opacity: 0;
   pointer-events: none;
-  border-radius: 50px;
-  transition: transform 0.42s var(--ease), opacity 0.25s, border-radius 0.42s, background 0.35s;
+  border-radius: 44px;
+  transition: transform 0.38s var(--ease), opacity 0.24s var(--ease), border-radius 0.38s var(--ease), background 0.35s;
 }
 .av.open {
   transform: none;
@@ -24,41 +24,50 @@
   right: 0;
   height: 94px;
   z-index: 15;
-  padding: 52px 12px 0;
+  padding: 52px 14px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 0.5px solid transparent;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.22s, border-color 0.22s;
 }
 .nav.s {
   background: var(--os-nav-bg);
-  backdrop-filter: blur(22px) saturate(1.6);
-  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.75);
+  -webkit-backdrop-filter: blur(24px) saturate(1.75);
   border-bottom-color: var(--gb);
 }
 
 .bk {
   color: var(--os-accent-txt);
-  font-size: 16.5px;
-  height: 40px;
-  padding: 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  height: 36px;
+  padding: 0 10px 0 6px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   z-index: 2;
+  transition: background 0.18s, transform 0.15s;
+}
+.bk:active {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(0.95);
 }
 .bk svg {
   stroke: currentColor;
 }
+
 .nt {
   position: absolute;
   left: 0;
   right: 0;
   text-align: center;
   bottom: 11px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 16.5px;
+  letter-spacing: -0.2px;
   opacity: 0;
   transition: opacity 0.2s;
   pointer-events: none;
@@ -72,32 +81,43 @@
   inset: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 98px 18px 46px;
+  padding: 98px 18px 48px;
+  scrollbar-width: none;
 }
+.sc::-webkit-scrollbar {
+  display: none;
+}
+
 .lt {
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.6px;
+  font-size: 31px;
+  font-weight: 800;
+  letter-spacing: -0.7px;
   margin: 2px 0 16px;
+  background: linear-gradient(180deg, #ffffff 30%, #cbd9f5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Grouped Lists & Form Controls */
 .grp {
   background: var(--os-card-tint);
-  border-radius: 16px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 18px;
   overflow: hidden;
   border: 0.5px solid var(--gb);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 .rw {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
-  min-height: 52px;
+  padding: 13px 16px;
+  min-height: 54px;
 }
 .rw + .rw {
-  border-top: 0.5px solid rgba(255, 255, 255, 0.12);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.1);
 }
 .rw small {
   display: block;
@@ -106,26 +126,32 @@
   margin-top: 2px;
 }
 .gh {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--mut);
   margin: 20px 14px 7px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .pill {
-  background: var(--os-accent);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)), var(--os-accent);
   color: #fff;
-  font-weight: 600;
-  font-size: 13.5px;
+  font-weight: 700;
+  font-size: 13px;
   padding: 7px 15px;
   border-radius: 16px;
   white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s var(--spring);
+}
+.pill:active {
+  transform: scale(0.94);
 }
 .pill:disabled {
-  background: #ffffff1f;
+  background: rgba(255, 255, 255, 0.12);
   color: var(--mut);
+  box-shadow: none;
 }
 
 label {
@@ -146,10 +172,11 @@ input, textarea, select {
   background: var(--os-card-tint);
   color: var(--ink);
   font: inherit;
-  font-size: 15.5px;
+  font-size: 15px;
   padding: 10px 14px;
   outline: none;
   margin-bottom: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 textarea {
   min-height: 82px;
@@ -161,7 +188,8 @@ select option {
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--os-accent);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 0 0 3px rgba(29, 116, 255, 0.22);
 }
 
 .btn {
@@ -169,15 +197,16 @@ input:focus, textarea:focus, select:focus {
   height: 50px;
   border-radius: 16px;
   margin-top: 12px;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: var(--navy);
-  background: linear-gradient(#ffe879, var(--yel));
-  box-shadow: inset 0 1px 0 #fff9;
-  transition: transform 0.13s var(--ease);
+  background: linear-gradient(180deg, #ffeb8a 0%, var(--yel) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 8px 20px rgba(255, 214, 51, 0.22);
+  transition: transform 0.16s var(--spring), box-shadow 0.2s;
 }
 .btn:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -187,21 +216,23 @@ input:focus, textarea:focus, select:focus {
   background: var(--os-card-tint);
   border: 0.5px solid var(--gb);
   color: var(--ink);
-  box-shadow: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 .b-danger {
-  background: #FF453A33;
-  color: #ff7b72;
-  border: 0.5px solid #FF453A66;
+  background: rgba(255, 69, 58, 0.18);
+  color: #ff857d;
+  border: 0.5px solid rgba(255, 69, 58, 0.45);
   box-shadow: none;
 }
 
-/* Modal Bottom Sheet & Banner */
+/* Modal Bottom Sheet & Live Banner */
 .scrim {
   position: absolute;
   inset: 0;
   z-index: 100;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(3, 6, 12, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s;
@@ -218,23 +249,24 @@ input:focus, textarea:focus, select:focus {
   bottom: 0;
   z-index: 110;
   background: var(--os-sheet-bg);
-  border-radius: 30px 30px 0 0;
-  padding: 8px 20px calc(30px + env(safe-area-inset-bottom, 0px));
+  border-radius: 32px 32px 0 0;
+  padding: 10px 20px calc(30px + env(safe-area-inset-bottom, 0px));
   transform: translateY(105%);
   transition: transform 0.42s var(--ease), background 0.35s;
   max-height: 90%;
   overflow-y: auto;
-  border-top: 0.5px solid var(--gb);
+  border-top: 0.5px solid var(--gb-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 -16px 44px rgba(0, 0, 0, 0.55);
   text-align: center;
 }
 .sh.open {
   transform: none;
 }
 .grab {
-  width: 38px;
+  width: 40px;
   height: 5px;
   border-radius: 3px;
-  background: #ffffff40;
+  background: rgba(255, 255, 255, 0.32);
   margin: 0 auto 14px;
 }
 .sh h1 {
@@ -244,6 +276,7 @@ input:focus, textarea:focus, select:focus {
 }
 .sh h2 {
   font-size: 20px;
+  font-weight: 800;
   margin-top: 2px;
 }
 .sub {
@@ -263,21 +296,23 @@ input:focus, textarea:focus, select:focus {
   left: 10px;
   right: 10px;
   z-index: 120;
-  border-radius: 24px;
+  border-radius: 26px;
   padding: 12px 14px;
   display: flex;
   gap: 11px;
   transform: translateY(-145%);
-  transition: transform 0.45s var(--ease), background 0.35s;
+  transition: transform 0.45s var(--spring), background 0.35s;
   background: var(--os-ban-bg);
+  border: 0.5px solid var(--gb-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 16px 36px rgba(0, 0, 0, 0.48);
   text-align: left;
 }
 .ban.on {
   transform: none;
 }
 .ban .ic {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   flex: none;
 }
 .ban .ic svg {
@@ -294,11 +329,11 @@ input:focus, textarea:focus, select:focus {
   font-style: normal;
   color: var(--yel);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .ban span {
   font-size: 12.5px;
-  color: #e4ebfa;
+  color: #e6edfc;
   line-height: 1.35;
   display: block;
   margin-top: 2px;
@@ -327,7 +362,7 @@ input:focus, textarea:focus, select:focus {
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .glass, .nav.s {
+  .glass, .nav.s, .grp {
     backdrop-filter: none;
     background: #1c2740;
   }
