@@ -5,7 +5,7 @@
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#080B12",
-  "theme_color": "#101827",
+  "background_color": "#060911",
+  "theme_color": "#0D1524",
   "categories": ["social", "games", "entertainment"]
 }
