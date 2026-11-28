@@ -12,7 +12,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 @keyframes pulseFire{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 .boot-txt{font:700 14px var(--rnd);color:#fff}.boot-sub{font-size:12px;color:var(--t2)}
 
-/* LOBBY 3 SLOT (LAYAR UTAMA PERTAMA) */
+/* LOBBY SLOT (LAYAR UTAMA PERTAMA) */
 .pair-gate{position:absolute;inset:0;z-index:20;background:linear-gradient(180deg,#0b0b12 0%,#12121c 100%);display:flex;flex-direction:column;padding:14px 18px max(var(--sab),20px);overflow-y:auto}
 .pg-hero{text-align:center;margin-top:2px}
 .pg-fire{font-size:36px;line-height:1}
@@ -20,7 +20,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .pg-hero p{margin:0;font-size:12px;color:var(--t2);line-height:1.35}
 .pg-my-usn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 12px;border-radius:99px;background:rgba(255,138,31,.14);border:1px solid rgba(255,138,31,.35);font:700 11.5px var(--sans);color:var(--ac)}
 
-/* Kartu 3 Slot */
+/* Kartu Slot */
 .slots-grid{display:flex;flex-direction:column;gap:8px;margin:12px 0 6px}
 .slot-card{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);text-align:left;transition:transform .15s}
 .slot-card:active{transform:scale(.98)}
@@ -54,7 +54,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .pg-user-info b{display:block;font-size:13px;color:#fff}.pg-user-info small{color:var(--ac);font-size:11.5px;font-weight:600}
 .pg-invite{padding:6px 12px;border-radius:99px;background:var(--ac);color:#111;font:700 11.5px var(--sans)}
 
-/* PANGGUNG KARAKTER API */
+/* PANGGUNG KARAKTER API (GPU-Friendly Spotlight & Depth) */
 .card{position:relative;display:flex;flex-direction:column;width:100%;height:100vh;height:100dvh;padding-top:6px;background:#07070b;overflow:hidden}
 .top{display:flex;justify-content:space-between;align-items:center;padding:2px 16px 0;gap:8px}
 .top-left{display:flex;align-items:center;gap:8px;min-width:0}
@@ -66,13 +66,14 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .rare{background:var(--ac);color:#111;font:700 11px var(--sans);padding:4px 9px;border-radius:99px}
 .icon-btn{width:30px;height:30px;border-radius:99px;background:var(--fill);display:flex;align-items:center;justify-content:center;font-size:14px}
 
-.stage{position:relative;flex:1;min-height:140px;touch-action:none;overflow:hidden;background:radial-gradient(ellipse 75% 50% at 50% 82%,color-mix(in srgb,var(--ac) 30%,transparent),transparent 72%)}
+.stage{position:relative;flex:1;min-height:140px;touch-action:none;overflow:hidden;background:radial-gradient(circle 220px at 62% 54%,color-mix(in srgb,var(--gl) 14%,transparent),transparent 70%),radial-gradient(ellipse 80% 46% at 58% 86%,color-mix(in srgb,var(--ac) 34%,transparent),transparent 72%)}
+.stage::after{content:"";position:absolute;left:34%;right:8%;bottom:4%;height:34px;border-radius:50%;background:radial-gradient(ellipse at center,color-mix(in srgb,var(--ac) 28%,transparent) 0%,transparent 72%);pointer-events:none}
 .streak{position:absolute;left:18px;top:6px;z-index:2;pointer-events:none;max-width:56%}
 .num{font:800 48px/1 var(--rnd);color:var(--ac);letter-spacing:-2px}
 .lab{font-size:12px;font-weight:600;margin-top:2px}
 .badge{display:inline-block;margin-top:4px;font:600 11px var(--sans);padding:2px 8px;border-radius:99px;background:var(--fill)}
 .pair{margin-top:5px;font:700 12px var(--sans);color:#fff;pointer-events:auto;display:flex;align-items:center;gap:4px;flex-wrap:wrap}.pair i{font-style:normal;color:var(--ac)}
-.gap-box{margin-top:6px;display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--t2);background:rgba(24,24,28,.9);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
+.gap-box{margin-top:6px;display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--t2);background:rgba(24,24,28,.92);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
 .gap-row{display:flex;justify-content:space-between;gap:8px}.gap-row b{color:#fff;font-weight:600}
 
 .tilt{position:absolute;inset:4px 0 0 22%;transform-origin:50% 85%;will-change:transform;transform:translate3d(0,0,0)}
@@ -129,7 +130,9 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;touch-actio
 .shot{flex:none;width:44px;height:44px;border-radius:13px;background:var(--fill);font-size:20px}.shot:active{transform:scale(.92)}
 .reset{margin-top:8px;width:100%;height:42px;border-radius:12px;background:var(--fill);color:#ff453a;font:600 14px var(--sans)}
 .toast{position:absolute;left:50%;bottom:calc(var(--sab) + 74px);transform:translate(-50%,20px);padding:8px 14px;border-radius:99px;background:rgba(52,52,58,.96);font:600 13px var(--sans);white-space:nowrap;opacity:0;pointer-events:none;transition:.25s ease;z-index:30}.toast.on{opacity:1;transform:translate(-50%,0)}
-.spk{position:absolute;left:50%;top:55%;width:10px;height:10px;margin:-5px;border-radius:50%;background:var(--gl);pointer-events:none;animation:spk .55s ease-out forwards}@keyframes spk{to{transform:translate(var(--x),var(--y)) scale(0);opacity:0}}
+.spk{position:absolute;left:50%;top:55%;width:10px;height:10px;margin:-5px;border-radius:50%;background:var(--gl);pointer-events:none;will-change:transform,opacity;animation:spk .55s ease-out forwards}@keyframes spk{to{transform:translate3d(var(--x),var(--y),0) scale(0);opacity:0}}
+.emb{position:absolute;left:58%;top:44%;width:5px;height:5px;border-radius:50%;background:var(--gl);pointer-events:none;opacity:0;will-change:transform,opacity}
+.emb.go{animation:embRise 1.15s ease-out forwards}@keyframes embRise{0%{transform:translate3d(var(--sx),0,0) scale(.6);opacity:0}20%{opacity:.95}100%{transform:translate3d(var(--ex),var(--ey),0) scale(0);opacity:0}}
 .ci{pointer-events:auto;margin-top:6px;padding:6px 12px;border-radius:99px;background:var(--ac);color:#111;font:700 12px var(--sans)}.ci:active{transform:scale(.94)}.ci.done{background:var(--fill);color:var(--t2)}
 .it small{font-size:11px;color:var(--t2);margin-top:-2px}.it.lk{color:var(--t2)}.it.lk::before{content:"🔒";position:absolute;top:5px;right:6px;font-size:12px}.it.lk svg,.it.lk .dot{filter:grayscale(1) brightness(.45)}
 .it.shake{animation:shk .35s}@keyframes shk{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
