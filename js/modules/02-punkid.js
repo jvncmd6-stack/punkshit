@@ -6,14 +6,93 @@
   var M = window.PunkIDMod = window.PunkIDMod || {};
 
   var pendingBannerFile = null;
+  var titleState = null;
+
+  var CRED_RANKS = [
+    { minCred: 600, title: 'Sesepuh Akut',    badge: '👑' },
+    { minCred: 350, title: 'Pentolan Markas', badge: '🔥' },
+    { minCred: 200, title: 'Biang Rame',      badge: '⚡' },
+    { minCred: 100, title: 'Anak Nongkrong',  badge: '🎸' },
+    { minCred: 50,  title: 'Warga Tetap',     badge: '🧢' },
+    { minCred: 20,  title: 'Baru Kenal',      badge: '🥤' },
+    { minCred: 0,   title: 'Anak Nyasar',     badge: '🛹' }
+  ];
+
+  var SHOP_TITLES = [
+    { id: 'sider',   name: 'Sider Abadi',          price: 100, minCred: 10,  desc: 'Cuma baca doang, munculnya pas ada gratisan.' },
+    { id: 'yapping', name: 'Tukang Yapping',       price: 150, minCred: 20,  desc: 'Ngetik panjang lebar tapi intinya nggak ada.' },
+    { id: 'beban',   name: 'Beban Grup',           price: 180, minCred: 25,  desc: 'Nggak ngapa-ngapain tapi paling kenceng minta jatah.' },
+    { id: 'admin',   name: 'Admin Jalur Belakang', price: 250, minCred: 50,  desc: 'Gayanya udah kayak yang punya grup.' },
+    { id: 'spill',   name: 'Spill Master',         price: 300, minCred: 75,  desc: 'Gudangnya info bocoran & drama terbaru.' },
+    { id: 'kalong',  name: 'Raja Jam Kalong',      price: 350, minCred: 90,  desc: 'Baru hidup di atas jam 1 pagi.' },
+    { id: 'fomo',    name: 'Korban FOMO',          price: 450, minCred: 120, desc: 'Apa pun yang lagi rame pasti langsung ikut.' },
+    { id: 'sepuh',   name: 'Sepuh Turun Gunung',   price: 650, minCred: 200, desc: 'Muka lama yang bikin grup langsung rame.' },
+    { id: 'donatur', name: 'Donatur Tanpa Syarat', price: 900, minCred: 300, desc: 'Saldo PSC numpuk, kerjanya pamer kekayaan.' }
+  ];
+
+  var ACHIEVEMENT_TITLES = [
+    { id: 'first_fire',   name: 'Bestie Jalur Api', req: 'Streak Spark 7 hari tanpa bolong' },
+    { id: 'cctv',         name: 'CCTV Grup',        req: 'Setor harian 14 hari berturut-turut' },
+    { id: 'kang_goreng',  name: 'Kang Goreng',      req: 'Selesaikan 10 misi atau event grup' },
+    { id: 'mak_comblang', name: 'Mak Comblang',     req: 'Ajak 5 warga baru masuk & aktif' },
+    { id: 'gak_napak',    name: 'Gak Napak Tanah',  req: 'Punya 3 slot Spark Lv 5+ aktif' }
+  ];
+
+  function getRankByCred(cred) {
+    var c = Number(cred) || 0;
+    for (var i = 0; i < CRED_RANKS.length; i++) {
+      if (c >= CRED_RANKS[i].minCred) return CRED_RANKS[i];
+    }
+    return CRED_RANKS[CRED_RANKS.length - 1];
+  }
+
+  function parseUnlocked(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.map(String);
+    try {
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.map(String) : [];
+    } catch (_) {
+      return [];
+    }
+  }
 
   function getTongkronganTier(u) {
     var cred = Number(u.cred) || 0;
-    var best = Math.max(Number(u.best) || 0, Number(u.streak) || 0);
-    if (cred >= 300 && best >= 14) return { icon: '👑', title: 'Sepuh / Fosil' };
-    if (cred >= 100 && best >= 7) return { icon: '🔥', title: 'Pentolan Gang' };
-    if (cred >= 25 && best >= 3) return { icon: '☕', title: 'Anak Nongkrong' };
-    return { icon: '🌱', title: 'Warga Baru' };
+    var rank = getRankByCred(cred);
+    var activeId = (titleState && titleState.activeTitleId !== undefined)
+      ? titleState.activeTitleId
+      : (u.activeTitleId || u.active_title || '');
+
+    if (activeId) {
+      var found = SHOP_TITLES.concat(ACHIEVEMENT_TITLES).find(function (t) { return t.id === activeId; });
+      if (found) return { icon: rank.badge, title: found.name, isCustom: true, rankTitle: rank.title };
+    }
+    return { icon: rank.badge, title: rank.title, isCustom: false, rankTitle: rank.title };
+  }
+
+  async function apiGetTitles() {
+    if (API && typeof API.get === 'function') {
+      return API.get('/api/titles');
+    }
+    var base = (CFG && CFG.API_URL) ? CFG.API_URL.replace(/\/+$/, '') : '';
+    var initData = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+    var r = await fetch(base + '/api/titles', {
+      headers: initData ? { 'x-telegram-init-data': initData } : {}
+    });
+    return r.json();
+  }
+
+  function syncTitleStateToUser(data) {
+    if (!data || !data.ok) return;
+    titleState = data;
+    if (S.user) {
+      S.user.psc = Number(data.psc) || S.user.psc;
+      S.user.cred = Number(data.cred) || S.user.cred;
+      S.user.active_title = data.activeTitleId || '';
+      S.user.activeTitleId = data.activeTitleId || '';
+      S.user.unlocked_titles = JSON.stringify(data.unlockedIds || []);
+    }
   }
 
   function compressBannerIfNeeded(file) {
@@ -137,14 +216,26 @@
             C.renderAvatar(u, 'full') +
           '</div>' +
           '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
-          '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + tier.icon + ' ' + tier.title + '</div>' +
+          '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + tier.icon + ' ' + C.esc(tier.title) + '</div>' +
           (u.bio ? '<p class="bio">' + C.esc(u.bio) + '</p>' : '') +
           (u.spotifyUrl && M.renderSpotifyCard ? M.renderSpotifyCard(u.spotifyUrl) : '') +
           '<div style="display:flex;gap:8px;margin-top:12px">' +
             '<button class="btn b2" style="margin-top:0;flex:1" data-act="pid-edit">Edit Profil & Banner</button>' +
+            '<button class="btn b2" style="margin-top:0;width:auto;padding:0 12px" data-act="pid-titles-sheet" title="Pangkat & Gelar Tongkrongan">🏷️ Gelar</button>' +
             '<button class="btn b2" style="margin-top:0;width:auto;padding:0 12px" data-act="pid-copy-id" title="Salin Nomor PunkID">🪪 ID</button>' +
-            '<button class="btn b2" style="margin-top:0;width:auto;padding:0 12px" data-act="pid-sync-tele" title="Sinkron ulang foto & nama dari Telegram">🔄 Tele</button>' +
+            '<button class="btn b2" style="margin-top:0;width:auto;padding:0 12px" data-act="pid-sync-tele" title="Sinkron ulang foto & nama dari Telegram">🔄</button>' +
           '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<h3 class="gh">PANGKAT & GELAR TONGKRONGAN</h3>' +
+      '<div class="grp" style="margin-bottom:18px">' +
+        '<div class="rw">' +
+          '<div>' +
+            '<b>' + tier.icon + ' ' + C.esc(tier.title) + '</b>' +
+            '<small>' + (tier.isCustom ? 'Gelar khusus aktif · Pangkat Cred: ' + C.esc(tier.rankTitle) : 'Pangkat bawaan (' + (u.cred || 0) + ' Cred)') + '</small>' +
+          '</div>' +
+          '<button class="pill" data-act="pid-titles-sheet">Pilih / Tebus</button>' +
         '</div>' +
       '</div>' +
 
@@ -207,6 +298,112 @@
 
   C.Views.gue = renderGue;
   C.renderPunkCard = renderPunkCard;
+
+  function renderTitlesSheetHTML() {
+    var u = S.user || {};
+    var cred = titleState ? Number(titleState.cred) : (Number(u.cred) || 0);
+    var psc = titleState ? Number(titleState.psc) : (Number(u.psc) || 0);
+    var rank = titleState ? titleState.rank : getRankByCred(cred);
+    var activeId = titleState ? (titleState.activeTitleId || '') : (u.activeTitleId || u.active_title || '');
+    var unlockedIds = titleState ? (titleState.unlockedIds || []) : parseUnlocked(u.unlocked_titles);
+
+    var shopList = (titleState && titleState.shopTitles) ? titleState.shopTitles : SHOP_TITLES.map(function (t) {
+      return {
+        id: t.id, name: t.name, price: t.price, minCred: t.minCred, desc: t.desc,
+        unlocked: unlockedIds.indexOf(t.id) !== -1,
+        equipped: activeId === t.id,
+        canAfford: psc >= t.price,
+        credMet: cred >= t.minCred
+      };
+    });
+
+    var achList = (titleState && titleState.achievementTitles) ? titleState.achievementTitles : ACHIEVEMENT_TITLES.map(function (t) {
+      return {
+        id: t.id, name: t.name, req: t.req,
+        unlocked: unlockedIds.indexOf(t.id) !== -1,
+        equipped: activeId === t.id
+      };
+    });
+
+    var isDefault = !activeId;
+
+    return (
+      '<h2 style="margin-bottom:4px">🏷️ Pangkat & Gelar Tongkrongan</h2>' +
+      '<p class="sub">Pangkat naik otomatis dari Cred. Gelar tongkrongan bisa ditebus pakai saldo PSC lo.</p>' +
+
+      '<div style="display:flex;gap:8px;margin-bottom:14px">' +
+        '<div style="flex:1;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06)">' +
+          '<small style="display:block;font-size:11px;opacity:.7">Pangkat Cred (' + cred + ')</small>' +
+          '<b style="font-size:13.5px">' + rank.badge + ' ' + C.esc(rank.title) + '</b>' +
+        '</div>' +
+        '<div style="flex:1;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.06)">' +
+          '<small style="display:block;font-size:11px;opacity:.7">Saldo Dompet</small>' +
+          '<b style="font-size:13.5px">🪙 ' + psc + ' PSC</b>' +
+        '</div>' +
+      '</div>' +
+
+      '<label>PANGKAT BAWAAN (OTOMATIS)</label>' +
+      '<div class="grp" style="margin-bottom:14px">' +
+        '<div class="rw">' +
+          '<div><b>' + rank.badge + ' ' + C.esc(rank.title) + '</b><small>Otomatis berubah ngikutin total Cred lo di markas</small></div>' +
+          '<button class="pill' + (isDefault ? ' on' : '') + '" data-act="pid-title-act" data-type="EQUIP_TITLE" data-id=""' + (isDefault ? ' disabled' : '') + '>' + (isDefault ? 'Dipakai ✓' : 'Pakai') + '</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<label>GELAR TONGKRONGAN (TEBUS PSC)</label>' +
+      '<div class="grp" style="margin-bottom:14px">' +
+        shopList.map(function (t) {
+          var btn = '';
+          if (t.equipped) {
+            btn = '<button class="pill on" disabled>Dipakai ✓</button>';
+          } else if (t.unlocked) {
+            btn = '<button class="pill" data-act="pid-title-act" data-type="EQUIP_TITLE" data-id="' + C.esc(t.id) + '">Pasang</button>';
+          } else if (t.credMet && t.canAfford) {
+            btn = '<button class="pill" style="background:var(--gblue);color:#fff" data-act="pid-title-act" data-type="BUY_TITLE" data-id="' + C.esc(t.id) + '">' + t.price + ' PSC</button>';
+          } else {
+            btn = '<button class="pill" style="opacity:.45" disabled>' + t.price + ' PSC</button>';
+          }
+          return (
+            '<div class="rw">' +
+              '<div style="padding-right:8px">' +
+                '<b>' + C.esc(t.name) + '</b>' +
+                '<small>' + C.esc(t.desc) + ' · <b>Min. ' + t.minCred + ' Cred</b></small>' +
+              '</div>' +
+              btn +
+            '</div>'
+          );
+        }).join('') +
+      '</div>' +
+
+      '<label>GELAR PRESTASI (KELAKUAN GRUP)</label>' +
+      '<div class="grp">' +
+        achList.map(function (t) {
+          var btn = t.equipped
+            ? '<button class="pill on" disabled>Dipakai ✓</button>'
+            : (t.unlocked
+                ? '<button class="pill" data-act="pid-title-act" data-type="EQUIP_TITLE" data-id="' + C.esc(t.id) + '">Pasang</button>'
+                : '<button class="pill" style="opacity:.45" disabled>Terkunci 🔒</button>');
+          return (
+            '<div class="rw">' +
+              '<div style="padding-right:8px"><b>' + C.esc(t.name) + '</b><small>' + C.esc(t.req) + '</small></div>' +
+              btn +
+            '</div>'
+          );
+        }).join('') +
+      '</div>'
+    );
+  }
+
+  async function openTitlesSheet() {
+    C.sheet(renderTitlesSheetHTML());
+    try {
+      var res = await apiGetTitles();
+      if (res && res.ok) {
+        syncTitleStateToUser(res);
+        C.sheet(renderTitlesSheetHTML());
+      }
+    } catch (_) {}
+  }
 
   function openEditProfileSheet() {
     var u = S.user;
@@ -296,6 +493,27 @@
 
     if (act === 'pid-flip') {
       t.classList.toggle('on');
+    } else if (act === 'pid-titles-sheet') {
+      openTitlesSheet();
+    } else if (act === 'pid-title-act') {
+      var actionType = t.getAttribute('data-type');
+      var titleId = t.getAttribute('data-id') || '';
+      t.disabled = true;
+      try {
+        var res = await API.post('/api/titles/action', { type: actionType, titleId: titleId });
+        if (res && res.ok) {
+          syncTitleStateToUser(res);
+          C.sheet(renderTitlesSheetHTML());
+          C.refresh();
+          C.notify('Mas Raka', 'Gelar Tongkrongan 🏷️', res.message || 'Gelar berhasil di-update!');
+        } else {
+          t.disabled = false;
+          C.notify('Mas Raka', 'Belum Bisa Cuy', (res && res.message) || 'Gagal memproses gelar.');
+        }
+      } catch (err) {
+        t.disabled = false;
+        C.notify('Mas Raka', 'Info', err.message);
+      }
     } else if (act === 'pid-copy-id') {
       var u = S.user || {};
       var txt = '🪪 ' + (u.name || 'Warga') + ' · ' + (u.memberNo || 'PSK-0001') + (u.username ? ' (@' + u.username + ')' : '');
