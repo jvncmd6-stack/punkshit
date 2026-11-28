@@ -20,6 +20,7 @@ export const store = {
   VIEW_MODE: "hub",
   UNLOCKED_SLOTS: FREE_SLOTS,
   SETOR_LOCK: false,
+  STYLE_SYNC_LOCK_UNTIL: 0,
   LOCAL_SETOR_DAY: "",
   LAST_SAND_HINT_KEY: "",
   tab: 0,
@@ -88,13 +89,15 @@ export function explainHourglassStatus(forceShow = false) {
   }
 }
 
-export function saveCurrentPetStyle() {
-  const { S, PET_STYLES, EB } = store;
+export function getCurrentStyleSnapshot() {
+  const { S, EB } = store;
   const key = normUsn(S.p2);
-  if (!key) return;
+  if (!key) return null;
   const nmEl = $("nm");
-  PET_STYLES[key] = {
-    nm: nmEl ? nmEl.textContent : S.p2.toUpperCase().slice(0, 12),
+  const rawName = nmEl ? nmEl.textContent : S.p2.toUpperCase().slice(0, 12);
+  const cleanName = String(rawName || "").replace(/[\r\n]+/g, " ").trim().slice(0, 14);
+  return {
+    nm: cleanName,
     theme: S.theme,
     outfit: S.outfit,
     head: S.head,
@@ -102,6 +105,15 @@ export function saveCurrentPetStyle() {
     extra: [...S.extra],
     emo: EB || S.emo
   };
+}
+
+export function saveCurrentPetStyle() {
+  const { S, PET_STYLES } = store;
+  const key = normUsn(S.p2);
+  const snap = getCurrentStyleSnapshot();
+  if (!key || !snap) return null;
+  PET_STYLES[key] = snap;
+  return snap;
 }
 
 const STORAGE_KEY = "punkshit.spark.v5";
