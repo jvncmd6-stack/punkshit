@@ -15,6 +15,29 @@ import {
 } from "./state.js";
 import { renderHub } from "./hub.js";
 
+let styleSyncTimer = null;
+
+function scheduleStyleSync() {
+  const partner = normUsn(store.S.p2);
+  if (!partner || store.VIEW_MODE !== "stage") return;
+  store.STYLE_SYNC_LOCK_UNTIL = Date.now() + 4500;
+  const snap = saveCurrentPetStyle();
+  save();
+
+  clearTimeout(styleSyncTimer);
+  styleSyncTimer = setTimeout(() => {
+    const latestSnap = saveCurrentPetStyle() || snap;
+    if (!latestSnap || !store.S.p2) return;
+    sendActionToServer({
+      type: "SPARK_UPDATE_STYLE",
+      fromUsername: normUsn(store.MY_USN),
+      targetUsername: normUsn(store.S.p2),
+      petName: latestSnap.nm,
+      style: latestSnap
+    }, true);
+  }, 550);
+}
+
 function draw() {
   const lv = lvl();
   const { html, st } = renderPetSVG(store.S, lv);
@@ -59,17 +82,32 @@ function loadActivePairIntoStage() {
   const hubBtn = $("hubBackBtn");
   if (hubBtn) hubBtn.textContent = `‹ ${UNLOCKED_SLOTS} Slot`;
 
-  const st = PET_STYLES[S.p2];
-  if (st) {
-    if (st.nm) $("nm").textContent = String(st.nm).slice(0, 14);
-    if (TH[st.theme]) S.theme = st.theme;
-    if (st.outfit) S.outfit = st.outfit;
-    if (st.head) S.head = st.head;
-    if (st.face) S.face = st.face;
-    if (Array.isArray(st.extra)) S.extra = new Set(st.extra);
-    if (E[st.emo]) S.emo = st.emo;
-  } else {
-    $("nm").textContent = S.p2.toUpperCase().slice(0, 12);
+  const isEditingLocally = Date.now() < store.STYLE_SYNC_LOCK_UNTIL || document.activeElement === $("nm");
+  if (!isEditingLocally) {
+    const serverStyle = p.petStyle && typeof p.petStyle === "object" ? p.petStyle : null;
+    const st = serverStyle || PET_STYLES[S.p2] || null;
+    const resolvedName = String(p.petName || (st && st.nm) || S.p2.toUpperCase().slice(0, 12)).slice(0, 14);
+
+    if ($("nm") && $("nm").textContent !== resolvedName) {
+      $("nm").textContent = resolvedName;
+    }
+
+    if (st) {
+      S.theme = TH[st.theme] ? st.theme : "Api";
+      S.outfit = st.outfit || "Jaket Punk";
+      S.head = st.head || "Beanie";
+      S.face = st.face || "Normal";
+      S.extra = Array.isArray(st.extra) ? new Set(st.extra) : new Set(["Peniti"]);
+      S.emo = E[st.emo] ? st.emo : "Happy";
+      PET_STYLES[S.p2] = Object.assign({}, st, { nm: resolvedName });
+    } else {
+      S.theme = "Api";
+      S.outfit = "Jaket Punk";
+      S.head = "Beanie";
+      S.face = "Normal";
+      S.extra = new Set(["Peniti"]);
+      S.emo = "Happy";
+    }
   }
 }
 
@@ -234,6 +272,7 @@ function ui() {
       if (k == "emo") store.EB = null;
       draw();
       mark();
+      scheduleStyleSync();
       hap();
       bumpPet();
     };
@@ -254,6 +293,7 @@ $("rnd").onclick = () => {
   TABS[3][2].filter(unl).sort(() => Math.random() - .5).slice(0, 1 + Math.floor(Math.random() * 3)).forEach(tog);
   draw();
   ui();
+  scheduleStyleSync();
   bumpPet();
 };
 
@@ -261,7 +301,17 @@ addEventListener("pagehide", doSave);
 document.addEventListener("visibilitychange", () => document.hidden && doSave());
 document.querySelectorAll("[contenteditable]").forEach(el => {
   el.addEventListener("keydown", e => { if (e.key == "Enter") { e.preventDefault(); el.blur(); } });
-  el.addEventListener("input", save);
+  el.addEventListener("input", () => {
+    if (el.textContent.length > 14) {
+      el.textContent = el.textContent.slice(0, 14);
+    }
+    scheduleStyleSync();
+  });
+  el.addEventListener("blur", () => {
+    const clean = String(el.textContent || "").replace(/[\r\n]+/g, " ").trim().slice(0, 14);
+    el.textContent = clean || (store.S.p2 ? store.S.p2.toUpperCase().slice(0, 12) : "BARA");
+    scheduleStyleSync();
+  });
 });
 
 $("clearBtn").onclick = () => { $("card").classList.add("clear-mode"); hap(); };
@@ -391,6 +441,7 @@ function undo() {
   store.EB = null;
   draw();
   mark();
+  scheduleStyleSync();
   undoUpd();
   hap();
   toast("Dibatalkan");
@@ -407,20 +458,28 @@ function applyServerPayload(u) {
 
   if (Array.isArray(u.sparkBuddies)) {
     store.PAIRS = u.sparkBuddies.filter(x => x.status === "paired" && x.partnerUsername).map(x => {
+      const partnerUsn = normUsn(x.partnerUsername);
       const serverG1 = x.g1 || { gap: 0, msg: 0 };
       const mergedG1 = justSetoredToday
         ? { gap: Math.max(5, serverG1.gap || 0), msg: Math.max(2, serverG1.msg || 0) }
         : serverG1;
       const doneMe = Boolean(x.hasSetorToday || x.litToday || justSetoredToday || (mergedG1.gap >= 5 && mergedG1.msg >= 2));
+      const pStyle = x.petStyle && typeof x.petStyle === "object" ? x.petStyle : null;
+      const pName = String(x.petName || (pStyle && pStyle.nm) || "").slice(0, 14);
+      if (pStyle && Date.now() >= store.STYLE_SYNC_LOCK_UNTIL) {
+        store.PET_STYLES[partnerUsn] = Object.assign({}, pStyle, pName ? { nm: pName } : {});
+      }
       return {
-        partnerUsername: normUsn(x.partnerUsername),
+        partnerUsername: partnerUsn,
         streak: Number(x.streak) || 0,
         xp: Number(x.xp) || 0,
         g1: mergedG1,
         g2: x.g2 || { gap: 0, msg: 0 },
         hasSetorToday: doneMe,
         litToday: doneMe,
-        caseCompleted: Boolean(x.caseCompleted)
+        caseCompleted: Boolean(x.caseCompleted),
+        petName: pName,
+        petStyle: pStyle
       };
     });
     store.INCOMING = u.sparkBuddies.filter(x => x.status === "incoming" && x.fromUsername).map(x => ({ fromUsername: normUsn(x.fromUsername) }));
@@ -436,6 +495,11 @@ function applyServerPayload(u) {
           ? { gap: Math.max(5, serverG1.gap || 0), msg: Math.max(2, serverG1.msg || 0) }
           : serverG1;
         const doneMe = Boolean(sb.hasSetorToday || sb.litToday || justSetoredToday || (mergedG1.gap >= 5 && mergedG1.msg >= 2));
+        const pStyle = sb.petStyle && typeof sb.petStyle === "object" ? sb.petStyle : null;
+        const pName = String(sb.petName || (pStyle && pStyle.nm) || "").slice(0, 14);
+        if (pStyle && Date.now() >= store.STYLE_SYNC_LOCK_UNTIL) {
+          store.PET_STYLES[pUsn] = Object.assign({}, pStyle, pName ? { nm: pName } : {});
+        }
         store.PAIRS = [{
           partnerUsername: pUsn,
           streak: Number(sb.streak) || 0,
@@ -444,7 +508,9 @@ function applyServerPayload(u) {
           g2: sb.g2 || { gap: 0, msg: 0 },
           hasSetorToday: doneMe,
           litToday: doneMe,
-          caseCompleted: Boolean(sb.caseCompleted)
+          caseCompleted: Boolean(sb.caseCompleted),
+          petName: pName,
+          petStyle: pStyle
         }];
         store.INCOMING = [];
         store.OUTGOING = [];
@@ -474,11 +540,14 @@ function syncUIState() {
     $("pairGate").hidden = true;
     loadActivePairIntoStage();
     draw();
+    if (TABS[store.tab] && TABS[store.tab][1] !== "missions") {
+      mark();
+    }
   }
   save();
 }
 
-async function sendActionToServer(actionObj) {
+async function sendActionToServer(actionObj, silent = false) {
   const me = normUsn(store.MY_USN);
   const fullPayload = Object.assign({}, actionObj, { fromUsername: actionObj.fromUsername || me, byUsername: me });
   if (store.DIRECT_API) {
@@ -489,17 +558,25 @@ async function sendActionToServer(actionObj) {
         body: JSON.stringify(fullPayload)
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { toast("⚠️ Server Error (" + res.status + ")"); return null; }
-      if (!data.ok && data.message) toast("⚠️ " + data.message);
-      else if (data.ok && actionObj.type === "SPARK_INVITE_SEND") toast("✅ Ajakan terkirim ke @" + normUsn(actionObj.targetUsername) + "!");
-      else if (data.ok && actionObj.type === "SPARK_UNLOCK_SLOT") toast(data.message || "🔓 Slot Spark baru terbuka!");
+      if (!res.ok) {
+        if (!silent) toast("⚠️ Server Error (" + res.status + ")");
+        return null;
+      }
+      if (!silent) {
+        if (!data.ok && data.message) toast("⚠️ " + data.message);
+        else if (data.ok && actionObj.type === "SPARK_INVITE_SEND") toast("✅ Ajakan terkirim ke @" + normUsn(actionObj.targetUsername) + "!");
+        else if (data.ok && actionObj.type === "SPARK_UNLOCK_SLOT") toast(data.message || "🔓 Slot Spark baru terbuka!");
+      }
       if (data && ("sparkBuddies" in data || "sparkBuddy" in data || "maxSlots" in data)) {
         applyServerPayload(data);
-        syncUIState();
+        if (!silent) syncUIState();
       }
       window.parent && window.parent.postMessage(Object.assign({}, fullPayload, { _directHandled: true }), "*");
       return data;
-    } catch (err) { toast("⚠️ Gagal konek server"); return null; }
+    } catch (err) {
+      if (!silent) toast("⚠️ Gagal konek server");
+      return null;
+    }
   } else {
     window.parent && window.parent.postMessage(fullPayload, "*");
     return null;
