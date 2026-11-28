@@ -45,8 +45,16 @@ export const DUO_MISSIONS = [
 ];
 
 export const LV = [
-  "Baby Spark", "Tiny Trouble", "Little Spark", "Happy Chaos", "Growing Spark",
-  "Bright Buddy", "Super Spark", "Neon Buddy", "Royal Spark", "Legendary Spark"
+  "Lowkey Spark",
+  "Mulai Nyala",
+  "Satu Vibe",
+  "Gaspol",
+  "Gacor",
+  "Menyala Abangku",
+  "Overheat",
+  "Suhu",
+  "Gak Ada Obat",
+  "God Tier"
 ];
 
 export const XP = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500, 99999];
