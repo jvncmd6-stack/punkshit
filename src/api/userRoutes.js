@@ -15,6 +15,9 @@ import {
 
 export const userRouter = Router();
 
+try { db.exec("ALTER TABLE users ADD COLUMN active_title TEXT DEFAULT ''"); } catch (_) {}
+try { db.exec("ALTER TABLE users ADD COLUMN unlocked_titles TEXT DEFAULT '[]'"); } catch (_) {}
+
 function getFullCatalogMap() {
   const map = new Map();
   const baseList = getCatalog() || [];
@@ -57,6 +60,17 @@ function parseJsonObject(raw) {
   }
 }
 
+function parseUnlockedTitles(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map(String);
+  try {
+    const parsed = JSON.parse(String(raw));
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
 function attachExtraUserFields(row, catalogMap = null) {
   const formatted = formatUser(row);
   if (formatted && row) {
@@ -64,6 +78,9 @@ function attachExtraUserFields(row, catalogMap = null) {
     formatted.equippedThemeId = row.equipped_theme_id || '';
     formatted.borderAdj = parseJsonObject(row.border_adj);
     formatted.giftAdj = parseJsonObject(row.gift_adj);
+    formatted.activeTitleId = row.active_title || '';
+    formatted.active_title = row.active_title || '';
+    formatted.unlockedTitles = parseUnlockedTitles(row.unlocked_titles);
 
     const map = catalogMap || getFullCatalogMap();
     const pinnedIds = Array.isArray(formatted.pinnedGifts)
