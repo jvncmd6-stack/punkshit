@@ -12,6 +12,8 @@ const MAX_SPARK_SLOTS = 7;
 const SLOT_PRICES = { 5: 150, 6: 300, 7: 500 };
 
 try { db.exec('ALTER TABLE users ADD COLUMN extra_spark_slots INTEGER DEFAULT 0'); } catch (_) {}
+try { db.exec("ALTER TABLE spark_pairs ADD COLUMN pet_name TEXT DEFAULT ''"); } catch (_) {}
+try { db.exec("ALTER TABLE spark_pairs ADD COLUMN pet_style TEXT DEFAULT ''"); } catch (_) {}
 
 function todayWib() {
   const now = new Date(Date.now() + 7 * 3600 * 1000);
@@ -30,6 +32,16 @@ function getUserSlotInfo(username) {
   const nextSlotNum = maxSlots + 1;
   const nextSlotPrice = SLOT_PRICES[nextSlotNum] || null;
   return { user: u, extra, maxSlots, nextSlotNum, nextSlotPrice };
+}
+
+function parsePetStyle(raw) {
+  if (!raw) return null;
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return obj && typeof obj === 'object' ? obj : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 export function getSparkListForUser(username) {
@@ -58,6 +70,7 @@ export function getSparkListForUser(username) {
     const g2 = { gap: a2 ? (a2.gap || 0) : 0, msg: a2 ? (a2.msg || 0) : 0 };
     const partnerLitToday = (g2.gap >= 5 && g2.msg >= 2);
     const caseCompleted = String(pair.case_status || '').toUpperCase() === 'COMPLETED';
+    const petStyle = parsePetStyle(pair.pet_style);
 
     return {
       status: 'paired',
@@ -70,7 +83,9 @@ export function getSparkListForUser(username) {
       partnerLitToday,
       hasSetorToday: actorLitToday,
       caseCompleted,
-      setorDisabled: actorLitToday || caseCompleted
+      setorDisabled: actorLitToday || caseCompleted,
+      petName: pair.pet_name || (petStyle && petStyle.nm) || '',
+      petStyle
     };
   });
 }
@@ -102,6 +117,47 @@ sparkRouter.post('/spark/action', async (req, res) => {
       : cleanUsn(body.targetUsername || body.fromUsername);
 
     if (!actor) return res.status(400).json({ ok: false, message: 'Username Telegram kamu belum terbaca.' });
+
+    // Sinkronisasi Nama & Tampilan Karakter Api antara 2 Partner
+    if (action === 'SPARK_UPDATE_STYLE') {
+      if (!target) {
+        return res.json({ ok: false, message: 'Partner tidak valid.', sparkBuddies: getSparkListForUser(actor) });
+      }
+      const pair = db.prepare(`
+        SELECT id FROM spark_pairs
+        WHERE ((user1 = ? AND user2 = ?) OR (user1 = ? AND user2 = ?)) AND status = 'paired'
+      `).get(actor, target, target, actor);
+
+      if (!pair) {
+        return res.json({ ok: false, message: 'Pasangan Spark tidak ditemukan.', sparkBuddies: getSparkListForUser(actor) });
+      }
+
+      const rawStyle = body.style && typeof body.style === 'object' ? body.style : {};
+      const cleanName = String(body.petName || rawStyle.nm || '')
+        .replace(/[\r\n]+/g, ' ')
+        .trim()
+        .slice(0, 14);
+
+      const cleanStyle = {
+        nm: cleanName,
+        theme: String(rawStyle.theme || 'Api').slice(0, 24),
+        outfit: String(rawStyle.outfit || 'Jaket Punk').slice(0, 32),
+        head: String(rawStyle.head || 'Beanie').slice(0, 32),
+        face: String(rawStyle.face || 'Normal').slice(0, 32),
+        extra: Array.isArray(rawStyle.extra) ? rawStyle.extra.slice(0, 12).map(x => String(x).slice(0, 32)) : [],
+        emo: String(rawStyle.emo || 'Happy').slice(0, 24)
+      };
+
+      db.prepare('UPDATE spark_pairs SET pet_name = ?, pet_style = ? WHERE id = ?')
+        .run(cleanName, JSON.stringify(cleanStyle), pair.id);
+
+      const list = getSparkListForUser(actor);
+      return res.json({
+        ok: true,
+        sparkBuddies: list,
+        sparkBuddy: list[0] || null
+      });
+    }
 
     // Beli Slot Ekstra Permanen (Slot 5 = 150, Slot 6 = 300, Slot 7 = 500 PSC)
     if (action === 'SPARK_UNLOCK_SLOT') {
@@ -152,7 +208,6 @@ sparkRouter.post('/spark/action', async (req, res) => {
         return res.json({ ok: false, message: 'Target aktivitas kamu hari ini sudah aman (5/5 GAP)!', sparkBuddies: list, sparkBuddy: list[0] || null });
       }
 
-      // Penuhi target harian (5 GAP & 2 pesan) agar status langsung berubah dari ⏳ ke ✅
       db.prepare(`
         INSERT INTO spark_daily (date, username, gap, msg)
         VALUES (?, ?, 5, 2)
