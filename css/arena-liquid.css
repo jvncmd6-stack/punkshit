@@ -7,14 +7,14 @@
   --lg-cyan: #5CE1FF;
   --lg-mag: #FF5CAA;
   --lg-mint: #6DF0A0;
-  --lg-sun: #FFD633;
-  --yel: #FFD633;
-  --mut: rgba(226, 232, 240, .68);
-  --lg-fill: linear-gradient(150deg, rgba(255,255,255,.13), rgba(255,255,255,.04) 45%, rgba(255,255,255,.08));
-  --lg-edge: rgba(255,255,255,.18);
-  --lg-blur: blur(12px) saturate(140%);
-  --lg-lift: 0 8px 20px -8px rgba(2,6,23,.5);
-  --lg-rim: inset 0 1px 0 rgba(255,255,255,.32), inset 0 -1px 0 rgba(255,255,255,.05);
+  --lg-sun: #FFD84D;
+  --yel: #FFD84D;
+  --mut: rgba(232, 238, 250, 0.72);
+  --lg-fill: linear-gradient(150deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.04) 48%, rgba(255, 255, 255, 0.09) 100%);
+  --lg-edge: rgba(255, 255, 255, 0.22);
+  --lg-blur: blur(14px) saturate(155%);
+  --lg-lift: 0 10px 24px -8px rgba(2, 6, 23, 0.55);
+  --lg-rim: inset 0 1px 0 rgba(255, 255, 255, 0.36), inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .lg .av, .lg .av button, .lg .av select, .lg .av input,
@@ -30,7 +30,7 @@
   height: 100% !important;
   max-height: 100% !important;
   overflow: hidden !important;
-  background: #0A0F28 !important;
+  background: #080C22 !important;
 }
 .lg .av::before {
   content: "";
@@ -39,14 +39,14 @@
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(48% 36% at 15% 10%, rgba(92,225,255,.38), transparent 70%),
-    radial-gradient(42% 34% at 90% 24%, rgba(255,92,170,.32), transparent 70%),
-    radial-gradient(46% 36% at 25% 90%, rgba(255,214,51,.2), transparent 70%),
-    radial-gradient(42% 34% at 88% 92%, rgba(124,92,255,.3), transparent 70%),
-    #0A0F28;
+    radial-gradient(52% 38% at 14% 8%, rgba(92, 225, 255, 0.42), transparent 70%),
+    radial-gradient(46% 36% at 92% 22%, rgba(255, 92, 170, 0.36), transparent 70%),
+    radial-gradient(48% 38% at 22% 90%, rgba(255, 216, 77, 0.24), transparent 70%),
+    radial-gradient(46% 36% at 88% 92%, rgba(124, 92, 255, 0.34), transparent 70%),
+    linear-gradient(180deg, #0B112B 0%, #070B1C 100%);
 }
 
-/* Navbar atas transparan menyatu dengan aurora (tidak ada blok hitam) */
+/* Navbar atas transparan menyatu dengan aurora */
 .lg .av .nav {
   position: relative !important;
   top: auto !important;
@@ -75,12 +75,20 @@
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   padding-top: 6px !important;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 44px) !important;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 46px) !important;
+  scrollbar-width: none;
 }
+.lg .av .sc::-webkit-scrollbar {
+  display: none;
+}
+
 .lg .av .lt {
-  font-size: 26px !important;
+  font-size: 27px !important;
   margin: 0 0 12px !important;
   line-height: 1.15;
+  background: linear-gradient(180deg, #ffffff 30%, #bdeeff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Permukaan kaca bersih */
@@ -92,85 +100,91 @@
   -webkit-backdrop-filter: var(--lg-blur);
   backdrop-filter: var(--lg-blur);
   border: 1px solid var(--lg-edge) !important;
-  border-radius: 20px;
+  border-radius: 22px;
   box-shadow: var(--lg-rim), var(--lg-lift);
   color: #F8FAFC;
   overflow: hidden;
 }
-.lg .card { padding: 11px 12px; }
+.lg .card { padding: 12px 13px; }
 .lg .grp > *, .lg .card > *, .lg .game-card > * { position: relative; }
 
 .lg .rw {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 8px; padding: 10px 12px;
+  gap: 8px; padding: 10px 13px;
 }
 .lg .rw b { font-size: 12.5px; }
 .lg .rw small { font-size: 11px; }
-.lg .grp > .rw + .rw { border-top: 1px solid rgba(255,255,255,.09); }
+.lg .grp > .rw + .rw { border-top: 1px solid rgba(255, 255, 255, 0.1); }
 .lg .sub { color: var(--mut); font-size: 12px; line-height: 1.4; }
 
-/* Judul seksi rapi (lurus, tidak miring berlebihan) */
+/* Judul seksi kapsul kaca */
 .lg .gh {
   display: flex; align-items: center; gap: 6px;
-  width: fit-content; margin: 14px 2px 9px; padding: 5px 11px 5px 9px;
+  width: fit-content; margin: 14px 2px 9px; padding: 5px 12px 5px 9px;
   border-radius: 99px;
-  background: rgba(255,255,255,.1);
-  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
   color: #F1F5F9; font-size: 10.5px; font-weight: 700; letter-spacing: .05em;
 }
 .lg .gh::before {
   content: ""; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
   background: var(--lg-cyan);
+  box-shadow: 0 0 8px var(--lg-cyan);
 }
 
 /* Grid & Kartu Game */
 .lg .game-grid {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
 }
 .lg .game-grid > .game-card:last-child:nth-child(odd) {
-  grid-column: 1 / -1; min-height: 88px !important;
+  grid-column: 1 / -1; min-height: 90px !important;
 }
 .lg .game-card {
-  --acrgb: 92,225,255;
-  min-height: 112px !important; padding: 11px !important;
+  --acrgb: 92, 225, 255;
+  min-height: 114px !important; padding: 12px !important;
   cursor: pointer; text-align: left;
   background:
-    radial-gradient(90% 75% at 0% 100%, rgba(var(--acrgb), .32), transparent 70%),
-    var(--lg-fill) !important;
-  border-color: rgba(var(--acrgb), .38) !important;
-  transition: transform .15s ease, border-color .15s ease;
+    radial-gradient(95% 80% at 0% 100%, rgba(var(--acrgb), 0.36), transparent 72%),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%) !important;
+  border-color: rgba(var(--acrgb), 0.42) !important;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.18s ease, box-shadow 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.lg .game-card[data-game="fish"]    { --acrgb: 56,189,248; }
-.lg .game-card[data-game="scratch"] { --acrgb: 255,214,51; }
-.lg .game-card[data-game="claw"]    { --acrgb: 255,92,170; }
-.lg .game-card[data-game="react"]   { --acrgb: 251,146,60; }
-.lg .game-card[data-game="trivia"]  { --acrgb: 167,139,250; }
-.lg .game-card[data-game="whack"]   { --acrgb: 74,222,128; }
-.lg .game-card[data-game="memory"]  { --acrgb: 244,114,182; }
+.lg .game-card[data-game="fish"]    { --acrgb: 56, 189, 248; }
+.lg .game-card[data-game="scratch"] { --acrgb: 255, 214, 51; }
+.lg .game-card[data-game="claw"]    { --acrgb: 255, 92, 170; }
+.lg .game-card[data-game="react"]   { --acrgb: 251, 146, 60; }
+.lg .game-card[data-game="trivia"]  { --acrgb: 167, 139, 250; }
+.lg .game-card[data-game="whack"]   { --acrgb: 74, 222, 128; }
+.lg .game-card[data-game="memory"]  { --acrgb: 244, 114, 182; }
 
-.lg .game-card:active { transform: scale(.97); }
-.lg .game-card em {
-  display: inline-block; font-size: 24px !important;
+.lg .game-card:active {
+  transform: scale(0.95);
 }
-.lg .game-card b { font-size: 12.5px !important; letter-spacing: -.005em; }
+.lg .game-card em {
+  display: inline-block;
+  font-size: 25px !important;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
+}
+.lg .game-card b { font-size: 13px !important; letter-spacing: -.005em; }
 .lg .game-card small { font-size: 10.5px !important; line-height: 1.32 !important; }
 
 /* Tombol */
 .lg .btn {
   position: relative; overflow: hidden;
-  border: 1px solid rgba(255,255,255,.28);
-  border-radius: 16px; padding: 11px 13px; font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 17px; padding: 11px 14px; font-size: 13.5px;
   font-weight: 700; letter-spacing: .01em; color: #fff;
-  background: linear-gradient(135deg, #22C1F2, #3B82F6 70%, #7C5CFF);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 6px 14px -6px rgba(59,130,246,.55);
-  transition: transform .12s ease, opacity .15s ease;
+  background: linear-gradient(135deg, #22C1F2, #3B82F6 68%, #7C5CFF);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 8px 18px -6px rgba(59, 130, 246, 0.58);
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.lg .btn:active:not(:disabled) { transform: scale(.97); }
-.lg .btn:disabled { opacity: .45; }
+.lg .btn:active:not(:disabled) { transform: scale(0.96); }
+.lg .btn:disabled { opacity: 0.45; }
 .lg .btn.b2 {
-  border-radius: 16px;
+  border-radius: 17px;
   background: var(--lg-fill);
   border: 1px solid var(--lg-edge);
   box-shadow: var(--lg-rim);
@@ -178,55 +192,58 @@
 
 /* Pill & Tombol Klaim */
 .lg .pill {
-  border: 1px solid rgba(255,255,255,.18);
-  border-radius: 99px; font-size: 11px; padding: 5px 10px; font-weight: 700;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
-  transition: transform .12s ease;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 99px; font-size: 11px; padding: 5px 11px; font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.lg .pill:active:not(:disabled) { transform: scale(.95); }
+.lg .pill:active:not(:disabled) { transform: scale(0.94); }
 .lg .pill[data-act="ar-claim-quest"],
 .lg .pill[data-act="ar-claim-pass"],
 .lg .pill[data-act="ar-shield-open"] {
   background: linear-gradient(180deg, #FFE885, #FFB020) !important;
-  color: #4A2500 !important; border-color: rgba(255,255,255,.55);
+  color: #4A2500 !important;
+  border-color: rgba(255, 255, 255, 0.65);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 4px 12px rgba(255, 176, 32, 0.32);
 }
 
 /* Tab Kapsul */
 .lg .tabs {
-  display: flex; overflow: visible; gap: 2px; padding: 3px;
+  display: flex; overflow: visible; gap: 3px; padding: 4px;
   border-radius: 99px;
-  background: rgba(255,255,255,.07);
+  background: rgba(255, 255, 255, 0.08);
   -webkit-backdrop-filter: var(--lg-blur); backdrop-filter: var(--lg-blur);
-  border: 1px solid rgba(255,255,255,.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 .lg .tab {
   flex: 1 1 0; min-width: 0; position: relative; border: 0; border-radius: 99px;
   padding: 7px 2px; font-size: 11px; text-align: center;
   background: transparent; color: var(--mut);
   font-weight: 700; white-space: nowrap;
-  transition: color .15s, background .2s, transform .12s ease;
+  transition: color 0.15s, background 0.2s, transform 0.14s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.lg .tab:active { transform: scale(.95); }
+.lg .tab:active { transform: scale(0.94); }
 .lg .tab.on {
   color: #fff;
   background: linear-gradient(135deg, #FF5CAA, #7C5CFF);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 4px 12px -4px rgba(255,92,170,.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 4px 14px -3px rgba(255, 92, 170, 0.65);
 }
 
 /* Hero Card */
 .lg .lg-hero {
   min-height: 0;
   background:
-    radial-gradient(110% 85% at 0% 0%, rgba(92,225,255,.32), transparent 60%),
-    radial-gradient(85% 85% at 100% 100%, rgba(255,214,51,.22), transparent 62%),
+    radial-gradient(110% 85% at 0% 0%, rgba(92, 225, 255, 0.36), transparent 60%),
+    radial-gradient(85% 85% at 100% 100%, rgba(255, 214, 51, 0.24), transparent 62%),
     var(--lg-fill) !important;
-  border-color: rgba(255,255,255,.24) !important;
+  border-color: rgba(255, 255, 255, 0.26) !important;
 }
 .lg .lg-hero > * { position: relative; z-index: 1; }
 .lg .lg-hero::after {
-  content: "🕹️"; position: absolute; right: 12px; top: 38px; font-size: 40px; line-height: 1;
-  opacity: .12; transform: rotate(12deg); pointer-events: none; z-index: 0;
+  content: "🕹️"; position: absolute; right: 12px; top: 38px; font-size: 42px; line-height: 1;
+  opacity: 0.14; transform: rotate(12deg); pointer-events: none; z-index: 0;
 }
 .lg .lg-hero small[style*="letter-spacing"] {
   color: #FFE9A8 !important; font-size: 10px; letter-spacing: .04em !important;
@@ -236,37 +253,38 @@
 }
 .lg .lg-hero .pill {
   font-size: 11.5px; padding: 5px 10px; white-space: nowrap;
-  background: rgba(255,214,51,.22) !important;
-  border-color: rgba(255,214,51,.4) !important;
+  background: rgba(255, 214, 51, 0.24) !important;
+  border-color: rgba(255, 214, 51, 0.45) !important;
   color: #FFF3C4 !important;
 }
 .lg .lg-xp {
   height: 9px; border-radius: 99px; overflow: hidden;
-  background: rgba(2,6,23,.4); box-shadow: inset 0 1px 3px rgba(0,0,0,.5);
+  background: rgba(2, 6, 23, 0.45); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 .lg .lg-xp > i {
   display: block; height: 100%; border-radius: inherit;
-  background: linear-gradient(90deg, #22C1F2, #6DF0A0 55%, #FFD633);
-  transition: width .4s ease;
+  background: linear-gradient(90deg, #22C1F2, #6DF0A0 55%, #FFD84D);
+  box-shadow: 0 0 10px rgba(109, 240, 160, 0.45);
+  transition: width 0.4s ease;
 }
 
 .lg .lg-ticker {
-  background: linear-gradient(150deg, rgba(255,214,51,.12), rgba(255,255,255,.04)) !important;
-  border-color: rgba(255,214,51,.26) !important;
+  background: linear-gradient(150deg, rgba(255, 214, 51, 0.14), rgba(255, 255, 255, 0.04)) !important;
+  border-color: rgba(255, 214, 51, 0.28) !important;
 }
 .lg .lg-coop {
-  background: radial-gradient(110% 120% at 0% 0%, rgba(251,146,60,.32), transparent 62%), var(--lg-fill) !important;
-  border-color: rgba(251,146,60,.38) !important;
+  background: radial-gradient(110% 120% at 0% 0%, rgba(251, 146, 60, 0.35), transparent 62%), var(--lg-fill) !important;
+  border-color: rgba(251, 146, 60, 0.42) !important;
 }
 .lg .lg-coop b { font-size: 12px; }
 .lg .lg-coop .pill { flex-shrink: 0; }
 
 /* Fishdex grid */
-.lg .card div[style*="repeat(3"] { gap: 6px !important; }
+.lg .card div[style*="repeat(3"] { gap: 7px !important; }
 .lg .card div[style*="repeat(3"] > div {
-  border-radius: 14px !important; padding: 8px !important;
-  background: rgba(255,255,255,.06) !important;
-  border-color: rgba(255,255,255,.12) !important;
+  border-radius: 15px !important; padding: 8px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
 /* Bottom sheet saat di Arena */
@@ -274,34 +292,36 @@
   max-height: 82dvh !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
-  background: rgba(15, 22, 46, .92) !important;
-  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,.18) !important;
+  background: rgba(13, 20, 42, 0.94) !important;
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
   border-bottom: 0 !important;
-  border-radius: 26px 26px 0 0 !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 -14px 36px rgba(2,6,23,.6) !important;
+  border-radius: 28px 28px 0 0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 -16px 40px rgba(2, 6, 23, 0.65) !important;
   color: #F8FAFC;
 }
 .lg .sh h2 { font-size: 18px; letter-spacing: -.01em; }
 .lg select, .lg input {
-  background: rgba(255,255,255,.08); color: #fff;
-  border: 1px solid rgba(255,255,255,.2); border-radius: 12px; padding: 9px 11px; font-size: 12.5px;
+  background: rgba(255, 255, 255, 0.09); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 13px; padding: 9px 11px; font-size: 12.5px;
 }
 
 /* Mini game */
 .lg #fish-stage {
-  background: linear-gradient(180deg, rgba(14,165,233,.45), rgba(7,20,50,.75)) !important;
-  border: 1px solid rgba(125,211,252,.35) !important;
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.48), rgba(7, 20, 50, 0.78)) !important;
+  border: 1px solid rgba(125, 211, 252, 0.4) !important;
   border-radius: 20px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 .lg #fish-zone { border-radius: 8px; }
-.lg #scratch-wrap { border: 1px solid rgba(255,255,255,.35) !important; }
-.lg #rx-pad { border: 1px solid rgba(255,255,255,.3) !important; }
-.lg #wk-grid .btn, .lg #mem-grid .btn { border-radius: 14px; }
+.lg #scratch-wrap { border: 1px solid rgba(255, 255, 255, 0.38) !important; border-radius: 18px; overflow: hidden; }
+.lg #rx-pad { border: 1px solid rgba(255, 255, 255, 0.34) !important; border-radius: 18px; }
+.lg #wk-grid .btn, .lg #mem-grid .btn { border-radius: 15px; }
 .lg #mem-grid .btn[data-open="1"] {
-  background: linear-gradient(160deg, rgba(92,225,255,.4), rgba(255,255,255,.1));
+  background: linear-gradient(160deg, rgba(92, 225, 255, 0.45), rgba(255, 255, 255, 0.12));
+  border-color: rgba(92, 225, 255, 0.55);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .lg .grp, .lg .card, .lg .game-card, .lg .tabs { background: rgba(23, 32, 60, .94) !important; }
+  .lg .grp, .lg .card, .lg .game-card, .lg .tabs { background: rgba(23, 32, 60, 0.94) !important; }
 }
