@@ -1,0 +1,134 @@
+/* =========================================================
+   3. LAPAK RONGSOK, INVENTORY & TABS
+   ========================================================= */
+.tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: none;
+  padding: 7px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--os-card-tint);
+  color: var(--mut);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.15s var(--spring), background 0.2s, color 0.2s, border-color 0.2s;
+}
+.tab:active {
+  transform: scale(0.94);
+}
+.tab.on {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)), var(--os-accent);
+  color: #fff;
+  border-color: var(--gblue);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+.bal { font-size: 14.5px; color: var(--mut); margin: -6px 0 14px; }
+.bal b { color: var(--yel); }
+
+.gg { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.gc {
+  border-radius: 22px;
+  padding: 13px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 0.5px solid var(--gb);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 8px 20px rgba(0, 0, 0, 0.22);
+  position: relative;
+  text-align: center;
+  transition: transform 0.18s var(--spring), border-color 0.2s;
+}
+.gc:active {
+  transform: scale(0.96);
+}
+.gc b { font-size: 14.5px; }
+.gc small { color: var(--mut); font-size: 11.5px; }
+.gc .stk {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(255, 69, 58, 0.22);
+  color: #ff8e87;
+  border: 0.5px solid rgba(255, 69, 58, 0.35);
+  padding: 2px 7px;
+  border-radius: 9px;
+}
+.pr {
+  margin-top: 6px;
+  background: rgba(255, 214, 51, 0.14);
+  border: 0.5px solid rgba(255, 214, 51, 0.32);
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--yel);
+}
+
+/* Preview Try-On Discord Border di Sheet Lapak */
+.try-box {
+  position: relative;
+  width: 116px;
+  height: 116px;
+  margin: 10px auto 14px;
+  display: grid;
+  place-items: center;
+}
+.try-box img.pfp, .try-box span {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--os-accent), #0b2a6e);
+  font-size: 36px;
+  font-weight: 700;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+.try-box .dc-border {
+  transform: scale(1.15);
+}
+.try-box .dc-border-fx {
+  inset: 6px;
+}
+
+.hs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+.hs::-webkit-scrollbar { display: none; }
+.hs button {
+  flex: none;
+  min-width: 88px;
+  border-radius: 18px;
+  padding: 9px 10px;
+  background: var(--os-card-tint);
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mut);
+  transition: transform 0.15s var(--spring), border-color 0.2s, background 0.2s;
+}
+.hs button:active {
+  transform: scale(0.95);
+}
+.hs .on {
+  border-color: var(--yel);
+  color: var(--yel);
+  background: rgba(255, 214, 51, 0.12);
+  box-shadow: 0 4px 14px rgba(255, 214, 51, 0.16);
+}
