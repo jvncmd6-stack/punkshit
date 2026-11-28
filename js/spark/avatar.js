@@ -11,17 +11,27 @@ export const setSPD = v => { SPD = v; };
 
 const Y = v => v < 150 ? 150 - (150 - v) * CR : v;
 
-// Siluet api utama yang lebih proporsional & organik
+// Siluet api luar yang organik
 export const bodyD = (t = 0) => {
-  const a = Math.sin(t * 2.1) * 3.5;
-  const b = Math.sin(t * 2.6 + 1.1) * 4.5;
-  const c = Math.sin(t * 2.3 + 2.2) * 4.5;
-  const d = Math.sin(t * 2.9 + 3.1) * 3.5;
-  const y = Math.sin(t * 3.2) * 2;
+  const a = Math.sin(t * 2.1) * 4;
+  const b = Math.sin(t * 2.6 + 1.1) * 5;
+  const c = Math.sin(t * 2.3 + 2.2) * 5;
+  const d = Math.sin(t * 2.9 + 3.1) * 4;
+  const y = Math.sin(t * 3.2) * 2.5;
   return `M150 334C88 334 54 294 56 238C58 198 76 176 80 148C80 ${Y(130)} ${66 + a * 0.45} ${Y(114)} ${72 + a} ${Y(90 + y)}C${90 + a * 0.5} ${Y(102)} 100 ${Y(114)} 106 ${Y(125)}C104 ${Y(96)} ${116 + b * 0.45} ${Y(62)} ${134 + b} ${Y(38 - y)}C${142 + b * 0.45} ${Y(64)} 145 ${Y(80)} 150 ${Y(94)}C${160 + c * 0.4} ${Y(64)} ${178 + c * 0.5} ${Y(46)} ${196 + c} ${Y(34 + y)}C${194 + c * 0.45} ${Y(62)} 198 ${Y(82)} 203 ${Y(98)}C214 ${Y(80)} ${228 + d * 0.45} ${Y(72)} ${240 + d} ${Y(76 - y)}C${235 + d * 0.45} ${Y(96)} 234 ${Y(112)} 232 ${Y(128)}C246 154 246 194 244 238C246 294 212 334 150 334Z`;
 };
 
+// Siluet inti api dalam (bergerak beda fase agar api terlihat hidup)
+export const coreD = (t = 0) => {
+  const f1 = Math.sin(t * 2.8 + 0.8) * 3.5;
+  const f2 = Math.cos(t * 3.1 + 1.7) * 4;
+  const f3 = Math.sin(t * 2.5 + 2.9) * 3.5;
+  const wy = Math.cos(t * 3.4) * 2.5;
+  return `M150 322C104 322 80 288 82 244C84 210 102 190 ${116 + f1 * 0.5} ${Y(164 + wy)}C${124 + f1 * 0.4} ${Y(182)} 132 ${Y(188)} ${138 + f2 * 0.5} ${Y(166 - wy)}C${146 + f2 * 0.4} ${Y(140)} ${156 + f2 * 0.7} ${Y(122)} ${166 + f2} ${Y(106 + wy)}C${166 + f2 * 0.4} ${Y(134)} 172 ${Y(152)} ${182 + f3 * 0.5} ${Y(164)}C${192 + f3 * 0.5} ${Y(150)} ${202 + f3 * 0.7} ${Y(146)} ${208 + f3} ${Y(152 - wy)}C204 176 216 204 218 244C220 288 196 322 150 322Z`;
+};
+
 const BODY = bodyD(0);
+const CORE = coreD(0);
 const st3 = (w = 3.8) => `stroke="${OL}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
 
 function mouth(e, st = 2) {
@@ -54,12 +64,12 @@ function mouth(e, st = 2) {
 export function renderPetSVG(S, lv) {
   const [L, M, D, bo] = TH[S.theme] || TH.Api;
   const e = S.emo, st = Math.ceil(lv / 2) - 1, s = SC[st], Ls = LG[st], O = S.outfit, H = S.head, X = S.extra, G = X.has("Gitar");
-  const coreLight = mix(L, "#ffffff", 0.55);
-  const rimCol = mix(L, "#ffffff", 0.35);
+  const coreLight = mix(L, "#ffffff", 0.58);
+  const rimCol = mix(L, "#ffffff", 0.38);
 
   let h = `<defs>
   <linearGradient id="bd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L}"/><stop offset=".52" stop-color="${M}"/><stop offset="1" stop-color="${D}"/></linearGradient>
-  <linearGradient id="core" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${coreLight}" stop-opacity=".92"/><stop offset=".65" stop-color="${L}" stop-opacity=".55"/><stop offset="1" stop-color="${M}" stop-opacity="0"/></linearGradient>
+  <linearGradient id="core" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${coreLight}" stop-opacity=".95"/><stop offset=".65" stop-color="${L}" stop-opacity=".55"/><stop offset="1" stop-color="${M}" stop-opacity="0"/></linearGradient>
   <radialGradient id="sh" cx=".5" cy=".46" r=".6"><stop offset=".65" stop-color="${D}" stop-opacity="0"/><stop offset="1" stop-color="${mix(D, "#000000", .55)}" stop-opacity=".48"/></radialGradient>
   <radialGradient id="ey" cx=".4" cy=".3" r=".9"><stop offset="0" stop-color="${mix(M, "#000000", .18)}"/><stop offset="1" stop-color="${mix(D, "#000000", .68)}"/></radialGradient>
   <radialGradient id="st" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#7c7c8a"/></radialGradient>
@@ -69,21 +79,24 @@ export function renderPetSVG(S, lv) {
   <linearGradient id="rd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6252"/><stop offset="1" stop-color="#9e0e22"/></linearGradient>
   <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="${bo}"/></linearGradient>
   <radialGradient id="au"><stop offset=".3" stop-color="${bo}" stop-opacity=".45"/><stop offset="1" stop-color="${bo}" stop-opacity="0"/></radialGradient>
-  <radialGradient id="hl"><stop offset="0" stop-color="#fff" stop-opacity=".68"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+  <radialGradient id="hl"><stop offset="0" stop-color="#fff" stop-opacity=".72"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
   <radialGradient id="ck"><stop offset="0" stop-color="#ff3d78" stop-opacity=".52"/><stop offset="1" stop-color="#ff3d78" stop-opacity="0"/></radialGradient>
   <pattern id="fl" width="18" height="18" patternUnits="userSpaceOnUse"><rect width="18" height="18" fill="#d94e1f"/><rect y="6" width="18" height="5" fill="#181820" opacity=".52"/><rect x="6" width="5" height="18" fill="#181820" opacity=".52"/></pattern>
   <pattern id="pl" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#a81024"/><rect y="6" width="16" height="4" fill="#181820" opacity=".78"/><rect x="6" width="4" height="16" fill="#181820" opacity=".78"/></pattern>
   <clipPath id="cp"><path class="bp" d="${BODY}"/></clipPath>
-  <clipPath id="cpCloth"><path d="M36 274Q150 306 264 274L276 346Q150 364 24 346Z"/></clipPath>
   </defs>`;
 
-  // Bayangan pijakan lantai
-  h += `<ellipse cx="150" cy="356" rx="${108 * s}" ry="12" fill="#000" opacity=".5"/><ellipse cx="150" cy="356" rx="${108 * s}" ry="12" fill="none" stroke="${M}" stroke-width="2.5" opacity=".75"/>`;
+  // Bayangan & pantulan cahaya lantai dinamis (.gsh)
+  h += `<g class="gsh" data-s="${s}">
+    <ellipse cx="150" cy="356" rx="${114 * s}" ry="14" fill="${M}" opacity=".24"/>
+    <ellipse cx="150" cy="356" rx="${104 * s}" ry="11.5" fill="#000" opacity=".52"/>
+    <ellipse cx="150" cy="356" rx="${104 * s}" ry="11.5" fill="none" stroke="${M}" stroke-width="2.4" opacity=".8"/>
+  </g>`;
 
   CRt = [.52, .76, 1, 1.16, 1.28][st] * ({ Worried: .62, Crying: .58, Sleepy: .72, Excited: 1.12, Celebrating: 1.15, Angry: 1.28, Surprised: 1.18, Love: 1.05 }[e] || 1);
   SPD = { Excited: 2.2, Celebrating: 2.5, Worried: 3.1, Sleepy: .5, Dancing: 1.8 }[e] || 1;
 
-  if (st >= 3) h += `<circle cx="150" cy="204" r="${st === 4 ? 170 : 144}" fill="url(#au)"/>`;
+  if (st >= 3) h += `<circle class="aura" cx="150" cy="204" r="${st === 4 ? 170 : 144}" fill="url(#au)"/>`;
   if (st === 4) {
     h += `<g class="orb">${[0, 120, 240].map(a => `<g transform="rotate(${a} 150 200)"><polygon points="0,0 14,0 8,18 20,18 -3,46 3,24 -7,24" transform="translate(143 24)" fill="url(#bg2)" ${st3(2.4)}/></g>`).join("")}</g>`;
   }
@@ -94,18 +107,22 @@ export function renderPetSVG(S, lv) {
 
   h += `<g transform="translate(150 350) scale(${s}) translate(-150 -350)"><g transform="translate(0 ${-Ls})"><g class="pet">`;
 
-  // Kaki & Sepatu kecil yang lebih rapi
-  const leg = x => `<path d="M${x} 320L${x - 1} ${338 + Ls}" stroke="${OL}" stroke-width="18" stroke-linecap="round"/><path d="M${x} 320L${x - 1} ${338 + Ls}" stroke="${D}" stroke-width="11" stroke-linecap="round"/><ellipse cx="${x + (x < 150 ? -7 : 7)}" cy="${341 + Ls}" rx="20" ry="9.5" fill="url(#bd)" ${st3(3.6)}/>`;
-  h += leg(124) + leg(176);
+  // Kaki & Sepatu kecil dengan class .leg untuk animasi pijakan
+  const leg = (x, idx) => `<g class="leg" data-i="${idx}">
+    <path d="M${x} 320L${x - 1} ${338 + Ls}" stroke="${OL}" stroke-width="18" stroke-linecap="round"/>
+    <path d="M${x} 320L${x - 1} ${338 + Ls}" stroke="${D}" stroke-width="11" stroke-linecap="round"/>
+    <ellipse cx="${x + (x < 150 ? -7 : 7)}" cy="${341 + Ls}" rx="20" ry="9.5" fill="url(#bd)" ${st3(3.6)}/>
+  </g>`;
+  h += leg(124, 0) + leg(176, 1);
 
-  // Badan Api + Inner Core 3D + Rim Highlight
+  // Badan Api + Inner Core 3D Animasi (.cp) + Rim Highlight
   h += `<path class="bp" d="${BODY}" fill="url(#bd)" ${st3(4.6)}/>`;
   h += `<path class="bp" d="${BODY}" fill="url(#sh)"/>`;
-  h += `<path d="M150 322C104 322 80 288 82 244C84 210 102 190 116 164C124 182 132 188 138 166C146 140 156 122 166 106C166 134 172 152 182 164C192 150 202 146 208 152C204 176 216 204 218 244C220 288 196 322 150 322Z" fill="url(#core)"/>`;
+  h += `<path class="cp" d="${CORE}" fill="url(#core)"/>`;
   h += `<ellipse cx="96" cy="182" rx="9" ry="26" transform="rotate(-14 96 182)" fill="url(#hl)"/>`;
-  h += `<path d="M234 178Q242 214 236 254" fill="none" stroke="${rimCol}" stroke-width="3.5" stroke-linecap="round" opacity=".55"/>`;
+  h += `<path d="M234 178Q242 214 236 254" fill="none" stroke="${rimCol}" stroke-width="3.5" stroke-linecap="round" opacity=".58"/>`;
 
-  // Tanda petir kecil di dahi (sembunyikan jika ketutup topi rendah)
+  // Tanda petir kecil di dahi
   const hideForeheadMark = ["Beanie", "Snapback", "Ikat Kepala", "Bucket"].includes(H);
   if (!hideForeheadMark) {
     h += `<polygon points="155,118 146,118 150,129 143,129 154,147 151,134 159,134" fill="${bo}" ${st3(1.8)}/>`;
@@ -118,12 +135,11 @@ export function renderPetSVG(S, lv) {
     h += `<ellipse cx="150" cy="12" rx="44" ry="8.5" fill="none" stroke="#ffd21f" stroke-width="4.5"/>`;
   }
 
-  // Bayangan kontak di bawah kerah baju
   if (O !== "Polos") {
     h += `<path d="M62 282Q150 314 238 282" fill="none" stroke="#000" stroke-width="8" stroke-linecap="round" opacity=".24"/>`;
   }
 
-  // KOSTUM / BAJU dengan kerah, lipatan, dan volume nyata (tidak bodypaint)
+  // KOSTUM / BAJU
   if (O === "Hoodie") {
     h += `<g clip-path="url(#cp)"><path d="M44 282Q150 314 256 282L268 350H32Z" fill="url(#hd)" ${st3(3.6)}/><path d="M88 286Q150 324 212 286Q194 314 150 316Q106 314 88 286Z" fill="#522eb0" ${st3(3)}/><path d="M132 308v24M168 308v24" ${st3(2.8)} stroke="#f3ebff"/><circle cx="132" cy="333" r="3" fill="#f3ebff"/><circle cx="168" cy="333" r="3" fill="#f3ebff"/><path d="M102 328Q150 320 198 328L204 348H96Z" fill="#00000024" ${st3(2.5)}/></g>`;
   }
@@ -155,7 +171,7 @@ export function renderPetSVG(S, lv) {
     h += `<g clip-path="url(#cp)"><path d="M56 288Q150 316 244 288L252 350H48Z" fill="#f6f3ec" ${st3(3.6)}/><path d="M50 310H250M50 325H250M50 340H250" stroke="#2554b8" stroke-width="6"/><path d="M106 292Q150 320 194 292" fill="none" stroke="#2554b8" stroke-width="6.5" stroke-linecap="round"/></g>`;
   }
 
-  // AKSESORIS LEHER & DADA (Digambar di atas kerah baju agar tidak ketelan baju)
+  // AKSESORIS LEHER & DADA
   if (X.has("Rantai")) {
     h += `<path d="M96 290Q150 340 204 290" fill="none" stroke="${OL}" stroke-width="10" stroke-linecap="round"/><path d="M96 290Q150 340 204 290" fill="none" stroke="url(#gd)" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="8 3"/>`;
   }
@@ -172,7 +188,7 @@ export function renderPetSVG(S, lv) {
     h += [[196, 326, 1.05, "#39d0ff"], [104, 342, .8, "#ff5fb0"]].map(([x, y, k, c]) => `<polygon transform="translate(${x} ${y}) scale(${k})" points="0,-11 3.2,-3.4 11,-3.4 4.8,1.8 7,9.5 0,5 -7,9.5 -4.8,1.8 -11,-3.4 -3.2,-3.4" fill="${c}" ${st3(2)}/>`).join("");
   }
 
-  // LENGAN + CUFF LENGAN BAJU + GITAR
+  // LENGAN + GITAR
   const sl = O === "Hoodie" ? "#9a74ee" : O === "Jaket Punk" ? "#2b2b36" : O === "Dress Tartan" ? "#f4f1ea" : O === "Kaos Petir" ? "#f2f2f7" : O === "Flanel" ? "#d94e1f" : O === "Tengkorak" ? "#181820" : O === "Jersey" ? "#dc2f0c" : O === "Kaos Garis" ? "#f6f3ec" : M;
   const hasSleeve = !["Polos", "Singlet", "Rompi Jeans"].includes(O);
   const base = st === 0;
@@ -209,7 +225,8 @@ export function renderPetSVG(S, lv) {
 
   h += arm(0) + (G ? guitar : "") + arm(1);
 
-  // WAJAH: MATA, ALIS, PIPI, MASKER, MULUT
+  // GRUP WAJAH DENGAN 2.5D PARALLAX (.face-grp)
+  h += `<g class="face-grp">`;
   const g = e === "Waiting" ? 9 : 0;
   const eye = (x, d) => e === "Wink" && d < 0
     ? `<path d="M166 222Q190 204 214 222" fill="none" ${st3(5.5)}/>`
@@ -234,10 +251,8 @@ export function renderPetSVG(S, lv) {
     Love: ["M84 184Q108 173 134 182", "M216 184Q192 173 166 182"]
   }[e] || (st === 0 ? ["M84 182Q108 171 134 182", "M216 182Q192 171 166 182"] : ["M80 178L136 194", "M164 190Q190 170 220 180"]);
 
-  // Rona pipi dasar
   h += `<ellipse cx="88" cy="254" rx="15" ry="9.5" fill="url(#ck)"/><ellipse cx="212" cy="254" rx="15" ry="9.5" fill="url(#ck)"/>`;
 
-  // Mata & Alis (Jika Kacamata aktif, alis di bawah lensa + lensa punya frame & kilau)
   if (S.face === "Kacamata") {
     h += `<path d="${brow[0]}M${brow[1].slice(1)}" fill="none" ${st3(8.5)}/>`;
     h += `<g>
@@ -259,7 +274,6 @@ export function renderPetSVG(S, lv) {
     h += `<path d="${brow[0]}M${brow[1].slice(1)}" fill="none" ${st3(9)}/>`;
   }
 
-  // Mulut / Masker / Bandana (dengan tali & lipatan agar menyatu ke kepala)
   if (S.face === "Bandana") {
     h += `<path d="M62 246L84 256M238 246L216 256" stroke="#7a0d1d" stroke-width="4" stroke-linecap="round"/>`;
     h += `<path d="M82 252Q150 278 218 252L210 296Q150 326 90 296Z" fill="url(#rd)" ${st3(3.4)}/>`;
@@ -272,7 +286,6 @@ export function renderPetSVG(S, lv) {
     h += mouth(e, st);
   }
 
-  // Detail Wajah Opsional (Tanpa plester hardcode yang nabrak!)
   if (S.face === "Kumis") {
     h += `<path d="M150 258C138 247 114 249 106 264C121 262 136 264 150 264C164 264 179 262 194 264C186 249 162 247 150 258Z" fill="#181820" ${st3(2.4)}/>`;
   }
@@ -286,7 +299,6 @@ export function renderPetSVG(S, lv) {
     h += `<polygon points="86,168 99,168 92,184 102,184 84,206 88,191 79,191" fill="#ff5a4a" ${st3(1.8)}/>`;
   }
 
-  // Air mata / keringat reaksi
   if (e === "Crying") {
     h += `<path class="tear" d="M86 248q-7 15 0 22q7-7 0-22z" fill="#6fd2ff" ${st3(1.5)}/><path class="tear" style="animation-delay:.5s" d="M214 248q-7 15 0 22q7-7 0-22z" fill="#6fd2ff" ${st3(1.5)}/>`;
   }
@@ -294,12 +306,13 @@ export function renderPetSVG(S, lv) {
     h += `<path class="tear" style="animation-duration:1.8s" d="M230 132q-9 16 0 22q9-6 0-22z" fill="#6fd2ff" ${st3(1.5)}/>`;
   }
 
-  // Peniti di tepi pipi/badan
   if (X.has("Peniti")) {
     h += `<g transform="translate(56 236) rotate(-18)"><rect x="-4" y="-11" width="8" height="22" rx="4" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle cx="0" cy="8" r="3" fill="#9ca3af"/></g>`;
   }
+  h += `</g>`; // Tutup .face-grp
 
-  // AKSESORIS KEPALA dengan Contact Shadow & Volume
+  // GRUP KEPALA / TOPI DENGAN SECONDARY BOUNCE (.head-grp)
+  h += `<g class="head-grp">`;
   const bolt = (x, y, k, r) => `<polygon points="0,0 20,0 12,26 28,26 -4,66 4,34 -10,34" transform="translate(${x} ${y}) rotate(${r}) scale(${k})" fill="url(#bg2)" ${st3(2.8)}/>`;
 
   if (H === "Beanie") {
@@ -360,6 +373,7 @@ export function renderPetSVG(S, lv) {
     h += `<rect x="42" y="184" width="26" height="54" rx="13" fill="#272733" ${st3(3.6)}/><rect x="62" y="190" width="7" height="42" rx="3.5" fill="#4b4b5e"/>`;
     h += `<rect x="232" y="184" width="26" height="54" rx="13" fill="#272733" ${st3(3.6)}/><rect x="231" y="190" width="7" height="42" rx="3.5" fill="#4b4b5e"/>`;
   }
+  h += `</g>`; // Tutup .head-grp
 
   // Simbol Reaksi Melayang
   if (e === "Love") {
