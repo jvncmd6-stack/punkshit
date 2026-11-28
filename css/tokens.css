@@ -1,24 +1,26 @@
 :root {
-  --ink: #F5F7FC;
-  --mut: #929BAE;
-  --blue: #176BFF;
-  --yel: #FFD633;
-  --navy: #101827;
-  --deep: #080B12;
-  --gblue: #8FC7FF;
-  --stage: #05070c;
-  --gb: rgba(255, 255, 255, 0.24);
+  --ink: #F7F9FF;
+  --mut: #98A3BA;
+  --blue: #1D74FF;
+  --yel: #FFD84D;
+  --navy: #0D1524;
+  --deep: #060911;
+  --gblue: #96CCFF;
+  --stage: #04060B;
+  --gb: rgba(255, 255, 255, 0.22);
+  --gb-strong: rgba(255, 255, 255, 0.36);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* Variabel Dinamis Tema OS (Default) */
-  --os-app-bg: #0c1322;
-  --os-nav-bg: rgba(12, 19, 34, 0.82);
-  --os-sheet-bg: #121b30;
-  --os-ban-bg: rgba(24, 34, 58, 0.9);
-  --os-accent: #176BFF;
-  --os-accent-txt: #4d9bff;
-  --os-glass-bg: rgba(255, 255, 255, 0.14);
-  --os-card-tint: rgba(255, 255, 255, 0.06);
+  --os-app-bg: radial-gradient(120% 70% at 50% 0%, #152342 0%, #090F1D 60%, #060A14 100%);
+  --os-nav-bg: rgba(11, 18, 33, 0.78);
+  --os-sheet-bg: linear-gradient(180deg, #16223D 0%, #0E1629 100%);
+  --os-ban-bg: rgba(20, 31, 56, 0.88);
+  --os-accent: #1D74FF;
+  --os-accent-txt: #64A8FF;
+  --os-glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.07) 100%);
+  --os-card-tint: rgba(255, 255, 255, 0.065);
 
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
@@ -27,52 +29,57 @@
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --stage: #dfe5f1;
+    --stage: #d8e0ef;
   }
 }
 :root[data-theme="light"] {
-  --stage: #dfe5f1;
+  --stage: #d8e0ef;
 }
 
-/* Tema OS Lengkap */
+/* Tema OS: Sakura */
 .phone.theme-sakura {
-  --blue: #db2777;
-  --gblue: #f9a8d4;
-  --gb: rgba(244, 114, 182, 0.34);
-  --os-app-bg: linear-gradient(180deg, #1d0e24 0%, #120919 100%);
-  --os-nav-bg: rgba(29, 14, 36, 0.84);
-  --os-sheet-bg: #23112b;
-  --os-ban-bg: rgba(45, 19, 54, 0.92);
-  --os-accent: #db2777;
+  --blue: #ec4899;
+  --gblue: #fbcfe8;
+  --gb: rgba(244, 114, 182, 0.32);
+  --gb-strong: rgba(251, 207, 232, 0.45);
+  --os-app-bg: radial-gradient(120% 70% at 50% 0%, #2d1338 0%, #160a1f 65%, #0e0614 100%);
+  --os-nav-bg: rgba(29, 13, 37, 0.8);
+  --os-sheet-bg: linear-gradient(180deg, #291333 0%, #180b20 100%);
+  --os-ban-bg: rgba(48, 20, 60, 0.9);
+  --os-accent: #ec4899;
   --os-accent-txt: #f472b6;
-  --os-glass-bg: rgba(244, 114, 182, 0.14);
-  --os-card-tint: rgba(244, 114, 182, 0.08);
+  --os-glass-bg: linear-gradient(145deg, rgba(244, 114, 182, 0.22) 0%, rgba(192, 132, 252, 0.08) 100%);
+  --os-card-tint: rgba(244, 114, 182, 0.085);
 }
 
+/* Tema OS: Carbon */
 .phone.theme-carbon {
-  --blue: #0284c7;
-  --gblue: #7dd3fc;
-  --gb: rgba(148, 163, 184, 0.26);
-  --os-app-bg: linear-gradient(180deg, #090d16 0%, #05070c 100%);
-  --os-nav-bg: rgba(9, 13, 22, 0.86);
-  --os-sheet-bg: #0f1522;
-  --os-ban-bg: rgba(17, 24, 39, 0.94);
-  --os-accent: #0284c7;
+  --blue: #0ea5e9;
+  --gblue: #bae6fd;
+  --gb: rgba(148, 163, 184, 0.24);
+  --gb-strong: rgba(226, 232, 240, 0.36);
+  --os-app-bg: radial-gradient(120% 70% at 50% 0%, #111827 0%, #070a12 65%, #04060a 100%);
+  --os-nav-bg: rgba(9, 13, 22, 0.84);
+  --os-sheet-bg: linear-gradient(180deg, #131b2c 0%, #0a0f1a 100%);
+  --os-ban-bg: rgba(17, 24, 39, 0.92);
+  --os-accent: #0ea5e9;
   --os-accent-txt: #38bdf8;
-  --os-glass-bg: rgba(148, 163, 184, 0.11);
-  --os-card-tint: rgba(148, 163, 184, 0.06);
+  --os-glass-bg: linear-gradient(145deg, rgba(148, 163, 184, 0.16) 0%, rgba(15, 23, 42, 0.22) 100%);
+  --os-card-tint: rgba(148, 163, 184, 0.065);
 }
 
+/* Tema OS: Mint */
 .phone.theme-mint {
-  --blue: #059669;
-  --gblue: #6ee7b7;
-  --gb: rgba(52, 211, 153, 0.32);
-  --os-app-bg: linear-gradient(180deg, #071b1a 0%, #051015 100%);
-  --os-nav-bg: rgba(7, 27, 26, 0.84);
-  --os-sheet-bg: #0b2422;
-  --os-ban-bg: rgba(11, 38, 35, 0.92);
-  --os-accent: #059669;
+  --blue: #10b981;
+  --gblue: #a7f3d0;
+  --gb: rgba(52, 211, 153, 0.3);
+  --gb-strong: rgba(167, 243, 208, 0.44);
+  --os-app-bg: radial-gradient(120% 70% at 50% 0%, #092624 0%, #051418 65%, #030c10 100%);
+  --os-nav-bg: rgba(7, 27, 26, 0.8);
+  --os-sheet-bg: linear-gradient(180deg, #0d2b28 0%, #071918 100%);
+  --os-ban-bg: rgba(11, 38, 35, 0.9);
+  --os-accent: #10b981;
   --os-accent-txt: #34d399;
-  --os-glass-bg: rgba(52, 211, 153, 0.13);
-  --os-card-tint: rgba(52, 211, 153, 0.07);
+  --os-glass-bg: linear-gradient(145deg, rgba(52, 211, 153, 0.2) 0%, rgba(6, 182, 212, 0.08) 100%);
+  --os-card-tint: rgba(52, 211, 153, 0.075);
 }
