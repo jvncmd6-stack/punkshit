@@ -77,7 +77,7 @@ export const NECK = ["Rantai", "Choker", "Syal"];
 export const E = {
   Happy: { br: .022, bf: 1.7, h: 24, hi: 5.2, sw: 1.6, sf: .8, sh: 0, dy: 0, ln: 0, up: 0, wv: 0, sp: 1 },
   Excited: { br: .02, bf: 4, h: 14, hi: .55, sw: 3, sf: 1.8, sh: 0, dy: 0, ln: 0, up: 1, wv: 14, sp: 2.2 },
-  Waiting: { br: .012, bf: 1.3, h: 0, hi: 0, sw: 3.5, sf .3, sh: 0, dy: 0, ln: 0, up: 0, wv: 0, sp: .9 },
+  Waiting: { br: .012, bf: 1.3, h: 0, hi: 0, sw: 3.5, sf: .3, sh: 0, dy: 0, ln: 0, up: 0, wv: 0, sp: .9 },
   Worried: { br: .012, bf: 5, h: 0, hi: 0, sw: 0, sf: 1, sh: 1.5, dy: 2, ln: 0, up: .08, wv: 3, sp: 3 },
   Dancing: { br: .02, bf: 2, h: 12, hi: .67, sw: 6, sf: .75, sh: 0, dy: 0, ln: 0, up: 1, wv: 10, sp: 1.8 },
   Crying: { br: .02, bf: 1.8, h: 0, hi: 0, sw: 1, sf: .9, sh: 0, dy: 4, ln: 0, up: 0, wv: 0, sp: .8 },
