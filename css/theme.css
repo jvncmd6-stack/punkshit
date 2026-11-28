@@ -1,4 +1,4 @@
-@import "./tokens.css";
-@import "./shell.css";
-@import "./home.css";
-@import "./views.css";
+@import "./tokens.css?v=52";
+@import "./shell.css?v=52";
+@import "./home.css?v=52";
+@import "./views.css?v=52";
