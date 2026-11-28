@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../database/db.js';
+import { broadcastToTelegram, escHtml } from '../services/syncEngine.js';
 import {
   CRED_RANKS,
   SHOP_TITLES,
@@ -29,12 +30,9 @@ function parseUnlocked(raw) {
 function getUserRow(username) {
   const usn = cleanUsn(username);
   if (!usn) return null;
-  return db.prepare(`
-    SELECT * FROM users WHERE LOWER(username) = ?
-  `).get(usn);
+  return db.prepare('SELECT * FROM users WHERE LOWER(username) = ?').get(usn);
 }
 
-// Evaluasi otomatis gelar prestasi berdasarkan data di DB
 export function syncAchievementTitles(userRow) {
   if (!userRow) return [];
   const usn = cleanUsn(userRow.username);
@@ -48,37 +46,30 @@ export function syncAchievementTitles(userRow) {
     }
   };
 
-  // 1. Bestie Jalur Api: Streak Spark 7 hari tanpa bolong
   try {
     const maxSpark = db.prepare(`
       SELECT MAX(streak) AS ms FROM spark_pairs
-      WHERE (LOWER(user1) = ? OR LOWER(user2) = ?) AND status = 'ACTIVE'
+      WHERE (LOWER(user1) = ? OR LOWER(user2) = ?) AND status = 'paired'
     `).get(usn, usn);
     if ((Number(maxSpark?.ms) || 0) >= 7) grant('first_fire');
   } catch (_) {}
 
-  // 2. CCTV Grup: Setor harian 14 hari berturut-turut (cek streak / best user)
   const bestStreak = Math.max(Number(userRow.streak) || 0, Number(userRow.best) || 0);
   if (bestStreak >= 14) grant('cctv');
 
-  // 3. Kang Goreng: Selesaikan 10 misi/event atau total Cred >= 150
   const missionsDone = Number(userRow.missions_done || userRow.quests_done || 0);
   if (missionsDone >= 10 || (Number(userRow.cred) || 0) >= 150) grant('kang_goreng');
 
-  // 4. Mak Comblang: Ajak 5 warga baru masuk & aktif
   try {
-    const refCount = db.prepare(`
-      SELECT COUNT(*) AS c FROM users WHERE LOWER(referred_by) = ?
-    `).get(usn);
+    const refCount = db.prepare('SELECT COUNT(*) AS c FROM users WHERE LOWER(referred_by) = ?').get(usn);
     if ((Number(refCount?.c) || 0) >= 5) grant('mak_comblang');
   } catch (_) {}
 
-  // 5. Gak Napak Tanah: Punya 3 slot Spark Lv 5+ aktif (XP >= 400 / streak >= 10)
   try {
     const highSparks = db.prepare(`
       SELECT COUNT(*) AS c FROM spark_pairs
       WHERE (LOWER(user1) = ? OR LOWER(user2) = ?)
-        AND status = 'ACTIVE'
+        AND status = 'paired'
         AND (xp >= 400 OR streak >= 10)
     `).get(usn, usn);
     if ((Number(highSparks?.c) || 0) >= 3) grant('gak_napak');
@@ -130,7 +121,6 @@ export function buildUserTitlePayload(userRow) {
   };
 }
 
-// Ambil daftar pangkat, saldo, dan koleksi gelar user
 titleRouter.get('/titles', (req, res) => {
   const authUser = req.tgUser || req.dbUser || req.user || {};
   const usn = cleanUsn(authUser.username || req.query.username);
@@ -142,8 +132,7 @@ titleRouter.get('/titles', (req, res) => {
   res.json({ ok: true, ...buildUserTitlePayload(row) });
 });
 
-// Beli atau Pasang/Lepas Gelar
-titleRouter.post('/titles/action', (req, res) => {
+titleRouter.post('/titles/action', async (req, res) => {
   try {
     const body = req.body || {};
     const type = String(body.type || '').toUpperCase();
@@ -178,6 +167,19 @@ titleRouter.post('/titles/action', (req, res) => {
             active_title = ?
         WHERE id = ?
       `).run(item.price, JSON.stringify([...unlocked]), item.id, row.id);
+
+      // Siarkan otomatis ke grup untuk gelar sultan (>= 450 PSC)
+      if (item.price >= 450) {
+        await broadcastToTelegram({
+          target: 'group',
+          text:
+            `🏷️ <b>GELAR BARU DITEBUS!</b>\n` +
+            `<b>${escHtml(row.name || usn)}</b> baru aja bakar <b>${item.price} PSC</b> buat pasang gelar <b>"${escHtml(item.name)}"</b> di PunkID!`,
+          buttonText: '🪪 CEK PUNKID',
+          startParam: 'gue',
+          feedText: `${row.name || usn} baru menebus gelar "${item.name}" (${item.price} PSC)!`
+        }).catch(() => {});
+      }
 
       const updated = getUserRow(usn);
       return res.json({
