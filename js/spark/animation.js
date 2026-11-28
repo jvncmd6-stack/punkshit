@@ -1,5 +1,5 @@
 import { E } from "./config.js";
-import { bodyD, CR, CRt, setCR, setSPD } from "./avatar.js";
+import { bodyD, coreD, CR, CRt, setCR, setSPD } from "./avatar.js";
 
 const $ = id => document.getElementById(id);
 const hap = () => { try { navigator.vibrate && navigator.vibrate(6); } catch (_) {} };
@@ -9,7 +9,7 @@ const C = { ...E.Happy };
 const P = { x: 0, y: 0, on: 0 };
 const G = 3200;
 
-let R = {}, ph = 0, pb = 0, ps = 0, pw = 0, y = 0, vy = 0, q = 0, qv = 0, nx = 1.5, cr = 0, last = 0, bk = 0, nb = 2, ex = 0, ey = 0, wx = 0, wy = 0, nw = 1, pxs = 0, pys = 0, PT = "", TT = "", pathTick = 0;
+let R = {}, ph = 0, pb = 0, ps = 0, pw = 0, y = 0, vy = 0, q = 0, qv = 0, nx = 1.5, cr = 0, last = 0, bk = 0, nb = 2, ex = 0, ey = 0, wx = 0, wy = 0, nw = 1, pxs = 0, pys = 0, PT = "", TT = "", emberCd = 0.35;
 
 export function bindPetDOM() {
   const SV = $("svg");
@@ -17,6 +17,11 @@ export function bindPetDOM() {
   R = {
     pet: SV.querySelector(".pet"),
     bp: f(".bp"),
+    cp: f(".cp"),
+    face: SV.querySelector(".face-grp"),
+    head: SV.querySelector(".head-grp"),
+    gsh: SV.querySelector(".gsh"),
+    leg: f(".leg"),
     pp: f(".pp"),
     eye: f(".eye"),
     arm: f(".arm")
@@ -25,12 +30,48 @@ export function bindPetDOM() {
 
 export function applyPetFrame() {
   const tl = $("tilt");
-  pathTick = (pathTick + 1) % 3;
-  if (pathTick === 0 && R.bp) {
+
+  // Update siluet api luar & inti api dalam di 60 FPS penuh
+  if (R.bp && R.bp.length) {
     const d = bodyD(ph);
     R.bp.forEach(p => p.setAttribute("d", d));
   }
+  if (R.cp && R.cp.length) {
+    const cd = coreD(ph);
+    R.cp.forEach(p => p.setAttribute("d", cd));
+  }
+
   if (R.pet) R.pet.setAttribute("transform", PT);
+
+  // 2.5D Head-Turn Parallax pada wajah & secondary bounce pada topi
+  const fx = (pxs * 7.5 + ex * 0.25).toFixed(1);
+  const fy = (pys * 5.5 + ey * 0.2).toFixed(1);
+  if (R.face) {
+    R.face.setAttribute("transform", `translate(${fx} ${fy})`);
+  }
+  if (R.head) {
+    const hx = (pxs * 5.2).toFixed(1);
+    const hy = (pys * 3.8 + q * 16).toFixed(1);
+    const hrot = (pxs * 3.2 - qv * 0.35).toFixed(2);
+    R.head.setAttribute("transform", `translate(${hx} ${hy}) rotate(${hrot} 150 130)`);
+  }
+
+  // Bayangan lantai mengecil & memudar saat melompat ke udara
+  if (R.gsh) {
+    const jumpFactor = Math.max(0.55, 1 - y / 140);
+    R.gsh.setAttribute("transform", `translate(150 356) scale(${jumpFactor.toFixed(3)} ${jumpFactor.toFixed(3)}) translate(-150 -356)`);
+    R.gsh.style.opacity = Math.max(0.35, jumpFactor).toFixed(2);
+  }
+
+  // Kaki memanjang sedikit saat melompat
+  if (R.leg && R.leg.length) {
+    const legLift = Math.min(8, y * 0.18).toFixed(1);
+    R.leg.forEach((lg, idx) => {
+      const sway = idx === 0 ? -legLift : legLift * 0.6;
+      lg.setAttribute("transform", y > 1 ? `translate(0 ${(-legLift * 0.4).toFixed(1)}) rotate(${sway} ${idx === 0 ? 124 : 176} 320)` : "");
+    });
+  }
+
   if (R.pp) {
     const pt = `translate(${ex.toFixed(1)} ${ey.toFixed(1)})`;
     R.pp.forEach(p => p.setAttribute("transform", pt));
@@ -46,9 +87,9 @@ export function applyPetFrame() {
     R.arm.forEach(a => {
       const m = +a.dataset.m, s = m ? -1 : 1;
       const ang = (m && +a.dataset.g)
-        ? Math.sin(pw) * 2
-        : C.up * 136 * s + C.wv * Math.sin(pw * 1.1 + m * 1.9) + (1 - C.up) * Math.sin(ps * 1.3 + m * 2.1) * 4 * s - s * q * 60;
-      a.setAttribute("transform", `rotate(${ang.toFixed(1)} ${m ? 238 : 62} 262)`);
+        ? Math.sin(pw) * 2.5
+        : C.up * 136 * s + C.wv * Math.sin(pw * 1.1 + m * 1.9) + (1 - C.up) * Math.sin(ps * 1.3 + m * 2.1) * 4.5 * s - s * q * 64;
+      a.setAttribute("transform", `rotate(${ang.toFixed(1)} ${m ? 236 : 64} 264)`);
     });
   }
   if (tl) tl.style.transform = TT;
@@ -65,17 +106,40 @@ export function bumpPet(height = 22, qForce = .6) {
 export function burstSparks() {
   if (RM) return;
   const stg = $("stage");
-  for (let i = 0; i < 6; i++) {
+  if (!stg) return;
+  for (let i = 0; i < 8; i++) {
     const e = document.createElement("i");
-    const a = i / 6 * 6.283 + Math.random() * .5;
-    const r = 65 + Math.random() * 45;
+    const a = i / 8 * 6.283 + Math.random() * .5;
+    const r = 68 + Math.random() * 52;
     e.className = "spk";
     e.style.setProperty("--x", Math.cos(a) * r + "px");
-    e.style.setProperty("--y", Math.sin(a) * r * .8 - 20 + "px");
+    e.style.setProperty("--y", Math.sin(a) * r * .8 - 22 + "px");
     if (i % 2) e.style.background = "var(--ac)";
     stg.appendChild(e);
-    setTimeout(() => e.remove(), 600);
+    setTimeout(() => e.remove(), 620);
   }
+}
+
+// Percikan bara api halus yang terus naik dari rambut api
+function spawnAmbientEmber() {
+  if (RM) return;
+  const stg = $("stage");
+  if (!stg) return;
+  const e = document.createElement("i");
+  const startX = (Math.random() - 0.5) * 90;
+  const driftX = startX + (Math.random() - 0.5) * 45;
+  const riseY = -95 - Math.random() * 65;
+  e.className = "spk";
+  e.style.width = "5px";
+  e.style.height = "5px";
+  e.style.marginLeft = startX.toFixed(1) + "px";
+  e.style.marginTop = "-35px";
+  e.style.background = Math.random() > 0.4 ? "var(--gl)" : "var(--ac)";
+  e.style.boxShadow = "0 0 8px var(--ac)";
+  e.style.setProperty("--x", driftX.toFixed(1) + "px");
+  e.style.setProperty("--y", riseY.toFixed(1) + "px");
+  stg.appendChild(e);
+  setTimeout(() => e.remove(), 620);
 }
 
 export function startAnimationLoop(getState) {
@@ -99,6 +163,13 @@ export function startAnimationLoop(getState) {
     pb += dt * C.bf * 6.283;
     ps += dt * C.sf * 6.283;
     pw += dt * (4 + C.sp * 3);
+
+    // Spawn bara api melayang secara berkala
+    emberCd -= dt * (0.7 + C.sp * 0.4);
+    if (emberCd <= 0) {
+      emberCd = 0.35 + Math.random() * 0.45;
+      spawnAmbientEmber();
+    }
 
     const H = RM ? 0 : T.h;
     if (T.hi > 0 && H > 0) {
@@ -133,7 +204,7 @@ export function startAnimationLoop(getState) {
     pxs += (P.x * P.on - pxs) * k;
     pys += (P.y * P.on - pys) * k;
 
-    const rot = Math.sin(ps) * C.sw + C.ln + pxs * 4;
+    const rot = Math.sin(ps) * C.sw + C.ln + pxs * 4.5;
     const dx = Math.sin(ps) * C.sw * .9 + Math.sin(pw * 5) * C.sh;
     const ty = C.dy - y;
 
@@ -146,7 +217,7 @@ export function startAnimationLoop(getState) {
     } else {
       nw -= dt;
       if (nw <= 0) {
-        nw = 1.2 + Math.random() * 2.4;
+        nw = 1.1 + Math.random() * 2.2;
         wx = (Math.random() - .5) * 14;
         wy = (Math.random() - .5) * 8;
       }
@@ -186,8 +257,11 @@ export function initInteractions(toastFn) {
     pm(e);
     if (y === 0 && cr <= 0) {
       vy = Math.sqrt(2 * G * 30);
-      qv -= .9;
+      qv -= .95;
+    } else {
+      qv -= .45;
     }
+    burstSparks();
     hap();
   });
 
@@ -247,7 +321,7 @@ export function initInteractions(toastFn) {
       x.fillStyle = grad; x.fillRect(0, 0, W, Hh);
 
       t("Spark Buddies", 60, 110, 56, 700, "#fff");
-      t("3 Slots • One Group", 60, 155, 28, 400, "#9a9aa4");
+      t($("stageSub").textContent || "7 Slots • One Group", 60, 155, 28, 400, "#9a9aa4");
 
       const rt = $("rare").textContent;
       x.font = `600 30px ${F}`;
