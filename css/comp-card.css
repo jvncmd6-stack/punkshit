@@ -1,0 +1,87 @@
+/* =========================================================
+   2. KARTU PUNKID (DEPAN & BELAKANG + 5 CARD SKIN)
+   ========================================================= */
+.cr { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.br { color: var(--yel); letter-spacing: 0.14em; font-size: 13px; font-weight: 800; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); }
+.chp {
+  width: 44px;
+  height: 33px;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, transparent 45%),
+    linear-gradient(135deg, #ffe879 0%, #eab308 52%, #b47800 100%);
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.cn {
+  font: 700 18px/1.2 ui-monospace, Menlo, monospace;
+  letter-spacing: 2.2px;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.mag { height: 42px; background: #05070c; margin-top: 18px; border-top: 0.5px solid rgba(255, 255, 255, 0.08); border-bottom: 0.5px solid rgba(255, 255, 255, 0.08); }
+.sig {
+  margin: 0 18px;
+  height: 34px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(90deg, #f5f7fc 0 6px, #dfe5f1 6px 12px);
+  color: var(--navy);
+  font: italic 700 15px/34px Georgia, serif;
+  padding: 0 12px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+.stt {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0 14px;
+  text-align: center;
+  font-size: 11px;
+  color: #c9d6f0;
+}
+.stt b { display: block; font-size: 19px; font-weight: 800; color: #fff; }
+.tn { text-align: center; font-size: 11px; color: var(--mut); }
+
+/* Varian Tema 5 Card Skin di Kartu PunkID */
+.fc.skin-obsidian {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(148, 163, 184, 0.25), transparent 55%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 4px, transparent 4px 8px),
+    linear-gradient(135deg, #0f172a 0%, #020617 100%) !important;
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 14px 32px rgba(0, 0, 0, 0.68) !important;
+}
+
+.fc.skin-chrome {
+  background:
+    linear-gradient(135deg, #f8fafc 0%, #94a3b8 32%, #475569 68%, #e2e8f0 100%) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: inset 0 1px 0 #fff, 0 12px 30px rgba(148, 163, 184, 0.38) !important;
+}
+.fc.skin-chrome .br { color: #0f172a !important; text-shadow: none; }
+
+.fc.skin-neon {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.48), transparent 55%),
+    radial-gradient(circle at 85% 80%, rgba(168, 85, 247, 0.48), transparent 55%),
+    linear-gradient(135deg, #090d16 0%, #1e1b4b 50%, #3b0764 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.7) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 12px 32px rgba(56, 189, 248, 0.32) !important;
+}
+
+.fc.skin-crimson {
+  background:
+    radial-gradient(circle at 80% 20%, rgba(248, 113, 113, 0.38), transparent 55%),
+    linear-gradient(135deg, #450a0a 0%, #7f1d1d 52%, #180404 100%) !important;
+  border: 1px solid rgba(248, 113, 113, 0.6) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 200, 200, 0.25), 0 12px 32px rgba(185, 28, 28, 0.38) !important;
+}
+
+.fc.skin-gold {
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.6), transparent 45%),
+    linear-gradient(135deg, #fef08a 0%, #eab308 42%, #854d0e 85%, #fde047 100%) !important;
+  color: #1c1917 !important;
+  border: 1px solid #fef9c3 !important;
+  box-shadow: inset 0 1px 0 #fff, 0 14px 34px rgba(234, 179, 8, 0.44) !important;
+}
+.fc.skin-gold .br { color: #1c1917 !important; text-shadow: none; }
