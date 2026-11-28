@@ -9,7 +9,31 @@ const C = { ...E.Happy };
 const P = { x: 0, y: 0, on: 0 };
 const G = 3200;
 
-let R = {}, ph = 0, pb = 0, ps = 0, pw = 0, y = 0, vy = 0, q = 0, qv = 0, nx = 1.5, cr = 0, last = 0, bk = 0, nb = 2, ex = 0, ey = 0, wx = 0, wy = 0, nw = 1, pxs = 0, pys = 0, PT = "", TT = "", emberCd = 0.35;
+let R = {}, ph = 0, pb = 0, ps = 0, pw = 0, y = 0, vy = 0, q = 0, qv = 0, nx = 1.5, cr = 0, last = 0, bk = 0, nb = 2, ex = 0, ey = 0, wx = 0, wy = 0, nw = 1, pxs = 0, pys = 0, PT = "", TT = "";
+let morphAcc = 0, emberCd = 0.45, emberIdx = 0, sparkIdx = 0;
+const emberPool = [], sparkPool = [];
+
+function ensurePools() {
+  const stg = $("stage");
+  if (!stg) return;
+  if (!emberPool.length) {
+    for (let i = 0; i < 6; i++) {
+      const el = document.createElement("i");
+      el.className = "emb";
+      stg.appendChild(el);
+      emberPool.push(el);
+    }
+  }
+  if (!sparkPool.length) {
+    for (let i = 0; i < 8; i++) {
+      const el = document.createElement("i");
+      el.className = "spk";
+      el.style.display = "none";
+      stg.appendChild(el);
+      sparkPool.push(el);
+    }
+  }
+}
 
 export function bindPetDOM() {
   const SV = $("svg");
@@ -26,24 +50,27 @@ export function bindPetDOM() {
     eye: f(".eye"),
     arm: f(".arm")
   };
+  ensurePools();
 }
 
-export function applyPetFrame() {
+export function applyPetFrame(doMorph = true) {
   const tl = $("tilt");
 
-  // Update siluet api luar & inti api dalam di 60 FPS penuh
-  if (R.bp && R.bp.length) {
-    const d = bodyD(ph);
-    R.bp.forEach(p => p.setAttribute("d", d));
-  }
-  if (R.cp && R.cp.length) {
-    const cd = coreD(ph);
-    R.cp.forEach(p => p.setAttribute("d", cd));
+  // Update path api ~24 FPS (tetap mulus, hemat CPU 60%)
+  if (doMorph) {
+    if (R.bp && R.bp.length) {
+      const d = bodyD(ph);
+      for (let i = 0; i < R.bp.length; i++) R.bp[i].setAttribute("d", d);
+    }
+    if (R.cp && R.cp.length) {
+      const cd = coreD(ph);
+      for (let i = 0; i < R.cp.length; i++) R.cp[i].setAttribute("d", cd);
+    }
   }
 
+  // Semua transform di bawah ini jalan di 60 FPS penuh lewat GPU
   if (R.pet) R.pet.setAttribute("transform", PT);
 
-  // 2.5D Head-Turn Parallax pada wajah & secondary bounce pada topi
   const fx = (pxs * 7.5 + ex * 0.25).toFixed(1);
   const fy = (pys * 5.5 + ey * 0.2).toFixed(1);
   if (R.face) {
@@ -56,41 +83,41 @@ export function applyPetFrame() {
     R.head.setAttribute("transform", `translate(${hx} ${hy}) rotate(${hrot} 150 130)`);
   }
 
-  // Bayangan lantai mengecil & memudar saat melompat ke udara
   if (R.gsh) {
     const jumpFactor = Math.max(0.55, 1 - y / 140);
     R.gsh.setAttribute("transform", `translate(150 356) scale(${jumpFactor.toFixed(3)} ${jumpFactor.toFixed(3)}) translate(-150 -356)`);
     R.gsh.style.opacity = Math.max(0.35, jumpFactor).toFixed(2);
   }
 
-  // Kaki memanjang sedikit saat melompat
   if (R.leg && R.leg.length) {
     const legLift = Math.min(8, y * 0.18).toFixed(1);
-    R.leg.forEach((lg, idx) => {
+    for (let idx = 0; idx < R.leg.length; idx++) {
       const sway = idx === 0 ? -legLift : legLift * 0.6;
-      lg.setAttribute("transform", y > 1 ? `translate(0 ${(-legLift * 0.4).toFixed(1)}) rotate(${sway} ${idx === 0 ? 124 : 176} 320)` : "");
-    });
+      R.leg[idx].setAttribute("transform", y > 1 ? `translate(0 ${(-legLift * 0.4).toFixed(1)}) rotate(${sway} ${idx === 0 ? 124 : 176} 320)` : "");
+    }
   }
 
-  if (R.pp) {
+  if (R.pp && R.pp.length) {
     const pt = `translate(${ex.toFixed(1)} ${ey.toFixed(1)})`;
-    R.pp.forEach(p => p.setAttribute("transform", pt));
+    for (let i = 0; i < R.pp.length; i++) R.pp[i].setAttribute("transform", pt);
   }
-  if (R.eye) {
+  if (R.eye && R.eye.length) {
     const sy = bk > 0 ? 1 - .92 * Math.sin((1 - bk / .14) * Math.PI) : 1;
-    R.eye.forEach(e => {
+    for (let i = 0; i < R.eye.length; i++) {
+      const e = R.eye[i];
       const x = e.dataset.x;
       e.setAttribute("transform", sy < .999 ? `translate(${x} 218) scale(1 ${sy.toFixed(2)}) translate(-${x} -218)` : "");
-    });
+    }
   }
-  if (R.arm) {
-    R.arm.forEach(a => {
+  if (R.arm && R.arm.length) {
+    for (let i = 0; i < R.arm.length; i++) {
+      const a = R.arm[i];
       const m = +a.dataset.m, s = m ? -1 : 1;
       const ang = (m && +a.dataset.g)
         ? Math.sin(pw) * 2.5
         : C.up * 136 * s + C.wv * Math.sin(pw * 1.1 + m * 1.9) + (1 - C.up) * Math.sin(ps * 1.3 + m * 2.1) * 4.5 * s - s * q * 64;
       a.setAttribute("transform", `rotate(${ang.toFixed(1)} ${m ? 236 : 64} 264)`);
-    });
+    }
   }
   if (tl) tl.style.transform = TT;
 }
@@ -105,41 +132,37 @@ export function bumpPet(height = 22, qForce = .6) {
 
 export function burstSparks() {
   if (RM) return;
-  const stg = $("stage");
-  if (!stg) return;
+  ensurePools();
+  if (!sparkPool.length) return;
   for (let i = 0; i < 8; i++) {
-    const e = document.createElement("i");
+    const e = sparkPool[(sparkIdx++) % sparkPool.length];
     const a = i / 8 * 6.283 + Math.random() * .5;
     const r = 68 + Math.random() * 52;
-    e.className = "spk";
-    e.style.setProperty("--x", Math.cos(a) * r + "px");
-    e.style.setProperty("--y", Math.sin(a) * r * .8 - 22 + "px");
-    if (i % 2) e.style.background = "var(--ac)";
-    stg.appendChild(e);
-    setTimeout(() => e.remove(), 620);
+    e.style.display = "block";
+    e.style.background = i % 2 ? "var(--ac)" : "var(--gl)";
+    e.style.setProperty("--x", (Math.cos(a) * r).toFixed(1) + "px");
+    e.style.setProperty("--y", (Math.sin(a) * r * .8 - 22).toFixed(1) + "px");
+    e.style.animation = "none";
+    void e.offsetWidth;
+    e.style.animation = "";
   }
 }
 
-// Percikan bara api halus yang terus naik dari rambut api
 function spawnAmbientEmber() {
   if (RM) return;
-  const stg = $("stage");
-  if (!stg) return;
-  const e = document.createElement("i");
-  const startX = (Math.random() - 0.5) * 90;
-  const driftX = startX + (Math.random() - 0.5) * 45;
-  const riseY = -95 - Math.random() * 65;
-  e.className = "spk";
-  e.style.width = "5px";
-  e.style.height = "5px";
-  e.style.marginLeft = startX.toFixed(1) + "px";
-  e.style.marginTop = "-35px";
+  ensurePools();
+  if (!emberPool.length) return;
+  const e = emberPool[(emberIdx++) % emberPool.length];
+  const sx = (Math.random() - 0.5) * 84;
+  const exDrift = sx + (Math.random() - 0.5) * 40;
+  const eyRise = -85 - Math.random() * 55;
   e.style.background = Math.random() > 0.4 ? "var(--gl)" : "var(--ac)";
-  e.style.boxShadow = "0 0 8px var(--ac)";
-  e.style.setProperty("--x", driftX.toFixed(1) + "px");
-  e.style.setProperty("--y", riseY.toFixed(1) + "px");
-  stg.appendChild(e);
-  setTimeout(() => e.remove(), 620);
+  e.style.setProperty("--sx", sx.toFixed(1) + "px");
+  e.style.setProperty("--ex", exDrift.toFixed(1) + "px");
+  e.style.setProperty("--ey", eyRise.toFixed(1) + "px");
+  e.classList.remove("go");
+  void e.offsetWidth;
+  e.classList.add("go");
 }
 
 export function startAnimationLoop(getState) {
@@ -164,10 +187,9 @@ export function startAnimationLoop(getState) {
     ps += dt * C.sf * 6.283;
     pw += dt * (4 + C.sp * 3);
 
-    // Spawn bara api melayang secara berkala
-    emberCd -= dt * (0.7 + C.sp * 0.4);
+    emberCd -= dt * (0.65 + C.sp * 0.35);
     if (emberCd <= 0) {
-      emberCd = 0.35 + Math.random() * 0.45;
+      emberCd = 0.5 + Math.random() * 0.5;
       spawnAmbientEmber();
     }
 
@@ -233,7 +255,11 @@ export function startAnimationLoop(getState) {
       nb = 2 + Math.random() * 3.5;
     }
 
-    applyPetFrame();
+    morphAcc += dt;
+    const doMorph = morphAcc >= 0.04;
+    if (doMorph) morphAcc = 0;
+
+    applyPetFrame(doMorph);
     requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
