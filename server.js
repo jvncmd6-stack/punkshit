@@ -16,6 +16,7 @@ import { marketRouter } from './src/api/marketRoutes.js';
 import { kotakBirthdayRouter } from './src/api/kotakBirthdayRoutes.js';
 import { sparkArenaRouter } from './src/api/sparkArenaRoutes.js';
 import { sparkRouter } from './src/api/sparkRoutes.js';
+import { titleRouter } from './src/api/titleRoutes.js';
 import * as botMod from './src/bot/index.js';
 
 // ============================================================
@@ -237,6 +238,7 @@ app.use('/api', socialExtraRouter);
 app.use('/api', kotakBirthdayRouter);
 app.use('/api', sparkArenaRouter);
 app.use('/api', sparkRouter);
+app.use('/api', titleRouter);
 
 if (fs.existsSync(path.resolve('./src/api/adminRoutes.js'))) {
   const adminMod = await import('./src/api/adminRoutes.js');
