@@ -169,7 +169,7 @@ export function registerBotHandlers(bot) {
     await ctx.reply(getSetting('help_text', DEFAULT_HELP), { parse_mode: 'HTML' });
   });
 
-  // 3. Spark Buddies & Cek Dompet PSC
+  // 3. Spark Buddies, Cek Dompet PSC & Flexing Kartu
   bot.command('spark', async (ctx) => {
     const kb = new InlineKeyboard();
     const sparkUrl = buildMiniAppUrl('spark');
@@ -210,6 +210,27 @@ export function registerBotHandlers(bot) {
       `• Saldo PSC: <b>${targetUser.psc || 0} PSC</b>\n` +
       `• Street Cred: <b>${targetUser.cred || 0}</b>`,
       { parse_mode: 'HTML' }
+    );
+  });
+
+  bot.command('flex', async (ctx) => {
+    const u = db.prepare('SELECT * FROM users WHERE id = ?').get(String(ctx.from.id));
+    if (!u) return ctx.reply('Bikin PunkID dulu di Mini App sebelum flexing cuy!');
+
+    const titleInfo = resolveUserBadgeAndTitle(u);
+    const invCount = db.prepare('SELECT COUNT(*) AS c FROM inventory WHERE user_id = ?').get(u.id).c;
+    const kb = new InlineKeyboard();
+    const appUrl = buildMiniAppUrl('warga');
+    if (appUrl) kb.url('🪪 Intip PunkID Lengkap', appUrl);
+
+    await ctx.reply(
+      `🪪 <b>FLEXING PUNKID — ${escHtml(u.name)}</b>\n` +
+      `• Nomor Kartu: <code>${escHtml(u.member_no || 'PSK-0001')}</code>\n` +
+      `• Gelar Aktif: <b>${escHtml(titleInfo.display)}</b>\n` +
+      `• Status: <i>${escHtml(u.presence || '☕ Nongki Santai')}</i>\n` +
+      `• Reputasi: <b>${u.cred || 0} Cred</b> · Streak <b>${u.streak || 0} Hari</b>\n` +
+      `• Saldo & Gudang: <b>${u.psc || 0} PSC</b> · <b>${invCount} Item</b>`,
+      { parse_mode: 'HTML', reply_markup: kb }
     );
   });
 
