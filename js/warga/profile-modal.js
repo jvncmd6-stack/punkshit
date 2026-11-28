@@ -5,6 +5,52 @@
 
   var spCache = {};
 
+  var CRED_RANKS = [
+    { minCred: 600, title: 'Sesepuh Akut',    badge: '👑' },
+    { minCred: 350, title: 'Pentolan Markas', badge: '🔥' },
+    { minCred: 200, title: 'Biang Rame',      badge: '⚡' },
+    { minCred: 100, title: 'Anak Nongkrong',  badge: '🎸' },
+    { minCred: 50,  title: 'Warga Tetap',     badge: '🧢' },
+    { minCred: 20,  title: 'Baru Kenal',      badge: '🥤' },
+    { minCred: 0,   title: 'Anak Nyasar',     badge: '🛹' }
+  ];
+
+  var ALL_TITLES = [
+    { id: 'sider',        name: 'Sider Abadi' },
+    { id: 'yapping',      name: 'Tukang Yapping' },
+    { id: 'beban',        name: 'Beban Grup' },
+    { id: 'admin',        name: 'Admin Jalur Belakang' },
+    { id: 'spill',        name: 'Spill Master' },
+    { id: 'kalong',       name: 'Raja Jam Kalong' },
+    { id: 'fomo',         name: 'Korban FOMO' },
+    { id: 'sepuh',        name: 'Sepuh Turun Gunung' },
+    { id: 'donatur',      name: 'Donatur Tanpa Syarat' },
+    { id: 'first_fire',   name: 'Bestie Jalur Api' },
+    { id: 'cctv',         name: 'CCTV Grup' },
+    { id: 'kang_goreng',  name: 'Kang Goreng' },
+    { id: 'mak_comblang', name: 'Mak Comblang' },
+    { id: 'gak_napak',    name: 'Gak Napak Tanah' }
+  ];
+
+  function resolvePublicTitle(u) {
+    var cred = Number(u && u.cred) || 0;
+    var rank = CRED_RANKS[CRED_RANKS.length - 1];
+    for (var i = 0; i < CRED_RANKS.length; i++) {
+      if (cred >= CRED_RANKS[i].minCred) {
+        rank = CRED_RANKS[i];
+        break;
+      }
+    }
+    var activeId = (u && (u.activeTitleId || u.active_title)) || '';
+    var found = activeId ? ALL_TITLES.find(function (t) { return t.id === activeId; }) : null;
+    var label = found ? found.name : rank.title;
+    return {
+      badge: rank.badge,
+      title: label,
+      display: rank.badge + ' ' + label
+    };
+  }
+
   function cleanSpotify(raw) {
     var s = String(raw || '').trim();
     if (!s) return '';
@@ -84,7 +130,7 @@
 
   function renderPublicCard(u, itemCount) {
     var dg = (u.memberNo || 'PSK-0001').replace('PSK-', '');
-    var rk = C.rankInfo(u.streak || 0);
+    var rk = resolvePublicTitle(u);
     var skinItem = u.equippedSkinId ? C.findItem(u.equippedSkinId) : null;
     var skinCls = skinItem && skinItem.skinClass ? ' ' + skinItem.skinClass : '';
 
@@ -92,7 +138,7 @@
       '<div class="flip" data-act="pid-flip" role="button" tabindex="0" style="margin:12px 0">' +
         '<div class="cd">' +
           '<div class="fc' + skinCls + '">' +
-            '<div class="cr"><b class="br">PUNKSHIT.OS</b><span>' + C.esc(rk.title) + '</span></div>' +
+            '<div class="cr"><b class="br">PUNKSHIT.OS</b><span>' + C.esc(rk.display) + '</span></div>' +
             '<div class="cr">' +
               '<div style="display:flex;align-items:center;gap:10px">' +
                 C.renderAvatar(u, 'mini') +
@@ -178,7 +224,7 @@
     try {
       var res = await API.get('/api/users/profile/' + encodeURIComponent(targetIdOrUsn));
       var u = res.user;
-      var rk = C.rankInfo(u.streak || 0);
+      var rk = resolvePublicTitle(u);
       var bannerStyle = u.bannerUrl
         ? 'background-image:url(\'' + C.esc(API.assetUrl(u.bannerUrl)) + '\');background-size:cover;background-position:center'
         : 'background:radial-gradient(circle at 25% 20%,#8FC7FF,transparent 55%),linear-gradient(135deg,#176BFF,#0b2a6e)';
@@ -196,7 +242,7 @@
               C.renderAvatar(u, 'full') +
             '</div>' +
             '<div class="nm">' + C.esc(u.name) + ' ' + roleBadge + '</div>' +
-            '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + rk.title + '</div>' +
+            '<div class="hd">' + C.esc(u.memberNo || 'PSK-0001') + (u.username ? ' · @' + C.esc(u.username) : '') + ' · ' + C.esc(rk.display) + '</div>' +
             (u.bio ? '<p class="bio">' + C.esc(u.bio) + '</p>' : '') +
             renderPublicGifts(u) +
             (u.spotifyUrl ? renderPublicSpotify(u.spotifyUrl) : '') +
