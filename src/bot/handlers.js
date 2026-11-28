@@ -2,6 +2,7 @@ import { InlineKeyboard } from 'grammy';
 import { ENV } from '../config/env.js';
 import { db } from '../database/db.js';
 import { escHtml, notifyPrivateUser, buildMiniAppUrl } from '../services/syncEngine.js';
+import { resolveUserBadgeAndTitle, getSparkLevelName, getDuoBondTitle } from '../config/punkTitles.js';
 import { registerLapakCommands } from './lapakCommands.js';
 import { registerAdminEconomyCommands } from './adminEconomyCmds.js';
 import {
@@ -96,18 +97,20 @@ export function registerBotHandlers(bot) {
               db.prepare('UPDATE spark_pairs SET streak = ?, xp = ?, last_qualified_date = ? WHERE id = ?')
                 .run(newStreak, newXp, today, pair.id);
 
+              const lvInfo = getSparkLevelName(newXp);
+              const bondTitle = getDuoBondTitle(newStreak);
               const pRow = db.prepare('SELECT id FROM users WHERE LOWER(username) = ?').get(partner);
               const sparkDm =
                 `🔥 <b>SPARK HARIAN MENYALA!</b>\n\n` +
                 `Kamu & @${escHtml(partner)} sudah aktif ngobrol hari ini!\n` +
-                `• Streak: <b>${newStreak} Hari</b>\n` +
-                `• Total XP: <b>${newXp} XP</b>`;
+                `• Status Duo: <b>${escHtml(bondTitle)}</b> (${newStreak} Hari)\n` +
+                `• Level Api: <b>Lv.${lvInfo.level} ${escHtml(lvInfo.name)}</b> (${newXp} XP)`;
 
               await notifyPrivateUser(user.id, sparkDm, { buttonText: '🔥 CEK SPARK', startParam: 'spark' });
               if (pRow?.id) {
                 await notifyPrivateUser(
                   pRow.id,
-                  `🔥 <b>SPARK HARIAN MENYALA!</b>\n\nKamu & @${escHtml(usn)} sudah aktif ngobrol hari ini!\n• Streak: <b>${newStreak} Hari</b>\n• Total XP: <b>${newXp} XP</b>`,
+                  `🔥 <b>SPARK HARIAN MENYALA!</b>\n\nKamu & @${escHtml(usn)} sudah aktif ngobrol hari ini!\n• Status Duo: <b>${escHtml(bondTitle)}</b> (${newStreak} Hari)\n• Level Api: <b>Lv.${lvInfo.level} ${escHtml(lvInfo.name)}</b> (${newXp} XP)`,
                   { buttonText: '🔥 CEK SPARK', startParam: 'spark' }
                 );
               }
@@ -197,8 +200,15 @@ export function registerBotHandlers(bot) {
     }
 
     if (!targetUser) return ctx.reply('Data warga belum ditemukan di PunkID.');
+
+    const titleInfo = resolveUserBadgeAndTitle(targetUser);
     await ctx.reply(
-      `💳 <b>DOMPET WARGA — ${escHtml(targetUser.name)}</b>\n• ID Warga: <code>${escHtml(targetUser.member_no || targetUser.id)}</code>\n• Role: <code>${escHtml((targetUser.role || 'member').toUpperCase())}</code>\n• Saldo PSC: <b>${targetUser.psc || 0} PSC</b>\n• Street Cred: <b>${targetUser.cred || 0}</b>`,
+      `💳 <b>DOMPET WARGA — ${escHtml(targetUser.name)}</b>\n` +
+      `• ID Warga: <code>${escHtml(targetUser.member_no || targetUser.id)}</code>\n` +
+      `• Gelar: <b>${escHtml(titleInfo.display)}</b>\n` +
+      `• Role: <code>${escHtml((targetUser.role || 'member').toUpperCase())}</code>\n` +
+      `• Saldo PSC: <b>${targetUser.psc || 0} PSC</b>\n` +
+      `• Street Cred: <b>${targetUser.cred || 0}</b>`,
       { parse_mode: 'HTML' }
     );
   });
