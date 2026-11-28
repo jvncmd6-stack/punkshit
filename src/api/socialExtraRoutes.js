@@ -11,19 +11,27 @@ import {
 
 export const socialExtraRouter = Router();
 
+try { db.exec("ALTER TABLE users ADD COLUMN active_title TEXT DEFAULT ''"); } catch (_) {}
+
 // 1. GET /api/leaderboard/global -> Klasemen Top Sultan PSC, Street Cred, & Spark Streak
 socialExtraRouter.get('/leaderboard/global', (req, res) => {
   try {
     const topPsc = db.prepare(`
-      SELECT id, name, username, role, psc, streak, photo_url AS photoUrl, equipped_border_id AS equippedBorderId, ring_style AS ringStyle
+      SELECT id, name, username, role, psc, cred, streak,
+             COALESCE(active_title, '') AS activeTitleId,
+             photo_url AS photoUrl, equipped_border_id AS equippedBorderId, ring_style AS ringStyle
       FROM users
+      WHERE COALESCE(is_frozen, 0) = 0
       ORDER BY psc DESC, id ASC
       LIMIT 10
     `).all();
 
     const topCred = db.prepare(`
-      SELECT id, name, username, role, cred, streak, photo_url AS photoUrl, equipped_border_id AS equippedBorderId, ring_style AS ringStyle
+      SELECT id, name, username, role, psc, cred, streak,
+             COALESCE(active_title, '') AS activeTitleId,
+             photo_url AS photoUrl, equipped_border_id AS equippedBorderId, ring_style AS ringStyle
       FROM users
+      WHERE COALESCE(is_frozen, 0) = 0
       ORDER BY cred DESC, psc DESC
       LIMIT 10
     `).all();
