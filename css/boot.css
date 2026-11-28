@@ -1,0 +1,138 @@
+/* =========================================================
+   BOOT / LOADING SCREEN PUNKSHIT.OS
+   ========================================================= */
+.boot-scr {
+  position: absolute;
+  inset: 0;
+  z-index: 92;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 28px;
+  background:
+    radial-gradient(70% 45% at 50% 25%, rgba(29, 116, 255, 0.28), transparent 70%),
+    linear-gradient(180deg, rgba(8, 13, 26, 0.94) 0%, rgba(5, 8, 16, 0.98) 100%);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  transition: opacity 0.48s var(--ease), transform 0.52s var(--ease), visibility 0.52s;
+}
+
+.phone.theme-sakura .boot-scr {
+  background:
+    radial-gradient(70% 45% at 50% 25%, rgba(236, 72, 153, 0.3), transparent 70%),
+    linear-gradient(180deg, rgba(24, 11, 32, 0.95) 0%, rgba(12, 6, 18, 0.98) 100%);
+}
+
+.phone.theme-carbon .boot-scr {
+  background:
+    radial-gradient(70% 45% at 50% 25%, rgba(14, 165, 233, 0.24), transparent 70%),
+    linear-gradient(180deg, rgba(9, 13, 22, 0.96) 0%, rgba(4, 6, 11, 0.99) 100%);
+}
+
+.phone.theme-mint .boot-scr {
+  background:
+    radial-gradient(70% 45% at 50% 25%, rgba(16, 185, 129, 0.26), transparent 70%),
+    linear-gradient(180deg, rgba(6, 22, 21, 0.95) 0%, rgba(3, 12, 14, 0.98) 100%);
+}
+
+.boot-scr.done {
+  opacity: 0;
+  transform: scale(1.06);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.boot-logo {
+  width: 78px;
+  height: 78px;
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(155deg, var(--os-accent) 0%, #0b2254 100%);
+  border: 0.5px solid var(--gb-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 16px 36px rgba(0, 0, 0, 0.55),
+    0 0 32px rgba(29, 116, 255, 0.35);
+  animation: bootPulse 2.2s ease-in-out infinite;
+}
+
+.boot-logo::before {
+  content: "";
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: -12%;
+  height: 58%;
+  border-radius: 0 0 50% 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.04));
+}
+
+.boot-logo svg {
+  width: 38px;
+  height: 38px;
+  stroke: #fff;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes bootPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.boot-title {
+  margin-top: 18px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  background: linear-gradient(180deg, #ffffff 35%, #cbd9f5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.boot-sub {
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mut);
+  letter-spacing: 0.02em;
+  min-height: 18px;
+}
+
+.boot-bar {
+  width: 168px;
+  height: 5px;
+  margin-top: 22px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.boot-bar > i {
+  display: block;
+  width: 28%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--os-accent-txt), var(--yel));
+  box-shadow: 0 0 10px var(--os-accent-txt);
+  transition: width 0.35s var(--ease);
+}
+
+.boot-ver {
+  position: absolute;
+  bottom: 28px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.36);
+}
